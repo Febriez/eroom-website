@@ -236,13 +236,42 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             const {user} = result
 
             // 기존 사용자인지 확인 (uid로 검색)
-            const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
-            const querySnapshot = await getDocs(usersQuery)
+            console.log('Checking if user exists with uid:', user.uid)
+
+            // 먼저 User 컬렉션에서 검색
+            let usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+            let querySnapshot = await getDocs(usersQuery)
+
+            // User 컬렉션에 없으면 users 컬렉션에서 검색 (이전 데이터 호환성)
+            if (querySnapshot.empty) {
+                console.log('User not found in User collection, checking users collection')
+                usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                const oldSnapshot = await getDocs(usersQuery)
+
+                // users 컬렉션에서 찾았다면 User 컬렉션으로 마이그레이션
+                if (!oldSnapshot.empty) {
+                    console.log('Found user in users collection, migrating to User collection')
+                    const userDoc = oldSnapshot.docs[0]
+                    const userData = userDoc.data()
+
+                    // User 컬렉션에 데이터 복사
+                    await setDoc(doc(db, 'User', userData.docId), userData)
+                    console.log('User data migrated to User collection')
+
+                    // 새 컬렉션에서 다시 쿼리
+                    usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                    querySnapshot = await getDocs(usersQuery)
+                }
+            }
+
+            // randomUserId 변수를 상위 스코프로 이동
+            let randomUserId = '';
 
             if (querySnapshot.empty) {
                 // 새 사용자라면 랜덤 userId로 계정 생성
                 const docId = uuidv4()
-                const randomUserId = `user_${uuidv4().substring(0, 8)}`
+                randomUserId = `user_${uuidv4().substring(0, 8)}`
+                console.log('Creating new user with random userId:', randomUserId)
 
                 await setDoc(doc(db, 'User', docId), {
                     docId: docId,
@@ -292,8 +321,26 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 })
             }
 
-            // 성공 시그널 반환 및 필요한 데이터 포함
-            return {success: true, userId: querySnapshot.empty ? randomUserId : querySnapshot.docs[0].data().userId}
+            // 사용자 데이터 확인 및 userId 추출
+            let finalUserId = '';
+
+            if (!querySnapshot.empty) {
+                const userData = querySnapshot.docs[0].data();
+                if (userData && userData.userId) {
+                    finalUserId = userData.userId;
+                    console.log('Found existing user with userId:', finalUserId);
+                } else {
+                    console.error('User document exists but userId is missing:', userData);
+                }
+            } else if (randomUserId) {
+                finalUserId = randomUserId;
+                console.log('Using newly created userId:', finalUserId);
+            } else {
+                console.error('Failed to determine userId for user');
+            }
+
+            console.log('Google sign in complete, userId:', finalUserId);
+            return {success: true, userId: finalUserId}
         } catch (error: any) {
             console.error('Google login error:', error)
             console.error('Error code:', error.code)

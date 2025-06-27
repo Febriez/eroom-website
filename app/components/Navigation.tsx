@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import {useAuth} from '../contexts/AuthContext'
-import {collection, getDocs, onSnapshot, query, where} from 'firebase/firestore'
+import {collection, doc, getDocs, onSnapshot, query, setDoc, where} from 'firebase/firestore'
 import {db} from '../lib/firebase'
 
 interface MenuItem {
@@ -346,13 +346,14 @@ export default function Navigation() {
                                                 showUserMenu ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'
                                             }`}>
                                             <div className="p-2">
-                                                                                                      <Link href={userProfile && userProfile.userId ? `/profile/${userProfile.userId}` : '/profile'}
-                                                      className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200"
-                                                      onClick={(e) => {
-                                                          if (!userProfile || !userProfile.userId) {
-                                                              console.log('No userId found in profile, redirecting to /profile')
-                                                          }
-                                                      }}>
+                                                <Link
+                                                    href={userProfile && userProfile.userId ? `/profile/${userProfile.userId}` : '/profile'}
+                                                    className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200"
+                                                    onClick={(e) => {
+                                                        if (!userProfile || !userProfile.userId) {
+                                                            console.log('No userId found in profile, redirecting to /profile')
+                                                        }
+                                                    }}>
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
                                                 </Link>
