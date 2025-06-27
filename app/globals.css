@@ -9,7 +9,11 @@
 
     main {
         @apply min-h-screen;
-        padding-bottom: 2rem;
+        padding-bottom: 4rem;
+    }
+
+    section {
+        @apply pb-8;
     }
 }
 
