@@ -4,6 +4,7 @@ import React, {createContext, useContext, useEffect, useState} from 'react'
 import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signInWithPopup,
     signOut,
@@ -14,45 +15,7 @@ import {auth, db, googleProvider} from '../lib/firebase'
 import {collection, doc, getDocs, query, serverTimestamp, setDoc, where} from 'firebase/firestore'
 import {useRouter} from 'next/navigation'
 import {v4 as uuidv4} from 'uuid'
-
-interface UserProfile {
-    docId: string
-    uid: string
-    userId: string
-    email: string
-    nickname: string
-    bio: string
-    level: number
-    points: number
-    completedMaps: number
-    createdMaps: number
-    totalPlayTime: string
-    winRate: string
-    avgClearTime: string
-    friendsCount: number
-    createdAt: string
-    followers?: string[]
-    following?: string[]
-    friends?: string[]
-    blocked?: string[]
-    userIdChangedAt?: any
-    canChangeUserId?: boolean
-
-    // 게임 데이터 필드
-    Credits?: number
-    Username?: string
-    RegistrationDate?: any
-    LastLoginDate?: any
-    TotalPlayTime?: number
-    LikedRooms?: string[]
-    Preferences?: {
-        SoundEnabled: boolean
-        MusicVolume: number
-        EffectsVolume: number
-        MouseSensitivity: number
-        Language: string
-    }
-}
+import {UserProfile} from '../types/user'
 
 interface AuthContextType {
     user: User | null
@@ -62,6 +25,7 @@ interface AuthContextType {
     signInWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean; userId?: string } | undefined>
     logout: () => Promise<void>
     checkUserIdAvailability: (userId: string) => Promise<boolean>
+    resetPassword: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -74,7 +38,9 @@ const AuthContext = createContext<AuthContextType>({
     signInWithGoogle: async () => undefined,
     logout: async () => {
     },
-    checkUserIdAvailability: async () => false
+    checkUserIdAvailability: async () => false,
+    resetPassword: async () => {
+    }
 })
 
 export function AuthProvider({children}: { children: React.ReactNode }) {
@@ -83,7 +49,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        return onAuthStateChanged(auth, async (user) => {
             setUser(user)
             setLoading(true)
 
@@ -127,8 +93,6 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             setLoading(false)
         })
-
-        return unsubscribe
     }, [])
 
     const checkUserIdAvailability = async (userId: string): Promise<boolean> => {
@@ -372,6 +336,15 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         }
     }
 
+    const resetPassword = async (email: string) => {
+        try {
+            await sendPasswordResetEmail(auth, email)
+        } catch (error) {
+            console.error('Password reset error:', error)
+            throw error
+        }
+    }
+
     const value = {
         user,
         loading,
@@ -379,7 +352,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         signUpWithEmail,
         signInWithGoogle,
         logout,
-        checkUserIdAvailability
+        checkUserIdAvailability,
+        resetPassword
     }
 
     return (

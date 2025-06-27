@@ -7,13 +7,8 @@ import {useAuth} from '../contexts/AuthContext'
 import {collection, getDocs, query, where} from 'firebase/firestore'
 import {db} from '../lib/firebase'
 import NotificationsPanel from './NotificationsPanel'
-
-interface UserProfile {
-    userId: string
-    nickname: string
-    email: string
-    // 기타 필요한 프로필 데이터
-}
+import UnreadNotificationIndicator from './UnreadNotificationIndicator'
+import {UserProfile} from '../types/user'
 
 export default function Navigation() {
     const {user, logout} = useAuth()
@@ -117,13 +112,13 @@ export default function Navigation() {
                                         className="w-6 h-6 text-gray-300 hover:text-green-400 transition-colors"
                                         onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                                     />
-                                    {/* 알림 인디케이터 */}
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+                                    {/* 알림 인디케이터 - 읽지 않은 알림이 있을 때만 표시 */}
+                                    <UnreadNotificationIndicator userId={user.uid} />
 
                                     {/* 알림 패널 */}
                                     {isNotificationsOpen && (
                                         <div ref={notificationsPanelRef} className="absolute right-0 mt-2 w-80">
-                                            <NotificationsPanel userProfile={userProfile} />
+                                            <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} userProfile={userProfile} />
                                         </div>
                                     )}
                                 </div>

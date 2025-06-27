@@ -1,6 +1,6 @@
 'use client'
 
-import {useState} from 'react'
+import React, {useState} from 'react'
 import Link from 'next/link'
 import {AlertCircle, Eye, EyeOff, Key, Mail} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
@@ -238,7 +238,7 @@ export default function LoginPage() {
                                 <span className="ml-2 text-sm text-gray-400">로그인 상태 유지</span>
                             </label>
                             <Link href="/auth/forgot-password"
-                                  className="text-sm text-green-400 hover:text-green-300 transition-colors">
+                                  className="text-sm text-green-400 hover:text-green-300 transition-colors hover:underline">
                                 비밀번호를 잊으셨나요?
                             </Link>
                         </div>

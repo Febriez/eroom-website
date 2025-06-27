@@ -339,8 +339,16 @@ export default function ProfilePage() {
 
     const handleFriendRequest = async () => {
         if (!user || !profile || !currentUserProfile) return
+        if (isBlocked) return // 차단된 상태면 요청 처리 중지
 
         try {
+            // 상대방이 나를 차단했는지 확인
+            const isBlockedByTarget = profile.blocked?.includes(user.uid) || false
+            if (isBlockedByTarget) {
+                console.log('상대방이 나를 차단했습니다')
+                return
+            }
+
             await addDoc(collection(db, 'friendRequests'), {
                 from: user.uid,
                 to: profile.uid,
@@ -566,7 +574,14 @@ export default function ProfilePage() {
                                             <Settings className="w-5 h-5"/>
                                         </button>
                                         <button
-                                            onClick={() => router.push('/auth/logout')}
+                                            onClick={async () => {
+                                                try {
+                                                    await logout();
+                                                    router.push('/');
+                                                } catch (error) {
+                                                    console.error('로그아웃 실패:', error);
+                                                }
+                                            }}
                                             className="p-3 bg-red-900/30 hover:bg-red-900/50 rounded-lg transition-colors text-red-400"
                                         >
                                             <LogOut className="w-5 h-5"/>
@@ -580,6 +595,7 @@ export default function ProfilePage() {
                                         <button
                                             onClick={handleFriendRequest}
                                             className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                            disabled={isBlocked}
                                         >
                                             <UserPlus className="w-5 h-5"/>
                                             친구 추가
@@ -679,39 +695,75 @@ export default function ProfilePage() {
 
                 {/* Notifications - Only show on own profile */}
                 {isOwnProfile && notifications.length > 0 && (
-                    <div
-                        className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800 mb-8">
-                        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                            <Bell className="w-6 h-6 text-green-400"/>
-                            알림 목록 ({notifications.length})
-                        </h2>
-                        <div className="space-y-3">
-                            {notifications.slice(0, 5).map((notification) => (
-                                <div
-                                    key={notification.id}
-                                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                                        notification.read
-                                            ? 'bg-gray-900/30 border-gray-800'
-                                            : 'bg-green-900/20 border-green-800/50'
-                                    }`}
-                                    onClick={() => markNotificationAsRead(notification.id)}
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h3 className="font-semibold">{notification.title}</h3>
-                                            <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
+                    <div className="space-y-8 mb-8">
+                        {/* 읽지 않은 알림 */}
+                        {notifications.filter(n => !n.read).length > 0 && (
+                            <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                                    <Bell className="w-6 h-6 text-green-400"/>
+                                    새 알림 ({notifications.filter(n => !n.read).length})
+                                </h2>
+                                <div className="space-y-3">
+                                    {notifications.filter(n => !n.read).slice(0, 5).map((notification) => (
+                                        <div
+                                            key={notification.id}
+                                            className="p-4 rounded-lg border cursor-pointer transition-all bg-green-900/20 border-green-800/50"
+                                            onClick={() => markNotificationAsRead(notification.id)}
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <h3 className="font-semibold">{notification.title}</h3>
+                                                    <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-2">
+                                                        {notification.createdAt?.seconds ? 
+                                                            new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') : 
+                                                            '날짜 정보 없음'}
+                                                    </p>
+                                                </div>
+                                                <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
+                                            </div>
                                         </div>
-                                        {!notification.read && (
-                                            <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                                        )}
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                        {notifications.length > 5 && (
-                            <button className="mt-4 text-green-400 hover:text-green-300 transition-colors">
-                                모든 알림 보기 →
-                            </button>
+                                {notifications.filter(n => !n.read).length > 5 && (
+                                    <button className="mt-4 text-green-400 hover:text-green-300 transition-colors">
+                                        모든 새 알림 보기 →
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 읽은 알림 */}
+                        {notifications.filter(n => n.read).length > 0 && (
+                            <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                                    <Bell className="w-6 h-6 text-gray-400"/>
+                                    읽은 알림 ({notifications.filter(n => n.read).length})
+                                </h2>
+                                <div className="space-y-3">
+                                    {notifications.filter(n => n.read).slice(0, 5).map((notification) => (
+                                        <div
+                                            key={notification.id}
+                                            className="p-4 rounded-lg border bg-gray-900/30 border-gray-800"
+                                        >
+                                            <div>
+                                                <h3 className="font-semibold text-gray-300">{notification.title}</h3>
+                                                <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    {notification.createdAt?.seconds ? 
+                                                        new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') : 
+                                                        '날짜 정보 없음'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {notifications.filter(n => n.read).length > 5 && (
+                                    <button className="mt-4 text-gray-400 hover:text-gray-300 transition-colors">
+                                        모든 읽은 알림 보기 →
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
                 )}

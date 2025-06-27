@@ -6,6 +6,7 @@ import {db} from '../lib/firebase'
 import {useAuth} from '../contexts/AuthContext'
 import {ArrowDown, Bell, Loader2} from 'lucide-react'
 import NotificationItem from './NotificationItem'
+import {UserProfile} from '../types/user'
 
 interface Notification {
     id: string
@@ -21,15 +22,17 @@ interface Notification {
 }
 
 interface NotificationsPanelProps {
-    isOpen: boolean
-    onClose: () => void
+    isOpen?: boolean
+    onClose?: () => void
+    userProfile?: UserProfile | null
 }
 
-export default function NotificationsPanel({isOpen, onClose}: NotificationsPanelProps) {
+export default function NotificationsPanel({isOpen, onClose, userProfile}: NotificationsPanelProps) {
     const {user} = useAuth()
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [loading, setLoading] = useState(true)
     const [refreshFlag, setRefreshFlag] = useState(0)
+    const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
 
     useEffect(() => {
         if (!user || !isOpen) return
@@ -114,6 +117,27 @@ export default function NotificationsPanel({isOpen, onClose}: NotificationsPanel
                     </div>
                 </div>
 
+                <div className="flex border-b border-gray-800">
+                    <button
+                        onClick={() => setFilter('all')}
+                        className={`flex-1 py-2 text-sm ${filter === 'all' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}
+                    >
+                        전체
+                    </button>
+                    <button
+                        onClick={() => setFilter('unread')}
+                        className={`flex-1 py-2 text-sm ${filter === 'unread' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}
+                    >
+                        안읽은 알림 ({getUnreadCount()})
+                    </button>
+                    <button
+                        onClick={() => setFilter('read')}
+                        className={`flex-1 py-2 text-sm ${filter === 'read' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}
+                    >
+                        읽은 알림 ({notifications.length - getUnreadCount()})
+                    </button>
+                </div>
+
                 <div className="max-h-[70vh] overflow-y-auto p-2">
                     {loading ? (
                         <div className="py-10 flex justify-center">
@@ -125,13 +149,30 @@ export default function NotificationsPanel({isOpen, onClose}: NotificationsPanel
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {notifications.map((notification) => (
+                            {notifications
+                                .filter(notification => {
+                                    if (filter === 'all') return true;
+                                    if (filter === 'unread') return !notification.read;
+                                    if (filter === 'read') return notification.read;
+                                    return true;
+                                })
+                                .map((notification) => (
                                 <NotificationItem
                                     key={notification.id}
                                     {...notification}
                                     onAction={handleRefresh}
                                 />
                             ))}
+                            {notifications.filter(n => {
+                                if (filter === 'all') return true;
+                                if (filter === 'unread') return !n.read;
+                                if (filter === 'read') return n.read;
+                                return true;
+                            }).length === 0 && (
+                                <div className="py-10 text-center text-gray-500">
+                                    {filter === 'unread' ? '읽지 않은 알림이 없습니다.' : '읽은 알림이 없습니다.'}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
