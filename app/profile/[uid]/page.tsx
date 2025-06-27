@@ -57,8 +57,23 @@ interface UserProfile {
     following?: string[]
     friends?: string[]
     blocked?: string[]
-    userIdChangedAt?: string | null
+    userIdChangedAt?: any
     canChangeUserId?: boolean
+
+    // 게임 데이터 필드
+    Credits?: number
+    Username?: string
+    RegistrationDate?: any
+    LastLoginDate?: any
+    TotalPlayTime?: number
+    LikedRooms?: string[]
+    Preferences?: {
+        SoundEnabled: boolean
+        MusicVolume: number
+        EffectsVolume: number
+        MouseSensitivity: number
+        Language: string
+    }
 }
 
 interface Notification {
@@ -275,7 +290,7 @@ export default function ProfilePage() {
         if (!currentUserProfile || !profile) return
 
         try {
-            await updateDoc(doc(db, 'users', profile.docId), {
+            await updateDoc(doc(db, 'User', profile.docId), {
                 nickname,
                 bio
             })
@@ -291,7 +306,7 @@ export default function ProfilePage() {
         if (!currentUserProfile || !profile || !newUserIdAvailable) return
 
         try {
-            await updateDoc(doc(db, 'users', profile.docId), {
+            await updateDoc(doc(db, 'User', profile.docId), {
                 userId: newUserId,
                 userIdChangedAt: serverTimestamp(),
                 canChangeUserId: false
@@ -787,11 +802,9 @@ export default function ProfilePage() {
                             </p>
                             {profile.userIdChangedAt && (
                                 <p className="text-xs text-gray-500 mt-2">
-                                    ID 변경: {profile.userIdChangedAt ? 
-                                        (profile.userIdChangedAt.seconds ? 
-                                            new Date(profile.userIdChangedAt.seconds * 1000).toLocaleDateString('ko-KR') : 
-                                            new Date(profile.userIdChangedAt).toLocaleDateString('ko-KR')
-                                        ) : '없음'}
+                                    ID 변경: {profile.userIdChangedAt && profile.userIdChangedAt.seconds
+                                        ? new Date(profile.userIdChangedAt.seconds * 1000).toLocaleDateString('ko-KR')
+                                        : '날짜 정보 없음'}
                                 </p>
                             )}
                         </div>

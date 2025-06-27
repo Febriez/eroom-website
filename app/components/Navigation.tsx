@@ -44,6 +44,16 @@ interface Notification {
     read: boolean
 }
 
+interface UserProfile {
+    docId: string
+    uid: string
+    userId: string
+    email: string
+    nickname: string
+    bio?: string
+    Username?: string
+}
+
 export default function Navigation() {
     const [scrolled, setScrolled] = useState(false)
     const [activeDropdown, setActiveDropdown] = useState<number | null>(null)
@@ -54,7 +64,7 @@ export default function Navigation() {
     // 알림 관련 상태
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
-    const [userProfile, setUserProfile] = useState<any>(null)
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
     useEffect(() => {
         const handleScroll = () => {
@@ -75,7 +85,7 @@ export default function Navigation() {
 
                 if (!querySnapshot.empty) {
                     const userDoc = querySnapshot.docs[0]
-                    setUserProfile(userDoc.data())
+                    setUserProfile(userDoc.data() as UserProfile)
                 }
             } catch (error) {
                 console.error('Error getting user profile:', error)
