@@ -16,16 +16,32 @@ export default function ProfileRedirectPage() {
             if (!loading) {
                 if (user) {
                     try {
+                        // 5초 타임아웃 설정 (네트워크 지연 방지)
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Firebase query timeout')), 5000)
+                        );
+
                         // uid로 사용자 문서 찾기
-                        const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
-                        const querySnapshot = await getDocs(usersQuery)
+                        const fetchUserData = async () => {
+                            const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                            const querySnapshot = await getDocs(usersQuery)
+                            return querySnapshot;
+                        };
+
+                        // Promise.race로 타임아웃 처리
+                        const querySnapshot = await Promise.race([fetchUserData(), timeoutPromise]) as any;
 
                         if (!querySnapshot.empty) {
                             const userDoc = querySnapshot.docs[0]
                             const userData = userDoc.data()
-                            router.push(`/profile/${userData.userId}`)
+                            if (userData && userData.userId) {
+                                router.push(`/profile/${userData.userId}`)
+                            } else {
+                                console.error('User document found but userId is missing')
+                                router.push('/')
+                            }
                         } else {
-                            // 사용자 문서가 없으면 홈으로
+                            console.error('User document not found in Firestore for uid:', user.uid)
                             router.push('/')
                         }
                     } catch (error) {

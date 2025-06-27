@@ -135,27 +135,57 @@ export default function ProfilePage() {
 
     const loadProfile = async () => {
         try {
-            // userId로 사용자 검색
-            const usersQuery = query(collection(db, 'users'), where('userId', '==', userId))
-            const querySnapshot = await getDocs(usersQuery)
-
-            if (querySnapshot.empty) {
-                setNotFound(true)
-                setLoading(false)
-                return
+            console.log('Loading profile for userId:', userId);
+            if (!userId) {
+                console.error('Invalid userId parameter');
+                setNotFound(true);
+                setLoading(false);
+                return;
             }
 
-            const userDoc = querySnapshot.docs[0]
-            const userData = {id: userDoc.id, ...userDoc.data()} as unknown as UserProfile
-            setProfile(userData)
-            setNickname(userData.nickname || '')
-            setBio(userData.bio || '')
-            setNewUserId(userData.userId)
-            setLoading(false)
+            // userId로 사용자 검색
+            const usersQuery = query(collection(db, 'users'), where('userId', '==', userId))
+
+            // 5초 타임아웃 설정 (네트워크 지연 방지)
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Firebase query timeout')), 5000)
+            );
+
+            const fetchData = async () => {
+                return await getDocs(usersQuery);
+            };
+
+            // Promise.race로 타임아웃 처리
+            const querySnapshot = await Promise.race([fetchData(), timeoutPromise]) as any;
+
+            if (querySnapshot.empty) {
+                console.error('User document not found for userId:', userId);
+                setNotFound(true);
+                setLoading(false);
+                return;
+            }
+
+            const userDoc = querySnapshot.docs[0];
+            const userData = {id: userDoc.id, ...userDoc.data()} as unknown as UserProfile;
+
+            // 필수 필드 확인
+            if (!userData.uid || !userData.userId) {
+                console.error('User document is missing required fields');
+                setNotFound(true);
+                setLoading(false);
+                return;
+            }
+
+            console.log('User profile loaded successfully');
+            setProfile(userData);
+            setNickname(userData.nickname || '');
+            setBio(userData.bio || '');
+            setNewUserId(userData.userId);
+            setLoading(false);
         } catch (error) {
-            console.error('Error loading profile:', error)
-            setNotFound(true)
-            setLoading(false)
+            console.error('Error loading profile:', error);
+            setNotFound(true);
+            setLoading(false);
         }
     }
 

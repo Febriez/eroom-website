@@ -44,10 +44,29 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
-        return onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user)
+            setLoading(true)
+
+            if (user) {
+                try {
+                    // uid로 사용자 정보 가져오기
+                    const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                    const querySnapshot = await getDocs(usersQuery)
+
+                    // 사용자 정보가 없으면 에러 로그 기록
+                    if (querySnapshot.empty) {
+                        console.error('User document not found for uid:', user.uid)
+                    }
+                } catch (error) {
+                    console.error('Error fetching user document:', error)
+                }
+            }
+
             setLoading(false)
         })
+
+        return unsubscribe
     }, [])
 
     const checkUserIdAvailability = async (userId: string): Promise<boolean> => {
