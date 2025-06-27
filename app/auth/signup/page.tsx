@@ -345,13 +345,10 @@ export default function SignupPage() {
                     </form>
 
                     {/* Divider */}
-                    <div className="relative my-8">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-800"></div>
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-gray-900/50 text-gray-500">또는</span>
-                        </div>
+                    <div className="flex items-center gap-4 my-8">
+                        <div className="flex-1 border-t border-gray-800"></div>
+                        <span className="text-sm text-gray-500">또는</span>
+                        <div className="flex-1 border-t border-gray-800"></div>
                     </div>
 
                     {/* Google Signup */}
