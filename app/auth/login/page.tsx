@@ -2,43 +2,94 @@
 
 import {useState} from 'react'
 import Link from 'next/link'
-import {Eye, EyeOff, Key, Mail} from 'lucide-react'
+import {AlertCircle, Eye, EyeOff, Key, Mail} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
 import {useRouter} from 'next/navigation'
+
+interface FormErrors {
+    email?: string
+    password?: string
+    general?: string
+}
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState('')
+    const [errors, setErrors] = useState<FormErrors>({})
     const {signInWithEmail, signInWithGoogle} = useAuth()
     const router = useRouter()
 
+    const clearErrors = () => {
+        setErrors({})
+    }
+
+    const validateForm = () => {
+        const newErrors: FormErrors = {}
+
+        // 이메일 검증
+        if (!email) {
+            newErrors.email = '이메일을 입력해주세요.'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = '올바른 이메일 형식이 아닙니다.'
+        }
+
+        // 비밀번호 검증
+        if (!password) {
+            newErrors.password = '비밀번호를 입력해주세요.'
+        } else if (password.length < 6) {
+            newErrors.password = '비밀번호는 6자 이상이어야 합니다.'
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
+
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault()
+        clearErrors()
+
+        if (!validateForm()) {
+            return
+        }
+
         setIsLoading(true)
-        setError('')
 
         try {
             if (signInWithEmail) {
                 await signInWithEmail(email, password)
-                // 로그인 성공 시 홈으로 이동
                 router.push('/')
             }
         } catch (err: any) {
             console.error('Email login error:', err)
-            if (err.code === 'auth/user-not-found') {
-                setError('존재하지 않는 계정입니다.')
-            } else if (err.code === 'auth/wrong-password') {
-                setError('비밀번호가 올바르지 않습니다.')
-            } else if (err.code === 'auth/invalid-email') {
-                setError('올바른 이메일 형식이 아닙니다.')
-            } else if (err.code === 'auth/user-disabled') {
-                setError('비활성화된 계정입니다.')
-            } else {
-                setError('로그인에 실패했습니다. 다시 시도해주세요.')
+
+            const newErrors: FormErrors = {}
+
+            switch (err.code) {
+                case 'auth/user-not-found':
+                    newErrors.email = '등록되지 않은 이메일입니다. 회원가입을 먼저 진행해주세요.'
+                    break
+                case 'auth/wrong-password':
+                    newErrors.password = '비밀번호가 올바르지 않습니다. 다시 확인해주세요.'
+                    break
+                case 'auth/invalid-email':
+                    newErrors.email = '올바른 이메일 형식이 아닙니다. (예: example@email.com)'
+                    break
+                case 'auth/user-disabled':
+                    newErrors.general = '비활성화된 계정입니다. 고객센터에 문의해주세요.'
+                    break
+                case 'auth/too-many-requests':
+                    newErrors.general = '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.'
+                    break
+                case 'auth/network-request-failed':
+                    newErrors.general = '네트워크 연결을 확인해주세요.'
+                    break
+                default:
+                    newErrors.general = '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.'
             }
+
+            setErrors(newErrors)
         } finally {
             setIsLoading(false)
         }
@@ -46,21 +97,31 @@ export default function LoginPage() {
 
     const handleGoogleLogin = async () => {
         setIsLoading(true)
-        setError('')
+        clearErrors()
 
         try {
             if (signInWithGoogle) {
                 const result = await signInWithGoogle()
-                // 성공적으로 로그인되었고 취소되지 않은 경우에만 리다이렉트
                 if (result?.success) {
                     router.push('/')
-                } else if (result?.cancelled) {
-                    // 팝업이 취소된 경우 에러 메시지 표시하지 않음
                 }
             }
         } catch (err: any) {
             console.error('Google login error:', err)
-            setError(err.message || '구글 로그인에 실패했습니다.')
+
+            const newErrors: FormErrors = {}
+
+            if (err.message === '로그인이 취소되었습니다.') {
+                // 사용자가 팝업을 닫은 경우 - 에러 메시지 표시하지 않음
+                setIsLoading(false)
+                return
+            } else if (err.message === '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.') {
+                newErrors.general = '팝업이 차단되었습니다. 브라우저 설정에서 팝업 차단을 해제해주세요.'
+            } else {
+                newErrors.general = '구글 로그인에 실패했습니다. 다시 시도해주세요.'
+            }
+
+            setErrors(newErrors)
         } finally {
             setIsLoading(false)
         }
@@ -93,18 +154,34 @@ export default function LoginPage() {
                             </label>
                             <div className="relative">
                                 <Mail
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.email ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="email"
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    onChange={(e) => {
+                                        setEmail(e.target.value)
+                                        if (errors.email) {
+                                            setErrors({...errors, email: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.email
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="email@example.com"
-                                    required
                                     disabled={isLoading}
                                 />
                             </div>
+                            {errors.email && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.email}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Password Input */}
@@ -114,15 +191,25 @@ export default function LoginPage() {
                             </label>
                             <div className="relative">
                                 <Key
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.password ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="password"
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    onChange={(e) => {
+                                        setPassword(e.target.value)
+                                        if (errors.password) {
+                                            setErrors({...errors, password: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-12 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.password
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="••••••••"
-                                    required
                                     disabled={isLoading}
                                 />
                                 <button
@@ -134,6 +221,12 @@ export default function LoginPage() {
                                     {showPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
                             </div>
+                            {errors.password && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.password}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Remember Me & Forgot Password */}
@@ -150,10 +243,11 @@ export default function LoginPage() {
                             </Link>
                         </div>
 
-                        {/* Error Message */}
-                        {error && (
-                            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
-                                {error}
+                        {/* General Error Message */}
+                        {errors.general && (
+                            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 flex items-start gap-2">
+                                <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0"/>
+                                <p className="text-red-400 text-sm">{errors.general}</p>
                             </div>
                         )}
 

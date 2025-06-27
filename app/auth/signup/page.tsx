@@ -2,9 +2,19 @@
 
 import {useState} from 'react'
 import Link from 'next/link'
-import {AtSign, Eye, EyeOff, Key, Mail, User} from 'lucide-react'
+import {AlertCircle, AtSign, Eye, EyeOff, Key, Mail, User} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
 import {useRouter} from 'next/navigation'
+
+interface FormErrors {
+    userId?: string
+    nickname?: string
+    email?: string
+    password?: string
+    confirmPassword?: string
+    terms?: string
+    general?: string
+}
 
 export default function SignupPage() {
     const [email, setEmail] = useState('')
@@ -15,27 +25,18 @@ export default function SignupPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState('')
+    const [errors, setErrors] = useState<FormErrors>({})
     const [agreedToTerms, setAgreedToTerms] = useState(false)
     const [checkingUserId, setCheckingUserId] = useState(false)
     const [userIdAvailable, setUserIdAvailable] = useState<boolean | null>(null)
     const {signUpWithEmail, signInWithGoogle, checkUserIdAvailability} = useAuth()
     const router = useRouter()
 
-    const validatePassword = () => {
-        if (password.length < 8) {
-            setError('비밀번호는 8자 이상이어야 합니다.')
-            return false
-        }
-        if (password !== confirmPassword) {
-            setError('비밀번호가 일치하지 않습니다.')
-            return false
-        }
-        return true
+    const clearErrors = () => {
+        setErrors({})
     }
 
     const validateUserId = (id: string) => {
-        // 영문, 숫자, 언더스코어만 허용, 3-20자
         const regex = /^[a-zA-Z0-9_]{3,20}$/
         return regex.test(id)
     }
@@ -43,6 +44,11 @@ export default function SignupPage() {
     const handleUserIdChange = async (value: string) => {
         setUserId(value)
         setUserIdAvailable(null)
+
+        // 에러 초기화
+        if (errors.userId) {
+            setErrors({...errors, userId: undefined})
+        }
 
         if (value.length >= 3 && validateUserId(value)) {
             setCheckingUserId(true)
@@ -57,26 +63,64 @@ export default function SignupPage() {
         }
     }
 
+    const validateForm = () => {
+        const newErrors: FormErrors = {}
+
+        // 사용자 ID 검증
+        if (!userId) {
+            newErrors.userId = '사용자 ID를 입력해주세요.'
+        } else if (!validateUserId(userId)) {
+            newErrors.userId = '사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.'
+        } else if (userIdAvailable === false) {
+            newErrors.userId = '이미 사용 중인 ID입니다. 다른 ID를 선택해주세요.'
+        }
+
+        // 닉네임 검증
+        if (!nickname) {
+            newErrors.nickname = '닉네임을 입력해주세요.'
+        } else if (nickname.length < 2) {
+            newErrors.nickname = '닉네임은 2자 이상이어야 합니다.'
+        } else if (nickname.length > 20) {
+            newErrors.nickname = '닉네임은 20자 이하여야 합니다.'
+        }
+
+        // 이메일 검증
+        if (!email) {
+            newErrors.email = '이메일을 입력해주세요.'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = '올바른 이메일 형식이 아닙니다. (예: example@email.com)'
+        }
+
+        // 비밀번호 검증
+        if (!password) {
+            newErrors.password = '비밀번호를 입력해주세요.'
+        } else if (password.length < 8) {
+            newErrors.password = '비밀번호는 8자 이상이어야 합니다.'
+        } else if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(password)) {
+            newErrors.password = '비밀번호는 영문과 숫자를 포함해야 합니다.'
+        }
+
+        // 비밀번호 확인 검증
+        if (!confirmPassword) {
+            newErrors.confirmPassword = '비밀번호 확인을 입력해주세요.'
+        } else if (password !== confirmPassword) {
+            newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.'
+        }
+
+        // 이용약관 동의 검증
+        if (!agreedToTerms) {
+            newErrors.terms = '이용약관에 동의해주세요.'
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
+
     const handleEmailSignup = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError('')
+        clearErrors()
 
-        if (!agreedToTerms) {
-            setError('이용약관에 동의해주세요.')
-            return
-        }
-
-        if (!validateUserId(userId)) {
-            setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어만 사용 가능합니다.')
-            return
-        }
-
-        if (!userIdAvailable) {
-            setError('사용할 수 없는 사용자 ID입니다.')
-            return
-        }
-
-        if (!validatePassword()) {
+        if (!validateForm()) {
             return
         }
 
@@ -85,49 +129,76 @@ export default function SignupPage() {
         try {
             if (signUpWithEmail) {
                 await signUpWithEmail(email, password, nickname, userId)
-                // 회원가입 성공 시 로그인 페이지로 이동
                 router.push('/auth/login')
             }
         } catch (err: any) {
             console.error('Signup error:', err)
-            if (err.code === 'auth/email-already-in-use') {
-                setError('이미 사용 중인 이메일입니다.')
-            } else if (err.code === 'auth/weak-password') {
-                setError('비밀번호가 너무 약합니다.')
-            } else if (err.code === 'auth/invalid-email') {
-                setError('올바른 이메일 형식이 아닙니다.')
-            } else if (err.message?.includes('userId already exists')) {
-                setError('이미 사용 중인 사용자 ID입니다.')
-            } else {
-                setError('회원가입에 실패했습니다. 다시 시도해주세요.')
+
+            const newErrors: FormErrors = {}
+
+            switch (err.code) {
+                case 'auth/email-already-in-use':
+                    newErrors.email = '이미 사용 중인 이메일입니다. 다른 이메일을 사용하거나 로그인해주세요.'
+                    break
+                case 'auth/weak-password':
+                    newErrors.password = '비밀번호가 너무 약합니다. 더 강력한 비밀번호를 사용해주세요.'
+                    break
+                case 'auth/invalid-email':
+                    newErrors.email = '올바른 이메일 형식이 아닙니다.'
+                    break
+                case 'auth/operation-not-allowed':
+                    newErrors.general = '이메일 회원가입이 비활성화되어 있습니다. 관리자에게 문의해주세요.'
+                    break
+                case 'auth/network-request-failed':
+                    newErrors.general = '네트워크 연결을 확인해주세요.'
+                    break
+                default:
+                    if (err.message?.includes('userId already exists')) {
+                        newErrors.userId = '이미 사용 중인 사용자 ID입니다. 다른 ID를 선택해주세요.'
+                    } else {
+                        newErrors.general = '회원가입에 실패했습니다. 입력 정보를 다시 확인해주세요.'
+                    }
             }
+
+            setErrors(newErrors)
         } finally {
             setIsLoading(false)
         }
     }
 
     const handleGoogleSignup = async () => {
+        clearErrors()
+
         if (!agreedToTerms) {
-            setError('이용약관에 동의해주세요.')
+            setErrors({terms: '이용약관에 동의해주세요.'})
             return
         }
 
         setIsLoading(true)
-        setError('')
 
         try {
             if (signInWithGoogle) {
                 const result = await signInWithGoogle()
-                // 성공적으로 로그인되었고 취소되지 않은 경우에만 리다이렉트
                 if (result?.success) {
                     router.push('/')
-                } else if (result?.cancelled) {
-                    // 팝업이 취소된 경우 에러 메시지 표시하지 않음
                 }
             }
         } catch (err: any) {
             console.error('Google signup error:', err)
-            setError(err.message || '구글 회원가입에 실패했습니다.')
+
+            const newErrors: FormErrors = {}
+
+            if (err.message === '로그인이 취소되었습니다.') {
+                // 사용자가 팝업을 닫은 경우 - 에러 메시지 표시하지 않음
+                setIsLoading(false)
+                return
+            } else if (err.message === '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.') {
+                newErrors.general = '팝업이 차단되었습니다. 브라우저 설정에서 팝업 차단을 해제해주세요.'
+            } else {
+                newErrors.general = '구글 회원가입에 실패했습니다. 다시 시도해주세요.'
+            }
+
+            setErrors(newErrors)
         } finally {
             setIsLoading(false)
         }
@@ -160,15 +231,20 @@ export default function SignupPage() {
                             </label>
                             <div className="relative">
                                 <AtSign
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.userId ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="userId"
                                     type="text"
                                     value={userId}
                                     onChange={(e) => handleUserIdChange(e.target.value.toLowerCase())}
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.userId
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="my_unique_id"
-                                    required
                                     disabled={isLoading}
                                 />
                                 {checkingUserId && (
@@ -193,6 +269,12 @@ export default function SignupPage() {
                             <p className="text-xs text-gray-500 mt-1">
                                 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능
                             </p>
+                            {errors.userId && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.userId}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Nickname Input */}
@@ -202,18 +284,34 @@ export default function SignupPage() {
                             </label>
                             <div className="relative">
                                 <User
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.nickname ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="nickname"
                                     type="text"
                                     value={nickname}
-                                    onChange={(e) => setNickname(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    onChange={(e) => {
+                                        setNickname(e.target.value)
+                                        if (errors.nickname) {
+                                            setErrors({...errors, nickname: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.nickname
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="게임에서 사용할 닉네임"
-                                    required
                                     disabled={isLoading}
                                 />
                             </div>
+                            {errors.nickname && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.nickname}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Email Input */}
@@ -223,18 +321,34 @@ export default function SignupPage() {
                             </label>
                             <div className="relative">
                                 <Mail
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.email ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="email"
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    onChange={(e) => {
+                                        setEmail(e.target.value)
+                                        if (errors.email) {
+                                            setErrors({...errors, email: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.email
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="email@example.com"
-                                    required
                                     disabled={isLoading}
                                 />
                             </div>
+                            {errors.email && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.email}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Password Input */}
@@ -244,15 +358,25 @@ export default function SignupPage() {
                             </label>
                             <div className="relative">
                                 <Key
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.password ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="password"
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
-                                    placeholder="8자 이상"
-                                    required
+                                    onChange={(e) => {
+                                        setPassword(e.target.value)
+                                        if (errors.password) {
+                                            setErrors({...errors, password: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-12 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.password
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
+                                    placeholder="8자 이상, 영문과 숫자 포함"
                                     disabled={isLoading}
                                 />
                                 <button
@@ -264,6 +388,12 @@ export default function SignupPage() {
                                     {showPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
                             </div>
+                            {errors.password && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.password}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Confirm Password Input */}
@@ -273,15 +403,25 @@ export default function SignupPage() {
                             </label>
                             <div className="relative">
                                 <Key
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                                        errors.confirmPassword ? 'text-red-500' : 'text-gray-500'
+                                    }`}/>
                                 <input
                                     id="confirmPassword"
                                     type={showConfirmPassword ? 'text' : 'password'}
                                     value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    onChange={(e) => {
+                                        setConfirmPassword(e.target.value)
+                                        if (errors.confirmPassword) {
+                                            setErrors({...errors, confirmPassword: undefined})
+                                        }
+                                    }}
+                                    className={`w-full pl-10 pr-12 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${
+                                        errors.confirmPassword
+                                            ? 'border-red-500 focus:border-red-600'
+                                            : 'border-gray-700 focus:border-green-600'
+                                    }`}
                                     placeholder="비밀번호 재입력"
-                                    required
                                     disabled={isLoading}
                                 />
                                 <button
@@ -293,15 +433,28 @@ export default function SignupPage() {
                                     {showConfirmPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
                             </div>
+                            {errors.confirmPassword && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Terms Agreement */}
-                        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                        <div className={`rounded-lg p-4 border ${
+                            errors.terms ? 'bg-red-900/10 border-red-800' : 'bg-gray-900/50 border-gray-800'
+                        }`}>
                             <label className="flex items-start gap-3 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={agreedToTerms}
-                                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                    onChange={(e) => {
+                                        setAgreedToTerms(e.target.checked)
+                                        if (errors.terms) {
+                                            setErrors({...errors, terms: undefined})
+                                        }
+                                    }}
                                     className="w-4 h-4 mt-1 bg-gray-900 border-gray-700 rounded focus:ring-green-600 cursor-pointer"
                                     disabled={isLoading}
                                 />
@@ -325,19 +478,26 @@ export default function SignupPage() {
                                     에 동의하는 것으로 간주합니다
                                 </span>
                             </label>
+                            {errors.terms && (
+                                <div className="mt-2 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <p className="text-sm text-red-500">{errors.terms}</p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Error Message */}
-                        {error && (
-                            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
-                                {error}
+                        {/* General Error Message */}
+                        {errors.general && (
+                            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 flex items-start gap-2">
+                                <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0"/>
+                                <p className="text-red-400 text-sm">{errors.general}</p>
                             </div>
                         )}
 
                         {/* Signup Button */}
                         <button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isLoading || userIdAvailable === false}
                             className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? '가입 중...' : '회원가입'}
