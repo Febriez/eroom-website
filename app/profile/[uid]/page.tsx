@@ -1,6 +1,7 @@
 'use client'
 
 import {
+    AlertTriangle,
     Award,
     Bell,
     Calendar,
@@ -28,7 +29,6 @@ import {
     arrayUnion,
     collection,
     doc,
-    getDoc,
     getDocs,
     query,
     serverTimestamp,
@@ -38,7 +38,9 @@ import {
 import {db} from '../../lib/firebase'
 
 interface UserProfile {
+    docId: string
     uid: string
+    userId: string
     email: string
     nickname: string
     bio: string
@@ -55,6 +57,8 @@ interface UserProfile {
     following?: string[]
     friends?: string[]
     blocked?: string[]
+    userIdChangedAt?: string | null
+    canChangeUserId?: boolean
 }
 
 interface Notification {
@@ -72,14 +76,20 @@ export default function ProfilePage() {
     const {user} = useAuth()
     const router = useRouter()
     const params = useParams()
-    const uid = params.uid as string
+    const userId = params.userId as string
 
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
+    const [isEditingUserId, setIsEditingUserId] = useState(false)
     const [nickname, setNickname] = useState('')
     const [bio, setBio] = useState('')
+    const [newUserId, setNewUserId] = useState('')
+    const [checkingNewUserId, setCheckingNewUserId] = useState(false)
+    const [newUserIdAvailable, setNewUserIdAvailable] = useState<boolean | null>(null)
+    const [showUserIdWarning, setShowUserIdWarning] = useState(false)
+    const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null)
 
     // 관계 상태
     const [isFollowing, setIsFollowing] = useState(false)
@@ -91,30 +101,56 @@ export default function ProfilePage() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
 
-    const isOwnProfile = user?.uid === uid
+    const isOwnProfile = currentUserProfile?.userId === userId
 
     useEffect(() => {
         loadProfile()
-        if (user) {
+    }, [userId, user])
+
+    useEffect(() => {
+        if (user && profile) {
+            loadCurrentUserProfile()
             loadRelationshipStatus()
-            loadNotifications()
+            if (isOwnProfile) {
+                loadNotifications()
+            }
         }
-    }, [uid, user])
+    }, [user, profile])
+
+    const loadCurrentUserProfile = async () => {
+        if (!user) return
+
+        try {
+            const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+            const querySnapshot = await getDocs(usersQuery)
+
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0]
+                setCurrentUserProfile({id: userDoc.id, ...userDoc.data()} as unknown as UserProfile)
+            }
+        } catch (error) {
+            console.error('Error loading current user profile:', error)
+        }
+    }
 
     const loadProfile = async () => {
         try {
-            const userDoc = await getDoc(doc(db, 'users', uid))
+            // userId로 사용자 검색
+            const usersQuery = query(collection(db, 'users'), where('userId', '==', userId))
+            const querySnapshot = await getDocs(usersQuery)
 
-            if (!userDoc.exists()) {
+            if (querySnapshot.empty) {
                 setNotFound(true)
                 setLoading(false)
                 return
             }
 
-            const userData = userDoc.data() as UserProfile
+            const userDoc = querySnapshot.docs[0]
+            const userData = {id: userDoc.id, ...userDoc.data()} as unknown as UserProfile
             setProfile(userData)
             setNickname(userData.nickname || '')
             setBio(userData.bio || '')
+            setNewUserId(userData.userId)
             setLoading(false)
         } catch (error) {
             console.error('Error loading profile:', error)
@@ -124,21 +160,18 @@ export default function ProfilePage() {
     }
 
     const loadRelationshipStatus = async () => {
-        if (!user || user.uid === uid) return
+        if (!currentUserProfile || currentUserProfile.userId === userId) return
 
         try {
-            const currentUserDoc = await getDoc(doc(db, 'users', user.uid))
-            const currentUserData = currentUserDoc.data()
-
-            setIsFollowing(currentUserData?.following?.includes(uid) || false)
-            setIsFriend(currentUserData?.friends?.includes(uid) || false)
-            setIsBlocked(currentUserData?.blocked?.includes(uid) || false)
+            setIsFollowing(currentUserProfile.following?.includes(profile!.uid) || false)
+            setIsFriend(currentUserProfile.friends?.includes(profile!.uid) || false)
+            setIsBlocked(currentUserProfile.blocked?.includes(profile!.uid) || false)
 
             // 친구 요청 확인
             const friendRequestQuery = query(
                 collection(db, 'friendRequests'),
-                where('from', '==', user.uid),
-                where('to', '==', uid),
+                where('from', '==', currentUserProfile.uid),
+                where('to', '==', profile!.uid),
                 where('status', '==', 'pending')
             )
             const friendRequestSnapshot = await getDocs(friendRequestQuery)
@@ -171,11 +204,46 @@ export default function ProfilePage() {
         }
     }
 
-    const handleSaveProfile = async () => {
-        if (!user || !profile) return
+    const validateUserId = (id: string) => {
+        const regex = /^[a-zA-Z0-9_]{3,20}$/
+        return regex.test(id)
+    }
+
+    const checkUserIdAvailability = async (id: string) => {
+        if (id === profile?.userId) return true // 현재 ID와 같으면 사용 가능
 
         try {
-            await updateDoc(doc(db, 'users', user.uid), {
+            const usersQuery = query(collection(db, 'users'), where('userId', '==', id))
+            const querySnapshot = await getDocs(usersQuery)
+            return querySnapshot.empty
+        } catch (error) {
+            console.error('Error checking userId:', error)
+            return false
+        }
+    }
+
+    const handleUserIdChange = async (value: string) => {
+        setNewUserId(value)
+        setNewUserIdAvailable(null)
+
+        if (value.length >= 3 && validateUserId(value)) {
+            setCheckingNewUserId(true)
+            try {
+                const available = await checkUserIdAvailability(value)
+                setNewUserIdAvailable(available)
+            } catch (error) {
+                console.error('Error checking userId:', error)
+            } finally {
+                setCheckingNewUserId(false)
+            }
+        }
+    }
+
+    const handleSaveProfile = async () => {
+        if (!currentUserProfile || !profile) return
+
+        try {
+            await updateDoc(doc(db, 'users', profile.docId), {
                 nickname,
                 bio
             })
@@ -187,15 +255,32 @@ export default function ProfilePage() {
         }
     }
 
-    const handleFollow = async () => {
-        if (!user) return
+    const handleSaveUserId = async () => {
+        if (!currentUserProfile || !profile || !newUserIdAvailable) return
 
         try {
-            await updateDoc(doc(db, 'users', user.uid), {
-                following: isFollowing ? arrayRemove(uid) : arrayUnion(uid)
+            await updateDoc(doc(db, 'users', profile.docId), {
+                userId: newUserId,
+                userIdChangedAt: serverTimestamp(),
+                canChangeUserId: false
             })
 
-            await updateDoc(doc(db, 'users', uid), {
+            // 프로필 페이지로 리다이렉트
+            router.push(`/profile/${newUserId}`)
+        } catch (error) {
+            console.error('Error updating userId:', error)
+        }
+    }
+
+    const handleFollow = async () => {
+        if (!user || !currentUserProfile || !profile) return
+
+        try {
+            await updateDoc(doc(db, 'users', currentUserProfile.docId), {
+                following: isFollowing ? arrayRemove(profile.uid) : arrayUnion(profile.uid)
+            })
+
+            await updateDoc(doc(db, 'users', profile.docId), {
                 followers: isFollowing ? arrayRemove(user.uid) : arrayUnion(user.uid)
             })
 
@@ -206,12 +291,12 @@ export default function ProfilePage() {
     }
 
     const handleFriendRequest = async () => {
-        if (!user || !profile) return
+        if (!user || !profile || !currentUserProfile) return
 
         try {
             await addDoc(collection(db, 'friendRequests'), {
                 from: user.uid,
-                to: uid,
+                to: profile.uid,
                 status: 'pending',
                 createdAt: serverTimestamp()
             })
@@ -220,10 +305,10 @@ export default function ProfilePage() {
             await addDoc(collection(db, 'notifications'), {
                 type: 'friend_request',
                 title: '친구 요청',
-                message: `${user.displayName || '사용자'}님이 친구 요청을 보냈습니다.`,
+                message: `${currentUserProfile.nickname || '사용자'}님이 친구 요청을 보냈습니다.`,
                 from: user.uid,
-                fromNickname: user.displayName,
-                to: uid,
+                fromNickname: currentUserProfile.nickname,
+                to: profile.uid,
                 createdAt: serverTimestamp(),
                 read: false
             })
@@ -235,11 +320,11 @@ export default function ProfilePage() {
     }
 
     const handleBlock = async () => {
-        if (!user) return
+        if (!user || !currentUserProfile || !profile) return
 
         try {
-            await updateDoc(doc(db, 'users', user.uid), {
-                blocked: isBlocked ? arrayRemove(uid) : arrayUnion(uid)
+            await updateDoc(doc(db, 'users', currentUserProfile.docId), {
+                blocked: isBlocked ? arrayRemove(profile.uid) : arrayUnion(profile.uid)
             })
 
             setIsBlocked(!isBlocked)
@@ -274,7 +359,7 @@ export default function ProfilePage() {
                     <h1 className="text-6xl font-black mb-4 text-gray-600">404</h1>
                     <p className="text-2xl text-gray-400 mb-8">사용자를 찾을 수 없습니다</p>
                     <Link
-                        href="/public"
+                        href="/"
                         className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 rounded-xl font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all"
                     >
                         홈으로 돌아가기
@@ -317,6 +402,43 @@ export default function ProfilePage() {
 
                             {/* User Info */}
                             <div>
+                                {/* User ID */}
+                                {isOwnProfile && profile.canChangeUserId && !isEditingUserId ? (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-gray-400">@{profile.userId}</span>
+                                        <button
+                                            onClick={() => setIsEditingUserId(true)}
+                                            className="text-green-400 hover:text-green-300 transition-colors"
+                                        >
+                                            <Edit2 className="w-4 h-4"/>
+                                        </button>
+                                    </div>
+                                ) : isEditingUserId ? (
+                                    <div className="mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-gray-400">@</span>
+                                            <input
+                                                type="text"
+                                                value={newUserId}
+                                                onChange={(e) => handleUserIdChange(e.target.value.toLowerCase())}
+                                                className="bg-gray-900 px-2 py-1 rounded border border-gray-700 text-sm"
+                                                placeholder="새 사용자 ID"
+                                            />
+                                            {checkingNewUserId &&
+                                                <span className="text-gray-400 text-sm">확인 중...</span>}
+                                            {!checkingNewUserId && newUserIdAvailable === true && newUserId.length >= 3 && (
+                                                <span className="text-green-400 text-sm">사용 가능</span>
+                                            )}
+                                            {!checkingNewUserId && newUserIdAvailable === false && (
+                                                <span className="text-red-400 text-sm">사용 불가</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 mb-2">@{profile.userId}</p>
+                                )}
+
                                 {isEditing ? (
                                     <input
                                         type="text"
@@ -345,20 +467,43 @@ export default function ProfilePage() {
                         <div className="flex gap-3">
                             {isOwnProfile ? (
                                 // 본인 프로필
-                                isEditing ? (
+                                isEditing || isEditingUserId ? (
                                     <>
-                                        <button
-                                            onClick={handleSaveProfile}
-                                            className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
-                                        >
-                                            저장
-                                        </button>
-                                        <button
-                                            onClick={() => setIsEditing(false)}
-                                            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
-                                        >
-                                            취소
-                                        </button>
+                                        {isEditingUserId ? (
+                                            <>
+                                                <button
+                                                    onClick={() => setShowUserIdWarning(true)}
+                                                    disabled={!newUserIdAvailable || newUserId === profile.userId}
+                                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    ID 변경
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsEditingUserId(false)
+                                                        setNewUserId(profile.userId)
+                                                    }}
+                                                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                                                >
+                                                    취소
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={handleSaveProfile}
+                                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
+                                                >
+                                                    저장
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsEditing(false)}
+                                                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                                                >
+                                                    취소
+                                                </button>
+                                            </>
+                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -448,6 +593,42 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
+
+                {/* UserID Change Warning Modal */}
+                {showUserIdWarning && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-8">
+                        <div className="bg-gray-900 rounded-2xl p-8 max-w-md border border-gray-800">
+                            <div className="flex items-center gap-4 mb-6">
+                                <AlertTriangle className="w-12 h-12 text-yellow-500"/>
+                                <h3 className="text-2xl font-bold">사용자 ID 변경 경고</h3>
+                            </div>
+                            <p className="text-gray-300 mb-6">
+                                사용자 ID는 <span className="text-yellow-400 font-bold">단 한 번만</span> 변경할 수 있습니다.
+                                변경 후에는 다시 변경할 수 없으니 신중하게 결정해주세요.
+                            </p>
+                            <p className="text-gray-400 mb-8">
+                                새 사용자 ID: <span className="text-green-400 font-bold">@{newUserId}</span>
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => {
+                                        handleSaveUserId()
+                                        setShowUserIdWarning(false)
+                                    }}
+                                    className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors"
+                                >
+                                    확인
+                                </button>
+                                <button
+                                    onClick={() => setShowUserIdWarning(false)}
+                                    className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold transition-colors"
+                                >
+                                    취소
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Notifications - Only show on own profile */}
                 {isOwnProfile && notifications.length > 0 && (
@@ -572,6 +753,11 @@ export default function ProfilePage() {
                             <p className="text-sm text-gray-400">
                                 {new Date(profile.createdAt).toLocaleDateString('ko-KR')}부터 함께해주셨어요!
                             </p>
+                            {profile.userIdChangedAt && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                    ID 변경: {new Date(profile.userIdChangedAt).toLocaleDateString('ko-KR')}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

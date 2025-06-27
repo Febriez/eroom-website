@@ -2,7 +2,7 @@
 
 import {useState} from 'react'
 import Link from 'next/link'
-import {Eye, EyeOff, Key, Mail, User} from 'lucide-react'
+import {AtSign, Eye, EyeOff, Key, Mail, User} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
 
 export default function SignupPage() {
@@ -10,12 +10,15 @@ export default function SignupPage() {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [nickname, setNickname] = useState('')
+    const [userId, setUserId] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
     const [agreedToTerms, setAgreedToTerms] = useState(false)
-    const {signUpWithEmail, signInWithGoogle} = useAuth()
+    const [checkingUserId, setCheckingUserId] = useState(false)
+    const [userIdAvailable, setUserIdAvailable] = useState<boolean | null>(null)
+    const {signUpWithEmail, signInWithGoogle, checkUserIdAvailability} = useAuth()
 
     const validatePassword = () => {
         if (password.length < 8) {
@@ -29,12 +32,45 @@ export default function SignupPage() {
         return true
     }
 
+    const validateUserId = (id: string) => {
+        // 영문, 숫자, 언더스코어만 허용, 3-20자
+        const regex = /^[a-zA-Z0-9_]{3,20}$/
+        return regex.test(id)
+    }
+
+    const handleUserIdChange = async (value: string) => {
+        setUserId(value)
+        setUserIdAvailable(null)
+
+        if (value.length >= 3 && validateUserId(value)) {
+            setCheckingUserId(true)
+            try {
+                const available = await checkUserIdAvailability(value)
+                setUserIdAvailable(available)
+            } catch (error) {
+                console.error('Error checking userId:', error)
+            } finally {
+                setCheckingUserId(false)
+            }
+        }
+    }
+
     const handleEmailSignup = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
 
         if (!agreedToTerms) {
             setError('이용약관에 동의해주세요.')
+            return
+        }
+
+        if (!validateUserId(userId)) {
+            setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어만 사용 가능합니다.')
+            return
+        }
+
+        if (!userIdAvailable) {
+            setError('사용할 수 없는 사용자 ID입니다.')
             return
         }
 
@@ -46,13 +82,15 @@ export default function SignupPage() {
 
         try {
             if (signUpWithEmail) {
-                await signUpWithEmail(email, password, nickname)
+                await signUpWithEmail(email, password, nickname, userId)
             }
         } catch (err: any) {
             if (err.code === 'auth/email-already-in-use') {
                 setError('이미 사용 중인 이메일입니다.')
             } else if (err.code === 'auth/weak-password') {
                 setError('비밀번호가 너무 약합니다.')
+            } else if (err.message?.includes('userId already exists')) {
+                setError('이미 사용 중인 사용자 ID입니다.')
             } else {
                 setError('회원가입에 실패했습니다. 다시 시도해주세요.')
             }
@@ -100,7 +138,48 @@ export default function SignupPage() {
                 <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                     <h1 className="text-3xl font-bold text-center mb-8">회원가입</h1>
 
-                    <form onSubmit={handleEmailSignup} className="space-y-6">
+                    <div className="space-y-6">
+                        {/* User ID Input */}
+                        <div>
+                            <label htmlFor="userId" className="block text-sm font-medium text-gray-400 mb-2">
+                                사용자 ID (프로필 주소에 사용됩니다)
+                            </label>
+                            <div className="relative">
+                                <AtSign
+                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"/>
+                                <input
+                                    id="userId"
+                                    type="text"
+                                    value={userId}
+                                    onChange={(e) => handleUserIdChange(e.target.value.toLowerCase())}
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
+                                    placeholder="my_unique_id"
+                                    required
+                                />
+                                {checkingUserId && (
+                                    <span
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                                        확인 중...
+                                    </span>
+                                )}
+                                {!checkingUserId && userIdAvailable === true && userId.length >= 3 && (
+                                    <span
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-400 text-sm">
+                                        사용 가능
+                                    </span>
+                                )}
+                                {!checkingUserId && userIdAvailable === false && (
+                                    <span
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-400 text-sm">
+                                        사용 불가
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능
+                            </p>
+                        </div>
+
                         {/* Nickname Input */}
                         <div>
                             <label htmlFor="nickname" className="block text-sm font-medium text-gray-400 mb-2">
@@ -235,13 +314,13 @@ export default function SignupPage() {
 
                         {/* Signup Button */}
                         <button
-                            type="submit"
+                            onClick={handleEmailSignup}
                             disabled={isLoading}
                             className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? '가입 중...' : '회원가입'}
                         </button>
-                    </form>
+                    </div>
 
                     {/* Divider */}
                     <div className="relative my-8">

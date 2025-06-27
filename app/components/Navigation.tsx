@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import {useAuth} from '../contexts/AuthContext'
-import {collection, onSnapshot, query, where} from 'firebase/firestore'
+import {collection, getDocs, onSnapshot, query, where} from 'firebase/firestore'
 import {db} from '../lib/firebase'
 
 interface MenuItem {
@@ -54,6 +54,7 @@ export default function Navigation() {
     // 알림 관련 상태
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
+    const [userProfile, setUserProfile] = useState<any>(null)
 
     useEffect(() => {
         const handleScroll = () => {
@@ -65,6 +66,23 @@ export default function Navigation() {
 
     useEffect(() => {
         if (!user) return
+
+        // 사용자 프로필 가져오기
+        const getUserProfile = async () => {
+            try {
+                const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                const querySnapshot = await getDocs(usersQuery)
+
+                if (!querySnapshot.empty) {
+                    const userDoc = querySnapshot.docs[0]
+                    setUserProfile(userDoc.data())
+                }
+            } catch (error) {
+                console.error('Error getting user profile:', error)
+            }
+        }
+
+        getUserProfile()
 
         // 실시간 알림 구독
         const notificationsQuery = query(
@@ -229,7 +247,7 @@ export default function Navigation() {
                                                         {notifications.slice(0, 5).map((notification) => (
                                                             <Link
                                                                 key={notification.id}
-                                                                href={`/profile/${user.uid}`}
+                                                                href={userProfile ? `/profile/${userProfile.userId}` : '/profile'}
                                                                 className={`block p-3 rounded-lg transition-all ${
                                                                     notification.read
                                                                         ? 'bg-gray-800/50 hover:bg-gray-800'
@@ -255,7 +273,7 @@ export default function Navigation() {
                                                 )}
                                                 {notifications.length > 5 && (
                                                     <Link
-                                                        href={`/profile/${user.uid}`}
+                                                        href={userProfile ? `/profile/${userProfile.userId}` : '/profile'}
                                                         className="block text-center text-sm text-green-400 hover:text-green-300 mt-3 pt-3 border-t border-gray-800"
                                                     >
                                                         모든 알림 보기
@@ -285,7 +303,7 @@ export default function Navigation() {
                                                 showUserMenu ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'
                                             }`}>
                                             <div className="p-2">
-                                                <Link href={`/profile/${user.uid}`}
+                                                <Link href={userProfile ? `/profile/${userProfile.userId}` : '/profile'}
                                                       className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200">
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
