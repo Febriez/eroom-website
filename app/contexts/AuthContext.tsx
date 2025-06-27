@@ -42,12 +42,10 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        return onAuthStateChanged(auth, (user) => {
             setUser(user)
             setLoading(false)
         })
-
-        return unsubscribe
     }, [])
 
     const signInWithEmail = async (email: string, password: string) => {
@@ -89,6 +87,11 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
     const signInWithGoogle = async () => {
         try {
+            // 팝업 설정 추가
+            googleProvider.setCustomParameters({
+                prompt: 'select_account'
+            })
+
             const {user} = await signInWithPopup(auth, googleProvider)
 
             // 기존 사용자인지 확인
@@ -108,8 +111,20 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             }
 
             router.push('/')
-        } catch (error) {
+        } catch (error: any) {
             console.error('Google login error:', error)
+            console.error('Error code:', error.code)
+            console.error('Error message:', error.message)
+
+            // 더 구체적인 에러 처리
+            if (error.code === 'auth/popup-closed-by-user') {
+                console.log('사용자가 팝업을 닫았습니다.')
+            } else if (error.code === 'auth/popup-blocked') {
+                console.log('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
+            } else if (error.code === 'auth/unauthorized-domain') {
+                console.error('승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.')
+            }
+
             throw error
         }
     }
@@ -141,6 +156,5 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-    const context = useContext(AuthContext)
-    return context
+    return useContext(AuthContext)
 }

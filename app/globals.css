@@ -6,6 +6,11 @@
     body {
         @apply bg-black text-gray-100 antialiased;
     }
+
+    main {
+        @apply min-h-screen;
+        padding-bottom: 2rem;
+    }
 }
 
 @layer utilities {
