@@ -11,7 +11,7 @@ import {
     User
 } from 'firebase/auth'
 import {auth, db, googleProvider} from '../lib/firebase'
-import {collection, doc, getDocs, query, setDoc, where} from 'firebase/firestore'
+import {collection, doc, getDocs, query, serverTimestamp, setDoc, where} from 'firebase/firestore'
 import {useRouter} from 'next/navigation'
 import {v4 as uuidv4} from 'uuid'
 
@@ -117,20 +117,43 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 nickname: nickname,
                 bio: '',
                 createdAt: new Date().toISOString(),
+                RegistrationDate: serverTimestamp(),  // 게임 데이터와 호환
+                LastLoginDate: serverTimestamp(),     // 게임 데이터와 호환
+
+                // 기본 정보
                 level: 1,
                 points: 0,
+                Credits: 100,                         // 게임 데이터와 호환
+                Username: nickname,                   // 게임 데이터와 호환
+
+                // 게임 통계
                 completedMaps: 0,
                 createdMaps: 0,
                 totalPlayTime: '0시간',
+                TotalPlayTime: 0,                     // 게임 데이터와 호환 (초 단위)
                 winRate: '0%',
                 avgClearTime: '00:00',
                 friendsCount: 0,
+
+                // 소셜
                 followers: [],
                 following: [],
                 friends: [],
                 blocked: [],
-                userIdChangedAt: null,  // userId 변경 이력
-                canChangeUserId: true   // userId 변경 가능 여부
+                LikedRooms: [],                       // 게임 데이터와 호환
+
+                // 설정 및 환경설정
+                Preferences: {                         // 게임 데이터와 호환
+                    SoundEnabled: true,
+                    MusicVolume: 0.5,
+                    EffectsVolume: 0.7,
+                    MouseSensitivity: 1,
+                    Language: 'Ko'
+                },
+
+                // ID 관리
+                userIdChangedAt: null,                // userId 변경 이력 (타임스탬프)
+                canChangeUserId: true                  // userId 변경 가능 여부
             })
 
             // router.push를 제거하고 호출하는 쪽에서 처리하도록 함
@@ -167,18 +190,41 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     nickname: user.displayName || 'Player',
                     bio: '',
                     createdAt: new Date().toISOString(),
+                    RegistrationDate: serverTimestamp(),  // 게임 데이터와 호환
+                    LastLoginDate: serverTimestamp(),     // 게임 데이터와 호환
+
+                    // 기본 정보
                     level: 1,
                     points: 0,
+                    Credits: 100,                         // 게임 데이터와 호환
+                    Username: user.displayName || 'Player', // 게임 데이터와 호환
+
+                    // 게임 통계
                     completedMaps: 0,
                     createdMaps: 0,
                     totalPlayTime: '0시간',
+                    TotalPlayTime: 0,                     // 게임 데이터와 호환 (초 단위)
                     winRate: '0%',
                     avgClearTime: '00:00',
                     friendsCount: 0,
+
+                    // 소셜
                     followers: [],
                     following: [],
                     friends: [],
                     blocked: [],
+                    LikedRooms: [],                       // 게임 데이터와 호환
+
+                    // 설정 및 환경설정
+                    Preferences: {                         // 게임 데이터와 호환
+                        SoundEnabled: true,
+                        MusicVolume: 0.5,
+                        EffectsVolume: 0.7,
+                        MouseSensitivity: 1,
+                        Language: 'Ko'
+                    },
+
+                    // ID 관리
                     userIdChangedAt: null,
                     canChangeUserId: true  // 구글 로그인 사용자도 1회 변경 가능
                 })

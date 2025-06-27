@@ -787,7 +787,11 @@ export default function ProfilePage() {
                             </p>
                             {profile.userIdChangedAt && (
                                 <p className="text-xs text-gray-500 mt-2">
-                                    ID 변경: {new Date(profile.userIdChangedAt).toLocaleDateString('ko-KR')}
+                                    ID 변경: {profile.userIdChangedAt ? 
+                                        (profile.userIdChangedAt.seconds ? 
+                                            new Date(profile.userIdChangedAt.seconds * 1000).toLocaleDateString('ko-KR') : 
+                                            new Date(profile.userIdChangedAt).toLocaleDateString('ko-KR')
+                                        ) : '없음'}
                                 </p>
                             )}
                         </div>
