@@ -1,18 +1,27 @@
 import {initializeApp} from 'firebase/app'
 import {getAuth, GoogleAuthProvider} from 'firebase/auth'
 import {getFirestore} from 'firebase/firestore'
+import {validateFirebaseConfig} from './firebase-config-validator'
 
-// Firebase 설정 - 실제 프로젝트의 설정으로 교체해주세요
+// 개발 환경에서 Firebase 설정 검증
+if (process.env.NODE_ENV === 'development') {
+    const validation = validateFirebaseConfig()
+    if (!validation.isValid) {
+        console.error('Firebase initialization may fail due to missing environment variables')
+    }
+}
+
+// Firebase 설정 - 환경 변수에서 가져오기
 const firebaseConfig = {
-    apiKey: "AIzaSyC4_ylHAexqsVFY37R1AbuvYV7M6amIe6k",
-    authDomain: "eroom-e6659.firebaseapp.com",
-    databaseURL: "https://eroom-e6659-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "eroom-e6659",
-    storageBucket: "eroom-e6659.firebasestorage.app",
-    messagingSenderId: "923480975983",
-    appId: "1:923480975983:web:64a101e783aa40dadbfb9a",
-    measurementId: "G-0BGB493KS1"
-};
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
 
 // Firebase 초기화
 const app = initializeApp(firebaseConfig)

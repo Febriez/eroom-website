@@ -4,6 +4,7 @@ import {useState} from 'react'
 import Link from 'next/link'
 import {AtSign, Eye, EyeOff, Key, Mail, User} from 'lucide-react'
 import {useAuth} from '../../contexts/AuthContext'
+import {useRouter} from 'next/navigation'
 
 export default function SignupPage() {
     const [email, setEmail] = useState('')
@@ -19,6 +20,7 @@ export default function SignupPage() {
     const [checkingUserId, setCheckingUserId] = useState(false)
     const [userIdAvailable, setUserIdAvailable] = useState<boolean | null>(null)
     const {signUpWithEmail, signInWithGoogle, checkUserIdAvailability} = useAuth()
+    const router = useRouter()
 
     const validatePassword = () => {
         if (password.length < 8) {
@@ -83,12 +85,17 @@ export default function SignupPage() {
         try {
             if (signUpWithEmail) {
                 await signUpWithEmail(email, password, nickname, userId)
+                // 회원가입 성공 시 로그인 페이지로 이동
+                router.push('/auth/login')
             }
         } catch (err: any) {
+            console.error('Signup error:', err)
             if (err.code === 'auth/email-already-in-use') {
                 setError('이미 사용 중인 이메일입니다.')
             } else if (err.code === 'auth/weak-password') {
                 setError('비밀번호가 너무 약합니다.')
+            } else if (err.code === 'auth/invalid-email') {
+                setError('올바른 이메일 형식이 아닙니다.')
             } else if (err.message?.includes('userId already exists')) {
                 setError('이미 사용 중인 사용자 ID입니다.')
             } else {
@@ -110,10 +117,17 @@ export default function SignupPage() {
 
         try {
             if (signInWithGoogle) {
-                await signInWithGoogle()
+                const result = await signInWithGoogle()
+                // 성공적으로 로그인되었고 취소되지 않은 경우에만 리다이렉트
+                if (result?.success) {
+                    router.push('/')
+                } else if (result?.cancelled) {
+                    // 팝업이 취소된 경우 에러 메시지 표시하지 않음
+                }
             }
-        } catch (err) {
-            setError('구글 회원가입에 실패했습니다.')
+        } catch (err: any) {
+            console.error('Google signup error:', err)
+            setError(err.message || '구글 회원가입에 실패했습니다.')
         } finally {
             setIsLoading(false)
         }
@@ -138,7 +152,7 @@ export default function SignupPage() {
                 <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                     <h1 className="text-3xl font-bold text-center mb-8">회원가입</h1>
 
-                    <div className="space-y-6">
+                    <form onSubmit={handleEmailSignup} className="space-y-6">
                         {/* User ID Input */}
                         <div>
                             <label htmlFor="userId" className="block text-sm font-medium text-gray-400 mb-2">
@@ -155,6 +169,7 @@ export default function SignupPage() {
                                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
                                     placeholder="my_unique_id"
                                     required
+                                    disabled={isLoading}
                                 />
                                 {checkingUserId && (
                                     <span
@@ -196,6 +211,7 @@ export default function SignupPage() {
                                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
                                     placeholder="게임에서 사용할 닉네임"
                                     required
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -216,6 +232,7 @@ export default function SignupPage() {
                                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
                                     placeholder="email@example.com"
                                     required
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -236,11 +253,13 @@ export default function SignupPage() {
                                     className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
                                     placeholder="8자 이상"
                                     required
+                                    disabled={isLoading}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                                    disabled={isLoading}
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
@@ -263,11 +282,13 @@ export default function SignupPage() {
                                     className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-600 transition-colors"
                                     placeholder="비밀번호 재입력"
                                     required
+                                    disabled={isLoading}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                                    disabled={isLoading}
                                 >
                                     {showConfirmPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
@@ -282,6 +303,7 @@ export default function SignupPage() {
                                     checked={agreedToTerms}
                                     onChange={(e) => setAgreedToTerms(e.target.checked)}
                                     className="w-4 h-4 mt-1 bg-gray-900 border-gray-700 rounded focus:ring-green-600 cursor-pointer"
+                                    disabled={isLoading}
                                 />
                                 <span className="text-sm text-gray-300">
                                     회원가입시 자사의{' '}
@@ -314,13 +336,13 @@ export default function SignupPage() {
 
                         {/* Signup Button */}
                         <button
-                            onClick={handleEmailSignup}
+                            type="submit"
                             disabled={isLoading}
                             className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? '가입 중...' : '회원가입'}
                         </button>
-                    </div>
+                    </form>
 
                     {/* Divider */}
                     <div className="relative my-8">
@@ -348,7 +370,7 @@ export default function SignupPage() {
                             <path fill="#EA4335"
                                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
-                        구글로 회원가입
+                        {isLoading ? '가입 중...' : '구글로 회원가입'}
                     </button>
 
                     {/* Login Link */}

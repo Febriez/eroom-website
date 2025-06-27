@@ -20,7 +20,7 @@ interface AuthContextType {
     loading: boolean
     signInWithEmail: (email: string, password: string) => Promise<void>
     signUpWithEmail: (email: string, password: string, nickname: string, userId: string) => Promise<void>
-    signInWithGoogle: () => Promise<void>
+    signInWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean } | undefined>
     logout: () => Promise<void>
     checkUserIdAvailability: (userId: string) => Promise<boolean>
 }
@@ -32,8 +32,7 @@ const AuthContext = createContext<AuthContextType>({
     },
     signUpWithEmail: async () => {
     },
-    signInWithGoogle: async () => {
-    },
+    signInWithGoogle: async () => undefined,
     logout: async () => {
     },
     checkUserIdAvailability: async () => false
@@ -65,7 +64,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const signInWithEmail = async (email: string, password: string) => {
         try {
             await signInWithEmailAndPassword(auth, email, password)
-            router.push('/')
+            // router.push를 제거하고 호출하는 쪽에서 처리하도록 함
         } catch (error) {
             console.error('Login error:', error)
             throw error
@@ -115,7 +114,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 canChangeUserId: true   // userId 변경 가능 여부
             })
 
-            router.push('/auth/login')
+            // router.push를 제거하고 호출하는 쪽에서 처리하도록 함
         } catch (error) {
             console.error('Signup error:', error)
             throw error
@@ -129,7 +128,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 prompt: 'select_account'
             })
 
-            const {user} = await signInWithPopup(auth, googleProvider)
+            const result = await signInWithPopup(auth, googleProvider)
+            const {user} = result
 
             // 기존 사용자인지 확인 (uid로 검색)
             const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
@@ -165,7 +165,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 })
             }
 
-            router.push('/')
+            // router.push를 제거하고 성공 시그널만 반환
+            return {success: true}
         } catch (error: any) {
             console.error('Google login error:', error)
             console.error('Error code:', error.code)
@@ -173,11 +174,14 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             // 더 구체적인 에러 처리
             if (error.code === 'auth/popup-closed-by-user') {
-                console.log('사용자가 팝업을 닫았습니다.')
+                throw new Error('로그인이 취소되었습니다.')
             } else if (error.code === 'auth/popup-blocked') {
-                console.log('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
+                throw new Error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
             } else if (error.code === 'auth/unauthorized-domain') {
-                console.error('승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.')
+                throw new Error('승인되지 않은 도메인입니다.')
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                // 이미 다른 팝업이 열려있는 경우 - 무시
+                return {success: false, cancelled: true}
             }
 
             throw error
