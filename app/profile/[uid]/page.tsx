@@ -88,7 +88,7 @@ interface Notification {
 }
 
 export default function ProfilePage() {
-    const {user} = useAuth()
+    const {user, logout} = useAuth()
     const router = useRouter()
     const params = useParams()
     const userId = params.uid as string
@@ -164,7 +164,7 @@ export default function ProfilePage() {
             const usersQuery = query(collection(db, 'User'), where('userId', '==', userId))
 
             // 5초 타임아웃 설정 (네트워크 지연 방지)
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Firebase query timeout')), 5000)
             );
 
@@ -576,8 +576,10 @@ export default function ProfilePage() {
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    await logout();
-                                                    router.push('/');
+                                                    if (logout) {
+                                                        await logout();
+                                                        router.push('/');
+                                                    }
                                                 } catch (error) {
                                                     console.error('로그아웃 실패:', error);
                                                 }
@@ -698,7 +700,8 @@ export default function ProfilePage() {
                     <div className="space-y-8 mb-8">
                         {/* 읽지 않은 알림 */}
                         {notifications.filter(n => !n.read).length > 0 && (
-                            <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
+                            <div
+                                className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                                     <Bell className="w-6 h-6 text-green-400"/>
                                     새 알림 ({notifications.filter(n => !n.read).length})
@@ -715,8 +718,8 @@ export default function ProfilePage() {
                                                     <h3 className="font-semibold">{notification.title}</h3>
                                                     <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
                                                     <p className="text-xs text-gray-500 mt-2">
-                                                        {notification.createdAt?.seconds ? 
-                                                            new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') : 
+                                                        {notification.createdAt?.seconds ?
+                                                            new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') :
                                                             '날짜 정보 없음'}
                                                     </p>
                                                 </div>
@@ -735,7 +738,8 @@ export default function ProfilePage() {
 
                         {/* 읽은 알림 */}
                         {notifications.filter(n => n.read).length > 0 && (
-                            <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
+                            <div
+                                className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                                     <Bell className="w-6 h-6 text-gray-400"/>
                                     읽은 알림 ({notifications.filter(n => n.read).length})
@@ -750,8 +754,8 @@ export default function ProfilePage() {
                                                 <h3 className="font-semibold text-gray-300">{notification.title}</h3>
                                                 <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
                                                 <p className="text-xs text-gray-500 mt-2">
-                                                    {notification.createdAt?.seconds ? 
-                                                        new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') : 
+                                                    {notification.createdAt?.seconds ?
+                                                        new Date(notification.createdAt.seconds * 1000).toLocaleString('ko-KR') :
                                                         '날짜 정보 없음'}
                                                 </p>
                                             </div>
@@ -855,8 +859,8 @@ export default function ProfilePage() {
                             {profile.userIdChangedAt && (
                                 <p className="text-xs text-gray-500 mt-2">
                                     ID 변경: {profile.userIdChangedAt && profile.userIdChangedAt.seconds
-                                        ? new Date(profile.userIdChangedAt.seconds * 1000).toLocaleDateString('ko-KR')
-                                        : '날짜 정보 없음'}
+                                    ? new Date(profile.userIdChangedAt.seconds * 1000).toLocaleDateString('ko-KR')
+                                    : '날짜 정보 없음'}
                                 </p>
                             )}
                         </div>
