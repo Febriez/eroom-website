@@ -70,7 +70,7 @@ export default function Navigation() {
         // 사용자 프로필 가져오기
         const getUserProfile = async () => {
             try {
-                const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
                 const querySnapshot = await getDocs(usersQuery)
 
                 if (!querySnapshot.empty) {

@@ -121,7 +121,7 @@ export default function ProfilePage() {
         if (!user) return
 
         try {
-            const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+            const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
             const querySnapshot = await getDocs(usersQuery)
 
             if (!querySnapshot.empty) {
@@ -146,7 +146,7 @@ export default function ProfilePage() {
             }
 
             // userId로 사용자 검색
-            const usersQuery = query(collection(db, 'users'), where('userId', '==', userId))
+            const usersQuery = query(collection(db, 'User'), where('userId', '==', userId))
 
             // 5초 타임아웃 설정 (네트워크 지연 방지)
             const timeoutPromise = new Promise((_, reject) => 
@@ -245,7 +245,7 @@ export default function ProfilePage() {
         if (id === profile?.userId) return true // 현재 ID와 같으면 사용 가능
 
         try {
-            const usersQuery = query(collection(db, 'users'), where('userId', '==', id))
+            const usersQuery = query(collection(db, 'User'), where('userId', '==', id))
             const querySnapshot = await getDocs(usersQuery)
             return querySnapshot.empty
         } catch (error) {

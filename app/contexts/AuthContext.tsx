@@ -51,7 +51,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             if (user) {
                 try {
                     // uid로 사용자 정보 가져오기
-                    const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                    const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
                     const querySnapshot = await getDocs(usersQuery)
 
                     // 사용자 정보가 없으면 에러 로그 기록
@@ -71,7 +71,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
     const checkUserIdAvailability = async (userId: string): Promise<boolean> => {
         try {
-            const usersQuery = query(collection(db, 'users'), where('userId', '==', userId))
+            const usersQuery = query(collection(db, 'User'), where('userId', '==', userId))
             const querySnapshot = await getDocs(usersQuery)
             return querySnapshot.empty
         } catch (error) {
@@ -174,7 +174,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             const {user} = result
 
             // 기존 사용자인지 확인 (uid로 검색)
-            const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+            const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
             const querySnapshot = await getDocs(usersQuery)
 
             if (querySnapshot.empty) {
