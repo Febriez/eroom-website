@@ -2,8 +2,18 @@
 
 import Link from 'next/link'
 import {AlertCircle, Book, CreditCard, Gavel, Shield, Users, XCircle} from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useEffect, useState } from 'react'
 
 export default function TermsPage() {
+    const { user, loading } = useAuth()
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+    useEffect(() => {
+        if (!loading && user) {
+            setIsLoggedIn(true)
+        }
+    }, [user, loading])
     const sections = [
         {
             title: "제1조 (목적)",
@@ -162,15 +172,24 @@ export default function TermsPage() {
                 </div>
 
                 {/* Bottom Navigation */}
-                <div className="flex justify-center gap-8 mb-16">
-                    <Link href="/auth/signup"
-                          className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all">
-                        회원가입으로 돌아가기
-                    </Link>
-                    <Link href="/public"
-                          className="px-8 py-3 border border-green-700 rounded-lg font-medium hover:bg-green-900/30 transition-all">
-                        메인으로
-                    </Link>
+                <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-16">
+                    {!isLoggedIn ? (
+                        <>
+                            <Link href="/auth/signup"
+                                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all">
+                                회원가입으로 돌아가기
+                            </Link>
+                            <Link href="/"
+                                  className="px-8 py-3 border border-green-700 rounded-lg font-medium hover:bg-green-900/30 transition-all">
+                                메인으로
+                            </Link>
+                        </>
+                    ) : (
+                        <Link href="/"
+                              className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all">
+                            메인으로
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

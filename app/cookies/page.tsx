@@ -2,8 +2,18 @@
 
 import Link from 'next/link'
 import {BarChart, Clock, Cookie, Info, Settings, Shield} from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useEffect, useState } from 'react'
 
 export default function CookiesPage() {
+    const { user, loading } = useAuth()
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+    useEffect(() => {
+        if (!loading && user) {
+            setIsLoggedIn(true)
+        }
+    }, [user, loading])
     const sections = [
         {
             title: "1. 쿠키란 무엇인가요?",
@@ -175,15 +185,17 @@ export default function CookiesPage() {
                 </div>
 
                 {/* Bottom Navigation */}
-                <div className="flex justify-center gap-8 mb-16">
-                    <Link href="/public"
+                <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-16">
+                    <Link href="/"
                           className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all">
                         메인으로
                     </Link>
-                    <Link href="/privacy"
-                          className="px-8 py-3 border border-green-700 rounded-lg font-medium hover:bg-green-900/30 transition-all">
-                        개인정보 처리방침
-                    </Link>
+                    {!isLoggedIn && (
+                        <Link href="/privacy"
+                              className="px-8 py-3 border border-green-700 rounded-lg font-medium hover:bg-green-900/30 transition-all">
+                            개인정보 처리방침
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>
