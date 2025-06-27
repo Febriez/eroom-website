@@ -76,7 +76,7 @@ export default function ProfilePage() {
     const {user} = useAuth()
     const router = useRouter()
     const params = useParams()
-    const userId = params.userId as string
+    const userId = params.uid as string
 
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
@@ -135,7 +135,9 @@ export default function ProfilePage() {
 
     const loadProfile = async () => {
         try {
-            console.log('Loading profile for userId:', userId);
+            console.log('Loading profile for uid param:', userId);
+            console.log('Current user:', user?.uid);
+            console.log('Params received:', params);
             if (!userId) {
                 console.error('Invalid userId parameter');
                 setNotFound(true);

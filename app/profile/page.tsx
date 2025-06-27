@@ -13,6 +13,7 @@ export default function ProfileRedirectPage() {
 
     useEffect(() => {
         const checkAndRedirect = async () => {
+            console.log('Profile redirect page - Auth state:', { user: user?.uid, loading });
             if (!loading) {
                 if (user) {
                     try {
@@ -35,6 +36,7 @@ export default function ProfileRedirectPage() {
                             const userDoc = querySnapshot.docs[0]
                             const userData = userDoc.data()
                             if (userData && userData.userId) {
+                                console.log('Redirecting to profile with userId:', userData.userId);
                                 router.push(`/profile/${userData.userId}`)
                             } else {
                                 console.error('User document found but userId is missing')

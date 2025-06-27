@@ -24,7 +24,9 @@ const firebaseConfig = {
 }
 
 // Firebase 초기화
-const app = initializeApp(firebaseConfig)
+console.log('Initializing Firebase with projectId:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+const app = initializeApp(firebaseConfig);
+console.log('Firebase initialized successfully');
 
 // Auth 인스턴스
 export const auth = getAuth(app)
