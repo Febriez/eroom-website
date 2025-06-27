@@ -2,6 +2,7 @@
 
 import React, {useEffect, useState} from 'react'
 import {
+    Bell,
     Brain,
     ChevronDown,
     CreditCard,
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import {useAuth} from '../contexts/AuthContext'
+import {collection, onSnapshot, query, where} from 'firebase/firestore'
+import {db} from '../lib/firebase'
 
 interface MenuItem {
     title: string
@@ -30,11 +33,27 @@ interface MenuItem {
     }[]
 }
 
+interface Notification {
+    id: string
+    type: 'friend_request' | 'game_update' | 'bug_report_response'
+    title: string
+    message: string
+    from?: string
+    fromNickname?: string
+    createdAt: any
+    read: boolean
+}
+
 export default function Navigation() {
     const [scrolled, setScrolled] = useState(false)
     const [activeDropdown, setActiveDropdown] = useState<number | null>(null)
     const [showUserMenu, setShowUserMenu] = useState(false)
+    const [showNotifications, setShowNotifications] = useState(false)
     const {user, logout, loading} = useAuth()
+
+    // 알림 관련 상태
+    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [unreadCount, setUnreadCount] = useState(0)
 
     useEffect(() => {
         const handleScroll = () => {
@@ -43,6 +62,35 @@ export default function Navigation() {
         window.addEventListener('scroll', handleScroll)
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
+
+    useEffect(() => {
+        if (!user) return
+
+        // 실시간 알림 구독
+        const notificationsQuery = query(
+            collection(db, 'notifications'),
+            where('to', '==', user.uid)
+        )
+
+        const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
+            const notificationsList: Notification[] = []
+            snapshot.forEach((doc) => {
+                notificationsList.push({id: doc.id, ...doc.data()} as Notification)
+            })
+
+            // 최신순 정렬
+            notificationsList.sort((a, b) => {
+                const aTime = a.createdAt?.seconds || 0
+                const bTime = b.createdAt?.seconds || 0
+                return bTime - aTime
+            })
+
+            setNotifications(notificationsList)
+            setUnreadCount(notificationsList.filter(n => !n.read).length)
+        })
+
+        return () => unsubscribe()
+    }, [user])
 
     const menuItems: MenuItem[] = [
         {
@@ -78,6 +126,19 @@ export default function Navigation() {
             ]
         }
     ]
+
+    const getNotificationIcon = (type: string) => {
+        switch (type) {
+            case 'friend_request':
+                return <Users className="w-4 h-4"/>
+            case 'game_update':
+                return <Sparkles className="w-4 h-4"/>
+            case 'bug_report_response':
+                return <Shield className="w-4 h-4"/>
+            default:
+                return <Bell className="w-4 h-4"/>
+        }
+    }
 
     return (
         <nav className={`fixed w-full z-50 transition-all duration-300 ${
@@ -139,39 +200,106 @@ export default function Navigation() {
                             {loading ? (
                                 <div className="px-6 py-8 text-gray-500">로딩중...</div>
                             ) : user ? (
-                                <div className="relative"
-                                     onMouseEnter={() => setShowUserMenu(true)}
-                                     onMouseLeave={() => setShowUserMenu(false)}>
-                                    <button
-                                        className="flex items-center gap-3 px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200">
-                                        <div
-                                            className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center">
-                                            <User className="w-5 h-5"/>
-                                        </div>
-                                        <span>{user.displayName || '플레이어'}</span>
-                                        <ChevronDown
-                                            className={`w-4 h-4 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`}/>
-                                    </button>
+                                <>
+                                    {/* Notification Button */}
+                                    <div className="relative"
+                                         onMouseEnter={() => setShowNotifications(true)}
+                                         onMouseLeave={() => setShowNotifications(false)}>
+                                        <button className="p-3 relative">
+                                            <Bell
+                                                className={`w-6 h-6 ${unreadCount > 0 ? 'text-green-400' : 'text-gray-400'} hover:text-white transition-colors`}/>
+                                            {unreadCount > 0 && (
+                                                <div
+                                                    className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></div>
+                                            )}
+                                        </button>
 
-                                    <div
-                                        className={`absolute top-full right-0 w-64 bg-gray-900/95 backdrop-blur-xl border border-green-900/30 rounded-xl shadow-2xl shadow-black/50 transition-all duration-300 ${
-                                            showUserMenu ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'
-                                        }`}>
-                                        <div className="p-2">
-                                            <Link href="/profile"
-                                                  className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200">
-                                                <User className="w-5 h-5 text-green-400"/>
-                                                <span>프로필</span>
-                                            </Link>
-                                            <button
-                                                onClick={() => logout()}
-                                                className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200 text-left">
-                                                <LogOut className="w-5 h-5 text-green-400"/>
-                                                <span>로그아웃</span>
-                                            </button>
+                                        <div
+                                            className={`absolute top-full right-0 w-80 bg-gray-900/95 backdrop-blur-xl border border-green-900/30 rounded-xl shadow-2xl shadow-black/50 transition-all duration-300 ${
+                                                showNotifications ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'
+                                            }`}>
+                                            <div className="p-4">
+                                                <h3 className="font-semibold mb-3">알림</h3>
+                                                {notifications.length === 0 ? (
+                                                    <p className="text-gray-500 text-sm text-center py-4">
+                                                        새로운 알림이 없습니다
+                                                    </p>
+                                                ) : (
+                                                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                                                        {notifications.slice(0, 5).map((notification) => (
+                                                            <Link
+                                                                key={notification.id}
+                                                                href={`/profile/${user.uid}`}
+                                                                className={`block p-3 rounded-lg transition-all ${
+                                                                    notification.read
+                                                                        ? 'bg-gray-800/50 hover:bg-gray-800'
+                                                                        : 'bg-green-900/30 hover:bg-green-900/40'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="text-green-400 mt-0.5">
+                                                                        {getNotificationIcon(notification.type)}
+                                                                    </div>
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-sm">{notification.title}</p>
+                                                                        <p className="text-xs text-gray-400 mt-1">{notification.message}</p>
+                                                                    </div>
+                                                                    {!notification.read && (
+                                                                        <div
+                                                                            className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
+                                                                    )}
+                                                                </div>
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {notifications.length > 5 && (
+                                                    <Link
+                                                        href={`/profile/${user.uid}`}
+                                                        className="block text-center text-sm text-green-400 hover:text-green-300 mt-3 pt-3 border-t border-gray-800"
+                                                    >
+                                                        모든 알림 보기
+                                                    </Link>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* User Menu */}
+                                    <div className="relative"
+                                         onMouseEnter={() => setShowUserMenu(true)}
+                                         onMouseLeave={() => setShowUserMenu(false)}>
+                                        <button
+                                            className="flex items-center gap-3 px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200">
+                                            <div
+                                                className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center">
+                                                <User className="w-5 h-5"/>
+                                            </div>
+                                            <span>{user.displayName || '플레이어'}</span>
+                                            <ChevronDown
+                                                className={`w-4 h-4 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`}/>
+                                        </button>
+
+                                        <div
+                                            className={`absolute top-full right-0 w-64 bg-gray-900/95 backdrop-blur-xl border border-green-900/30 rounded-xl shadow-2xl shadow-black/50 transition-all duration-300 ${
+                                                showUserMenu ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'
+                                            }`}>
+                                            <div className="p-2">
+                                                <Link href={`/profile/${user.uid}`}
+                                                      className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200">
+                                                    <User className="w-5 h-5 text-green-400"/>
+                                                    <span>프로필</span>
+                                                </Link>
+                                                <button
+                                                    onClick={() => logout()}
+                                                    className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200 text-left">
+                                                    <LogOut className="w-5 h-5 text-green-400"/>
+                                                    <span>로그아웃</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
                             ) : (
                                 <>
                                     <Link href="/auth/login"

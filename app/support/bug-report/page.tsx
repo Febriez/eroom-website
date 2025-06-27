@@ -2,14 +2,18 @@
 
 import {AlertCircle, Bug, CheckCircle, Clock, FileText, Upload} from 'lucide-react'
 import {useState} from 'react'
+import {addDoc, collection, serverTimestamp} from 'firebase/firestore'
+import {db} from '../../lib/firebase'
+import {useAuth} from '../../contexts/AuthContext'
 
 export default function BugReportPage() {
+    const {user} = useAuth()
     const [bugType, setBugType] = useState('')
     const [severity, setSeverity] = useState('')
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [steps, setSteps] = useState('')
-    const [email, setEmail] = useState('')
+    const [email, setEmail] = useState(user?.email || '')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitted, setSubmitted] = useState(false)
 
@@ -52,11 +56,40 @@ export default function BugReportPage() {
     const handleSubmit = async () => {
         setIsSubmitting(true)
 
-        // 실제로는 여기서 API 호출
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        try {
+            // Firebase에 버그 리포트 저장
+            const bugReport = {
+                bugType,
+                severity,
+                title,
+                description,
+                steps,
+                email,
+                userId: user?.uid || null,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            }
 
-        setIsSubmitting(false)
-        setSubmitted(true)
+            await addDoc(collection(db, 'bugReports'), bugReport)
+
+            // 알림 생성 (관리자에게)
+            if (user) {
+                await addDoc(collection(db, 'notifications'), {
+                    type: 'bug_report_response',
+                    title: '버그 리포트 접수',
+                    message: '제출하신 버그 리포트가 접수되었습니다. 검토 후 답변드리겠습니다.',
+                    to: user.uid,
+                    createdAt: serverTimestamp(),
+                    read: false
+                })
+            }
+
+            setSubmitted(true)
+        } catch (error) {
+            console.error('Error submitting bug report:', error)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     if (submitted) {
@@ -79,7 +112,7 @@ export default function BugReportPage() {
                             setTitle('')
                             setDescription('')
                             setSteps('')
-                            setEmail('')
+                            setEmail(user?.email || '')
                         }}
                         className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 rounded-xl font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all"
                     >
@@ -106,16 +139,19 @@ export default function BugReportPage() {
                     <div className="col-span-2">
                         <div
                             className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-10 border border-gray-800">
-                            <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+                            <h2 className="text-3xl font-bold mb-4 flex items-center gap-3">
                                 <Bug className="w-8 h-8 text-green-400"/>
                                 버그 신고하기
                             </h2>
+                            <p className="text-sm text-gray-500 mb-8">
+                                <span className="text-red-500">*</span> 표시는 필수 항목입니다
+                            </p>
 
                             <div className="space-y-6">
                                 {/* Bug Type */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-3">
-                                        버그 유형 *
+                                        버그 유형 <span className="text-red-500">*</span>
                                     </label>
                                     <div className="grid grid-cols-4 gap-3">
                                         {bugTypes.map((type) => (
@@ -139,7 +175,7 @@ export default function BugReportPage() {
                                 {/* Severity */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-3">
-                                        심각도 *
+                                        심각도 <span className="text-red-500">*</span>
                                     </label>
                                     <div className="grid grid-cols-4 gap-3">
                                         {severityLevels.map((level) => (
@@ -163,7 +199,7 @@ export default function BugReportPage() {
                                 {/* Title */}
                                 <div>
                                     <label htmlFor="title" className="block text-sm font-medium text-gray-400 mb-2">
-                                        제목 *
+                                        제목 <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         id="title"
@@ -180,7 +216,7 @@ export default function BugReportPage() {
                                 <div>
                                     <label htmlFor="description"
                                            className="block text-sm font-medium text-gray-400 mb-2">
-                                        상세 설명 *
+                                        상세 설명 <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         id="description"
@@ -196,7 +232,7 @@ export default function BugReportPage() {
                                 {/* Reproduction Steps */}
                                 <div>
                                     <label htmlFor="steps" className="block text-sm font-medium text-gray-400 mb-2">
-                                        재현 방법 *
+                                        재현 방법 <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         id="steps"
@@ -225,7 +261,7 @@ export default function BugReportPage() {
                                 {/* Email */}
                                 <div>
                                     <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-2">
-                                        이메일 (답변 받으실 주소) *
+                                        이메일 (답변 받으실 주소) <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         id="email"
@@ -261,19 +297,19 @@ export default function BugReportPage() {
                             </h3>
                             <ul className="space-y-3 text-gray-400">
                                 <li className="flex items-start gap-2">
-                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="text-green-400 mt-0.5">•</span>
                                     <span>구체적이고 명확하게 작성해주세요</span>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="text-green-400 mt-0.5">•</span>
                                     <span>재현 가능한 단계를 포함해주세요</span>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="text-green-400 mt-0.5">•</span>
                                     <span>시스템 사양을 함께 알려주세요</span>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="text-green-400 mt-0.5">•</span>
                                     <span>가능하면 스크린샷을 첨부해주세요</span>
                                 </li>
                             </ul>
