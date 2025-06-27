@@ -20,11 +20,9 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import {useAuth} from '../contexts/AuthContext'
-// 중복된 import를 하나로 합쳤습니다.
 import {collection, doc, getDocs, onSnapshot, query, setDoc, where} from 'firebase/firestore'
 import {db} from '../lib/firebase'
 
-// 인터페이스 정의는 원본과 동일하게 유지합니다.
 interface MenuItem {
     title: string
     submenu: {
@@ -199,7 +197,6 @@ export default function Navigation() {
         }
     }
 
-    // [개선] 반복되는 프로필 URL을 변수로 관리하여 가독성과 유지보수성을 높입니다.
     const profileUrl = userProfile && userProfile.userId ? `/profile/${userProfile.userId}` : '/profile'
 
     return (

@@ -50,7 +50,8 @@ export default function NotificationItem({
     markAsRead()
     setExpanded(!expanded)
 
-    if (type === 'friend_request' && fromUserId) {
+    if (type === 'friend_request' && fromUserId && !expanded) {
+      // 확장되지 않은 상태에서만 프로필로 이동
       router.push(`/profile/${fromUserId}`)
     }
   }

@@ -94,8 +94,8 @@ export default function NotificationsPanel({isOpen, onClose, userProfile}: Notif
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 sm:items-start sm:pt-20">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 sm:items-start sm:pt-20" onClick={onClose}>
+            <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-4 border-b border-gray-800">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Bell className="w-5 h-5 text-green-400"/>

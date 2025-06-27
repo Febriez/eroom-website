@@ -115,7 +115,7 @@ export default function HeroSection() {
             </div>
 
             {/* Content */}
-            <div className="relative z-10 max-w-screen-xl mx-auto px-8 text-center">
+            <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 {/* Badge */}
                 <div
                     className="mb-10 inline-flex items-center gap-3 bg-green-900/20 backdrop-blur-xl px-8 py-4 rounded-full border border-green-800/50">

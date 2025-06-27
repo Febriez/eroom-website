@@ -393,9 +393,20 @@ export default function ProfilePage() {
             await updateDoc(doc(db, 'notifications', notificationId), {
                 read: true
             })
-            loadNotifications()
+
+            // 상태 업데이트 최적화
+            setNotifications(prev => 
+                prev.map(notification => 
+                    notification.id === notificationId 
+                        ? {...notification, read: true}
+                        : notification
+                )
+            )
+            setUnreadCount(prev => Math.max(0, prev - 1))
         } catch (error) {
             console.error('Error marking notification as read:', error)
+            // 오류 발생 시 전체 목록 다시 로드
+            loadNotifications()
         }
     }
 
@@ -436,8 +447,8 @@ export default function ProfilePage() {
     ]
 
     return (
-        <div className="min-h-screen bg-black py-32 px-8">
-            <div className="max-w-screen-xl mx-auto">
+        <div className="min-h-screen bg-black py-32 px-4">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* Profile Header */}
                 <div
                     className="bg-gradient-to-br from-gray-900/50 to-black rounded-3xl p-12 border border-gray-800 mb-12">
