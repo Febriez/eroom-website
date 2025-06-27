@@ -80,15 +80,48 @@ export default function Navigation() {
         // 사용자 프로필 가져오기
         const getUserProfile = async () => {
             try {
-                const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
-                const querySnapshot = await getDocs(usersQuery)
+                console.log('Navigation: Loading profile for uid:', user.uid)
+
+                // 먼저 User 컬렉션에서 검색
+                let usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                let querySnapshot = await getDocs(usersQuery)
+
+                // User 컬렉션에 없으면 users 컬렉션에서 검색 (이전 데이터 호환성)
+                if (querySnapshot.empty) {
+                    console.log('Navigation: User not found in User collection, checking users collection')
+                    usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                    querySnapshot = await getDocs(usersQuery)
+
+                    // users 컬렉션에서 찾았다면 User 컬렉션으로 마이그레이션
+                    if (!querySnapshot.empty) {
+                        const userDoc = querySnapshot.docs[0]
+                        const userData = userDoc.data()
+                        console.log('Navigation: Found in users collection, will migrate')
+
+                        try {
+                            // User 컬렉션에 데이터 복사
+                            await setDoc(doc(db, 'User', userData.docId), userData)
+                            console.log('Navigation: Migrated user data to User collection')
+
+                            // 새 컬렉션에서 다시 쿼리
+                            usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                            querySnapshot = await getDocs(usersQuery)
+                        } catch (migrationError) {
+                            console.error('Navigation: Migration error:', migrationError)
+                        }
+                    }
+                }
 
                 if (!querySnapshot.empty) {
                     const userDoc = querySnapshot.docs[0]
-                    setUserProfile(userDoc.data() as UserProfile)
+                    const userData = userDoc.data() as UserProfile
+                    console.log('Navigation: User profile loaded:', userData.userId)
+                    setUserProfile(userData)
+                } else {
+                    console.error('Navigation: User document not found in any collection')
                 }
             } catch (error) {
-                console.error('Error getting user profile:', error)
+                console.error('Navigation: Error getting user profile:', error)
             }
         }
 
@@ -314,7 +347,12 @@ export default function Navigation() {
                                             }`}>
                                             <div className="p-2">
                                                                                                       <Link href={userProfile && userProfile.userId ? `/profile/${userProfile.userId}` : '/profile'}
-                                                      className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200">
+                                                      className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200"
+                                                      onClick={(e) => {
+                                                          if (!userProfile || !userProfile.userId) {
+                                                              console.log('No userId found in profile, redirecting to /profile')
+                                                          }
+                                                      }}>
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
                                                 </Link>

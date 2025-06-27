@@ -24,7 +24,9 @@ export default function ProfileRedirectPage() {
 
                         // uid로 사용자 문서 찾기
                         const fetchUserData = async () => {
-                            const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                            try {
+                                const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                                console.log('Searching for user with uid:', user.uid)
                             const querySnapshot = await getDocs(usersQuery)
                             return querySnapshot;
                         };

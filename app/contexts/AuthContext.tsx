@@ -59,7 +59,7 @@ interface AuthContextType {
     loading: boolean
     signInWithEmail: (email: string, password: string) => Promise<void>
     signUpWithEmail: (email: string, password: string, nickname: string, userId: string) => Promise<void>
-    signInWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean } | undefined>
+    signInWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean; userId?: string } | undefined>
     logout: () => Promise<void>
     checkUserIdAvailability: (userId: string) => Promise<boolean>
 }
@@ -90,12 +90,35 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             if (user) {
                 try {
                     // uid로 사용자 정보 가져오기
-                    const usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
-                    const querySnapshot = await getDocs(usersQuery)
+                    console.log('Checking user document for uid:', user.uid)
+
+                    // 먼저 User 컬렉션에서 검색
+                    let usersQuery = query(collection(db, 'User'), where('uid', '==', user.uid))
+                    let querySnapshot = await getDocs(usersQuery)
+
+                    // User 컬렉션에 없으면 users 컬렉션에서 검색 (이전 데이터 호환성)
+                    if (querySnapshot.empty) {
+                        console.log('User not found in User collection, checking users collection')
+                        usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid))
+                        querySnapshot = await getDocs(usersQuery)
+
+                        // users 컬렉션에서 찾았다면 User 컬렉션으로 마이그레이션
+                        if (!querySnapshot.empty) {
+                            console.log('Found user in users collection, migrating to User collection')
+                            const userDoc = querySnapshot.docs[0]
+                            const userData = userDoc.data()
+
+                            // User 컬렉션에 데이터 복사
+                            await setDoc(doc(db, 'User', userData.docId), userData)
+                            console.log('User data migrated to User collection')
+                        }
+                    }
 
                     // 사용자 정보가 없으면 에러 로그 기록
                     if (querySnapshot.empty) {
                         console.error('User document not found for uid:', user.uid)
+                    } else {
+                        console.log('User document found successfully')
                     }
                 } catch (error) {
                     console.error('Error fetching user document:', error)
@@ -148,7 +171,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             const docId = uuidv4()
 
             // Firestore에 사용자 정보 저장
-            await setDoc(doc(db, 'users', docId), {
+            await setDoc(doc(db, 'User', docId), {
                 docId: docId,
                 uid: user.uid,  // Firebase Auth UID (참조용)
                 userId: userId,  // 사용자가 설정한 고유 ID
@@ -221,7 +244,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 const docId = uuidv4()
                 const randomUserId = `user_${uuidv4().substring(0, 8)}`
 
-                await setDoc(doc(db, 'users', docId), {
+                await setDoc(doc(db, 'User', docId), {
                     docId: docId,
                     uid: user.uid,
                     userId: randomUserId,  // 구글 로그인 사용자는 랜덤 userId
@@ -269,8 +292,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 })
             }
 
-            // router.push를 제거하고 성공 시그널만 반환
-            return {success: true}
+            // 성공 시그널 반환 및 필요한 데이터 포함
+            return {success: true, userId: querySnapshot.empty ? randomUserId : querySnapshot.docs[0].data().userId}
         } catch (error: any) {
             console.error('Google login error:', error)
             console.error('Error code:', error.code)
