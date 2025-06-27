@@ -1,76 +1,43 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, {useState} from 'react'
 import Link from 'next/link'
-import { AlertCircle, Key, Mail, ArrowLeft, CheckCircle } from 'lucide-react'
-import { sendPasswordResetEmail } from 'firebase/auth'
-import { auth } from '../../lib/firebase'
-
-interface FormErrors {
-    email?: string
-    general?: string
-}
+import {AlertCircle, ArrowLeft, Check, Mail} from 'lucide-react'
+import {useAuth} from '../../contexts/AuthContext'
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [errors, setErrors] = useState<FormErrors>({})
-    const [emailSent, setEmailSent] = useState(false)
-
-    const clearErrors = () => {
-        setErrors({})
-    }
-
-    const validateForm = () => {
-        const newErrors: FormErrors = {}
-
-        // 이메일 검증
-        if (!email) {
-            newErrors.email = '이메일을 입력해주세요.'
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            newErrors.email = '올바른 이메일 형식이 아닙니다. (예: example@email.com)'
-        }
-
-        setErrors(newErrors)
-        return Object.keys(newErrors).length === 0
-    }
+    const [isSuccess, setIsSuccess] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const {resetPassword} = useAuth()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        clearErrors()
+        setError(null)
 
-        if (!validateForm()) {
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setError('유효한 이메일 주소를 입력해주세요.')
             return
         }
 
         setIsLoading(true)
 
         try {
-            await sendPasswordResetEmail(auth, email)
-            setEmailSent(true)
+            if (resetPassword) {
+                await resetPassword(email)
+                setIsSuccess(true)
+            }
         } catch (err: any) {
             console.error('Password reset error:', err)
 
-            const newErrors: FormErrors = {}
-
-            switch (err.code) {
-                case 'auth/user-not-found':
-                    newErrors.email = '등록되지 않은 이메일입니다. 회원가입을 먼저 진행해주세요.'
-                    break
-                case 'auth/invalid-email':
-                    newErrors.email = '올바른 이메일 형식이 아닙니다.'
-                    break
-                case 'auth/network-request-failed':
-                    newErrors.general = '네트워크 연결을 확인해주세요.'
-                    break
-                case 'auth/too-many-requests':
-                    newErrors.general = '너무 많은 요청이 있었습니다. 잠시 후 다시 시도해주세요.'
-                    break
-                default:
-                    newErrors.general = '비밀번호 재설정 이메일 전송에 실패했습니다. 다시 시도해주세요.'
+            if (err.code === 'auth/user-not-found') {
+                setError('해당 이메일로 등록된 계정을 찾을 수 없습니다.')
+            } else if (err.code === 'auth/invalid-email') {
+                setError('올바른 이메일 형식이 아닙니다.')
+            } else {
+                setError('비밀번호 재설정 이메일 발송에 실패했습니다. 다시 시도해주세요.')
             }
-
-            setErrors(newErrors)
         } finally {
             setIsLoading(false)
         }
@@ -79,56 +46,24 @@ export default function ForgotPasswordPage() {
     return (
         <div className="min-h-screen bg-black flex items-center justify-center px-8">
             <div className="w-full max-w-md">
-                {/* Logo */}
-                <Link href="/" className="flex items-center justify-center mb-12">
-                    <div className="relative group">
-                        <div
-                            className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center transform rotate-12">
-                            <Key className="w-10 h-10 transform -rotate-12"/>
-                        </div>
-                        <div
-                            className="absolute inset-0 bg-green-500/30 rounded-xl blur-2xl"></div>
-                    </div>
-                </Link>
+                {/* Header with Back Button */}
+                <div className="flex items-center mb-10">
+                    <Link
+                        href="/auth/login"
+                        className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                        <ArrowLeft className="w-5 h-5"/>
+                        <span>로그인으로 돌아가기</span>
+                    </Link>
+                </div>
 
-                {/* Forgot Password Form */}
+                {/* Form Container */}
                 <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
-                    <h1 className="text-3xl font-bold text-center mb-8">비밀번호 찾기</h1>
-
-                    {emailSent ? (
-                        <div className="space-y-6">
-                            <div className="bg-green-900/20 border border-green-800 rounded-lg p-5 flex flex-col items-center text-center gap-3">
-                                <CheckCircle className="w-12 h-12 text-green-500 mb-1" />
-                                <p className="text-gray-300">
-                                    <span className="font-semibold text-white">{email}</span> 주소로 비밀번호 재설정 이메일을 발송했습니다.
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                    이메일의 안내에 따라 비밀번호를 재설정해주세요. 메일이 도착하지 않았다면 스팸함을 확인해주세요.
-                                </p>
-                            </div>
-
-                            <div className="flex flex-col gap-4 mt-6">
-                                <button
-                                    onClick={() => {
-                                        setEmailSent(false)
-                                        setEmail('')
-                                    }}
-                                    className="w-full py-3 bg-gray-800 rounded-lg font-medium hover:bg-gray-700 transition-colors"
-                                >
-                                    다른 이메일로 시도
-                                </button>
-
-                                <Link href="/auth/login"
-                                    className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-bold text-center hover:from-green-700 hover:to-green-800 transition-all"
-                                >
-                                    로그인 페이지로 이동
-                                </Link>
-                            </div>
-                        </div>
-                    ) : (
+                    {!isSuccess ? (
                         <>
-                            <p className="text-gray-400 text-center mb-6">
-                                가입하신 이메일 주소를 입력하시면 비밀번호 재설정 링크를 보내드립니다.
+                            <h1 className="text-3xl font-bold text-center mb-2">비밀번호 찾기</h1>
+                            <p className="text-gray-400 text-center mb-8">
+                                가입할 때 사용한 이메일을 입력하시면 비밀번호 재설정 링크를 보내드립니다.
                             </p>
 
                             <form onSubmit={handleSubmit} className="space-y-6">
@@ -139,7 +74,7 @@ export default function ForgotPasswordPage() {
                                     </label>
                                     <div className="relative">
                                         <Mail
-                                            className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${errors.email ? 'text-red-500' : 'text-gray-500'}`}
+                                            className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${error ? 'text-red-500' : 'text-gray-500'}`}
                                         />
                                         <input
                                             id="email"
@@ -147,30 +82,20 @@ export default function ForgotPasswordPage() {
                                             value={email}
                                             onChange={(e) => {
                                                 setEmail(e.target.value)
-                                                if (errors.email) {
-                                                    setErrors({...errors, email: undefined})
-                                                }
+                                                if (error) setError(null)
                                             }}
-                                            className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${errors.email ? 'border-red-500 focus:border-red-600' : 'border-gray-700 focus:border-green-600'}`}
+                                            className={`w-full pl-10 pr-4 py-3 bg-gray-900 border rounded-lg focus:outline-none transition-colors ${error ? 'border-red-500 focus:border-red-600' : 'border-gray-700 focus:border-green-600'}`}
                                             placeholder="email@example.com"
                                             disabled={isLoading}
                                         />
                                     </div>
-                                    {errors.email && (
+                                    {error && (
                                         <div className="mt-2 flex items-start gap-2">
                                             <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"/>
-                                            <p className="text-sm text-red-500">{errors.email}</p>
+                                            <p className="text-sm text-red-500">{error}</p>
                                         </div>
                                     )}
                                 </div>
-
-                                {/* General Error Message */}
-                                {errors.general && (
-                                    <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 flex items-start gap-2">
-                                        <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0"/>
-                                        <p className="text-red-400 text-sm">{errors.general}</p>
-                                    </div>
-                                )}
 
                                 {/* Submit Button */}
                                 <button
@@ -178,16 +103,44 @@ export default function ForgotPasswordPage() {
                                     disabled={isLoading}
                                     className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 rounded-lg font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isLoading ? '전송 중...' : '재설정 링크 전송'}
+                                    {isLoading ? '처리 중...' : '비밀번호 재설정 링크 받기'}
                                 </button>
-
-                                {/* Back to Login */}
-                                <Link href="/auth/login" className="flex items-center justify-center gap-2 text-green-400 hover:text-green-300 transition-colors mt-4">
-                                    <ArrowLeft className="w-4 h-4" />
-                                    로그인 페이지로 돌아가기
-                                </Link>
                             </form>
                         </>
+                    ) : (
+                        <div className="text-center py-6">
+                            <div
+                                className="w-16 h-16 mx-auto bg-green-600/20 rounded-full flex items-center justify-center mb-6">
+                                <Check className="w-8 h-8 text-green-400"/>
+                            </div>
+                            <h2 className="text-2xl font-bold mb-4">이메일이 전송되었습니다</h2>
+                            <p className="text-gray-400 mb-6">
+                                {email} 주소로 비밀번호 재설정 링크를 발송했습니다. <br/>
+                                이메일을 확인하여 비밀번호를 재설정해주세요.
+                            </p>
+                            <p className="text-sm text-gray-500 mb-6">
+                                이메일이 도착하지 않았다면 스팸 폴더를 확인하거나 다시 시도해주세요.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setIsSuccess(false)
+                                    setEmail('')
+                                }}
+                                className="text-green-400 hover:text-green-300 transition-colors"
+                            >
+                                다른 이메일로 다시 시도
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Login Link */}
+                    {!isSuccess && (
+                        <p className="text-center mt-8 text-gray-400">
+                            계정이 기억나셨나요?{' '}
+                            <Link href="/auth/login" className="text-green-400 hover:text-green-300 transition-colors">
+                                로그인하기
+                            </Link>
+                        </p>
                     )}
                 </div>
             </div>
