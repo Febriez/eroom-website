@@ -6,90 +6,110 @@
 
 ![EROOM 로고](https://via.placeholder.com/300x150?text=EROOM)
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.2.5-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Firebase](https://img.shields.io/badge/Firebase-10.7.1-orange?style=for-the-badge&logo=firebase&logoColor=white)](https://firebase.google.com)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4.1-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-
 </div>
 
-## 🎮 프로젝트 소개
+## 📌 이용 가이드
 
-**EROOM**은 혁신적인 온라인 방탈출 게임 플랫폼입니다. 사용자들은 다양한 테마의 방탈출 맵을 플레이하거나 직접 제작할 수 있으며, 실시간으로 친구들과 함께 협력하여 문제를 해결할 수 있습니다.
+**EROOM**은 다양한 테마의 온라인 방탈출 게임을 즐기고 제작할 수 있는 플랫폼입니다. 아래 가이드를 통해 EROOM을 시작해보세요!
 
-### ✨ 주요 기능
+### 🔑 시작하기
 
-- 🔐 **다양한 탈출 맵**: 퍼즐, 공포, 모험 등 다양한 테마의 맵을 플레이
-- 🛠️ **맵 제작 도구**: 직관적인 인터페이스로 자신만의 맵 제작 가능
-- 👥 **멀티플레이어**: 친구들과 함께 실시간으로 방탈출 도전
-- 🏆 **리더보드**: 최고 기록을 세우고 친구들과 경쟁
-- 🌙 **프로필 시스템**: 레벨 업, 업적 달성, 친구 추가 기능
-- 💬 **커뮤니티**: 맵 평가, 댓글, 포럼 등의 소통 공간
+#### 1. 계정 생성 및 로그인
 
-## 🚀 시작하기
+- 홈페이지 우측 상단의 '로그인' 버튼을 클릭합니다.
+- 처음 방문하신 경우 '회원가입'을 선택하여 계정을 생성합니다.
+- 이메일 주소와 비밀번호를 입력하거나 소셜 계정(Google, Facebook)으로 간편하게 가입할 수 있습니다.
 
-### 사전 요구사항
+#### 2. 메인 페이지 둘러보기
 
-- Node.js 18.0.0 이상
-- npm 또는 yarn
-- Firebase 계정
+- 로그인 후 메인 페이지에서 인기 맵, 신규 맵, 추천 맵을 확인할 수 있습니다.
+- 상단 네비게이션 바를 통해 다양한 메뉴로 이동할 수 있습니다.
 
-### 설치 방법
+### 🎮 게임 플레이하기
 
-1. 저장소 복제
+#### 1. 맵 선택하기
 
-```bash
-git clone https://github.com/your-username/eroom-website.git
-cd eroom-website
-```
+- '맵 목록'에서 다양한 테마와 난이도의 방탈출 맵을 확인할 수 있습니다.
+- 맵 카드에는 테마, 난이도, 평점, 플레이 시간 등 정보가 표시됩니다.
+- 원하는 맵을 클릭하여 상세 정보를 확인할 수 있습니다.
 
-2. 의존성 설치
+#### 2. 솔로 플레이
 
-```bash
-npm install
-# 또는
-yarn install
-```
+- 맵 상세 페이지에서 '게임 시작' 버튼을 클릭하여 혼자서 도전할 수 있습니다.
+- 게임 중 힌트 기능을 사용할 수 있으며, 제한 시간 내에 모든 퍼즐을 해결해야 합니다.
 
-3. 환경 변수 설정
+#### 3. 멀티플레이
 
-`.env.local` 파일을 생성하고 Firebase 프로젝트 정보를 입력하세요:
+- '함께하기' 버튼을 클릭하여 친구들과 함께 플레이할 수 있습니다.
+- 방 코드를 생성하여 친구들에게 공유하거나, 친구가 공유한 코드를 입력하여 참여할 수 있습니다.
+- 실시간 음성/채팅 기능을 통해 소통하며 협력할 수 있습니다.
 
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
-```
+### 🛠️ 나만의 맵 만들기
 
-4. 개발 서버 실행
+#### 1. 맵 에디터 접속하기
 
-```bash
-npm run dev
-# 또는
-yarn dev
-```
+- '맵 제작' 메뉴를 클릭하여 맵 에디터로 이동합니다.
+- 처음 사용하는 경우 간단한 튜토리얼이 제공됩니다.
 
-5. [http://localhost:3000](http://localhost:3000)에서 웹사이트 확인
+#### 2. 맵 디자인하기
 
-## 📂 프로젝트 구조
+- 다양한 테마와 오브젝트를 선택하여 방의 기본 구조를 설계합니다.
+- 퍼즐과 단서를 배치하고 상호작용을 설정합니다.
+- 퍼즐의 난이도와 힌트를 조절할 수 있습니다.
 
-```
-eroom-website/
-├── app/                    # Next.js 13+ 앱 디렉토리
-│   ├── components/         # 재사용 가능한 UI 컴포넌트
-│   ├── contexts/           # React Context API 정의
-│   ├── lib/                # 유틸리티 및 헬퍼 함수
-│   ├── community/          # 커뮤니티 관련 페이지
-│   │   └── maps/          # 사용자 제작 맵 목록/상세 페이지
-│   ├── profile/           # 사용자 프로필 페이지
-│   └── [...]/             # 기타 페이지들
-├── public/                 # 정적 파일 (이미지, 아이콘 등)
-└── ...                     # 설정 파일 등
-```
+#### 3. 맵 테스트 및 발행하기
+
+- '테스트 플레이' 기능으로 제작한 맵을 미리 체험해볼 수 있습니다.
+- 모든 설정이 완료되면 '발행하기' 버튼을 클릭하여 커뮤니티에 공유합니다.
+- 공개 설정을 통해 전체 공개 또는 친구에게만 공유할 수 있습니다.
+
+### 👥 커뮤니티 활동
+
+#### 1. 맵 평가 및 리뷰
+
+- 플레이한 맵에 별점과 리뷰를 남겨 다른 사용자들에게 도움을 줄 수 있습니다.
+- 맵 제작자에게 피드백을 전달할 수 있습니다.
+
+#### 2. 친구 추가 및 소통
+
+- 프로필 페이지에서 다른 사용자를 검색하여 친구 추가할 수 있습니다.
+- 친구와 메시지를 주고받거나 함께 게임에 초대할 수 있습니다.
+
+#### 3. 랭킹 및 도전과제
+
+- '리더보드' 메뉴에서 각 맵별 최고 기록과 전체 랭킹을 확인할 수 있습니다.
+- 다양한 도전과제를 달성하여 프로필 뱃지와 보상을 획득할 수 있습니다.
+
+### 📱 모바일 이용 안내
+
+- EROOM은 반응형 디자인으로 모바일에서도 편리하게 이용할 수 있습니다.
+- 앱 스토어나 구글 플레이에서 'EROOM' 앱을 다운로드하면 더 최적화된 환경에서 즐길 수 있습니다.
+
+## 💡 자주 묻는 질문
+
+#### Q: 맵 플레이는 무료인가요?
+
+- A: 기본 맵은 무료로 이용 가능하며, 프리미엄 맵은 포인트를 사용하여 플레이할 수 있습니다.
+
+#### Q: 친구들과 어떻게 함께 플레이하나요?
+
+- A: 맵 상세 페이지에서 '함께하기' 버튼을 클릭한 후 생성된 방 코드를 친구들에게 공유하세요.
+
+#### Q: 내가 만든 맵으로 수익을 얻을 수 있나요?
+
+- A: 네! 크리에이터 프로그램에 가입하면 제작한 맵의 인기도에 따라 수익을 창출할 수 있습니다.
+
+## 📧 고객 지원
+
+문의사항이 있으시면 [이메일](mailto:contact@eroom-game.com) 또는 사이트 내 '고객센터' 메뉴를 통해 연락주세요.
+
+---
+
+<div align="center">
+
+### EROOM - 당신이 만드는 방탈출의 세계
+
+</div>
 
 ## 🛠️ 기술 스택
 
@@ -99,19 +119,9 @@ eroom-website/
 - **스타일링**: TailwindCSS
 - **배포**: Vercel
 
-## 📜 라이선스
-
-이 프로젝트는 [MIT 라이선스](LICENSE)로 배포됩니다.
-
-## 🤝 기여하기
-
-기여는 항상 환영합니다! 버그 리포트, 기능 제안, 또는 코드 기여는 이슈 또는 풀 리퀘스트를 통해 제출해주세요.
-
 ## 📧 연락처
 
-문의사항이 있으시면 [이메일](mailto:contact@eroom-game.com) 또는 [공식 웹사이트](https://eroom-game.com)를 통해 연락주세요.
-
----
+문의사항이 있으시면 [이메일](mailto:pickpictest@gmail.com) 또는 [공식 웹사이트](https://e-room.kro.kr)를 통해 연락주세요.
 
 <div align="center">
 
