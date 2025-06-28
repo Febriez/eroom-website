@@ -15,38 +15,38 @@ interface PatchNote {
 export default function PatchNotesSection() {
     const patchNotes: PatchNote[] = [
         {
-            version: "2.0.0",
-            date: "2025.06.20",
+            version: "1.0.0",
+            date: "2025.07.07",
             type: "major",
-            title: "AI 엔진 대규모 업데이트",
+            title: "이룸(Eroom) 정식 출시",
             highlights: [
-                "GPT-4 기반 맵 생성 알고리즘 개선",
-                "실시간 난이도 조절 시스템 추가",
-                "40개 이상의 새로운 퍼즐 메커니즘"
+                "AI 기반 방탈출 맵 자동 생성 플랫폼 정식 출시",
+                "Shap-E, Claude Sonnet 4를 활용한 3D 오브젝트 및 시나리오 자동 생성",
+                "Unity 기반 실시간 방탈출 게임 플레이 지원"
             ],
             icon: <Sparkles className="w-6 h-6"/>
         },
         {
-            version: "1.9.5",
-            date: "2025.06.15",
+            version: "0.9.0",
+            date: "2025.06.28",
             type: "minor",
-            title: "협동 플레이 개선",
+            title: "Beta v0.9 업데이트",
             highlights: [
-                "음성 채팅 품질 향상",
-                "새로운 팀 전용 퍼즐 추가",
-                "친구 초대 시스템 개편"
+                "키워드&입력 버튼 UI 생성",
+                "파이어베이스 콜렉션 경로 변경",
+                "프로젝트 웹사이트 제작"
             ],
             icon: <Gamepad2 className="w-6 h-6"/>
         },
         {
-            version: "1.9.4",
-            date: "2025.06.10",
-            type: "hotfix",
-            title: "버그 수정 및 최적화",
+            version: "0.8.0",
+            date: "2025.06.26",
+            type: "minor",
+            title: "Beta v0.8 업데이트",
             highlights: [
-                "메모리 누수 문제 해결",
-                "로딩 시간 30% 단축",
-                "충돌 문제 수정"
+                "실제 게임 컴포넌트와 roomsave 메서드 연동",
+                "로딩창 팁 메시지 동적 변경 기능",
+                "방생성 로컬/서버 저장 기능 구현"
             ],
             icon: <Bug className="w-6 h-6"/>
         }
@@ -98,8 +98,9 @@ export default function PatchNotesSection() {
                 {/* Patch Notes Cards */}
                 <div className="grid gap-8 mb-16">
                     {patchNotes.map((note, index) => (
-                        <div
+                        <Link
                             key={index}
+                            href={`/news/updates/${note.version}`}
                             className="group relative bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-10 border border-gray-800 hover:border-green-600/50 transition-all duration-500"
                         >
                             <div className="flex items-start gap-8">
@@ -141,7 +142,7 @@ export default function PatchNotesSection() {
                                 <ArrowRight
                                     className="w-8 h-8 text-gray-600 group-hover:text-green-400 group-hover:translate-x-2 transition-all duration-300 flex-shrink-0 mt-8"/>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
 

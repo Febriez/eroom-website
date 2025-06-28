@@ -20,57 +20,58 @@ export default function UpdatesPage() {
 
     const allPatchNotes: PatchNote[] = [
         {
-            version: "2.0.0",
-            date: "2025.06.20",
+            version: "1.0.0",
+            date: "2025.07.07",
             type: "major",
-            title: "AI 엔진 대규모 업데이트",
-            description: "차세대 AI 기술을 적용한 대규모 업데이트입니다. 더욱 똑똑하고 창의적인 맵 생성이 가능해졌습니다.",
+            title: "이룸(Eroom) 정식 출시",
+            description: "이룸(Eroom) 방탈출 게임이 정식 출시되었습니다.",
             features: [
-                "GPT-4 기반 맵 생성 알고리즘 도입",
-                "실시간 난이도 조절 시스템",
-                "40개 이상의 새로운 퍼즐 메커니즘",
-                "AI 힌트 시스템 추가"
-            ],
-            improvements: [
-                "맵 생성 속도 50% 향상",
-                "메모리 사용량 30% 감소",
-                "그래픽 품질 개선"
+                "AI 기반 방탈출 맵 자동 생성 플랫폼 정식 출시",
+                "Shap-E, Claude Sonnet 4를 활용한 3D 오브젝트 및 시나리오 자동 생성",
+                "Unity 기반 실시간 방탈출 게임 플레이 지원"
             ],
             icon: <Sparkles className="w-6 h-6"/>
         },
         {
-            version: "1.9.5",
-            date: "2025.06.15",
+            version: "0.9.0",
+            date: "2025.06.28",
             type: "minor",
-            title: "협동 플레이 개선",
-            description: "친구들과 함께하는 플레이가 더욱 즐거워집니다.",
+            title: "Beta v0.9 업데이트",
+            description: "베타 버전 0.9 업데이트가 배포되었습니다.",
             features: [
-                "새로운 4인 협동 전용 맵",
-                "역할 분담 시스템 추가",
-                "팀 전용 도전과제"
+                "키워드&입력 버튼 UI 생성",
+                "프로젝트 웹사이트 제작",
+                "클라이언트 플레이씬 구현 및 코드 리팩토링"
             ],
             improvements: [
-                "음성 채팅 품질 향상",
-                "매칭 시스템 개선",
-                "친구 초대 UI 개편"
+                "파이어베이스 콜렉션 경로 변경",
+                "효과음 모델 비교 및 선정",
+                "Eroom 결제(크레딧 구매) 연동 완료"
             ],
             bugfixes: [
-                "간헐적 연결 끊김 문제 해결",
-                "음성 채팅 에코 문제 수정"
+                "Firebase 연동 오류 수정",
+                "코드 정리 및 디버깅 메시지 최적화"
             ],
             icon: <Users className="w-6 h-6"/>
         },
         {
-            version: "1.9.4",
-            date: "2025.06.10",
-            type: "hotfix",
-            title: "긴급 버그 수정",
-            description: "안정성 향상을 위한 긴급 패치입니다.",
+            version: "0.8.0",
+            date: "2025.06.26",
+            type: "minor",
+            title: "Beta v0.8 업데이트",
+            description: "베타 버전 0.8 업데이트가 배포되었습니다.",
+            features: [
+                "실제 게임 컴포넌트와 roomsave 메서드 연동",
+                "로딩창 팁 메시지 동적 변경 기능",
+                "방생성 로컬/서버 저장 기능 구현"
+            ],
+            improvements: [
+                "룸데이터 연결 작업 완료",
+                "크레딧 버튼 결제창 연동"
+            ],
             bugfixes: [
-                "메모리 누수 문제 해결",
-                "특정 맵에서 발생하는 충돌 수정",
-                "저장 파일 손상 문제 해결",
-                "UI 겹침 현상 수정"
+                "Unity와 Firestore 프로퍼티 연동 문제 해결",
+                "JSON 파일 저장 시 무결성 검증 추가"
             ],
             icon: <Bug className="w-6 h-6"/>
         }
