@@ -167,7 +167,7 @@ export default function HeroSection() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-12 max-w-3xl mx-auto">
+                <div className="grid grid-cols-3 gap-12 max-w-3xl mx-auto mb-24">  {/* 하단 여백 추가 */}
                     <div className="text-center group">
                         <div
                             className="text-5xl font-black text-green-400 mb-3 group-hover:scale-110 transition-transform">
