@@ -214,7 +214,7 @@ export default function FAQPage() {
                 {searchTerm ? (
                     <div className="max-w-4xl mx-auto">
                         <p className="text-sm text-gray-400 mb-6">
-                            "{searchTerm}"에 대한 검색 결과 {filteredQuestions.length}개
+                            &ldquo;{searchTerm}&rdquo;에 대한 검색 결과 {filteredQuestions.length}개
                         </p>
                         <div className="space-y-4">
                             {filteredQuestions.map((item, index) => {
