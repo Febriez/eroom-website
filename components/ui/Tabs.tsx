@@ -2,39 +2,40 @@
 
 import * as React from 'react'
 
-interface TabsContextType {
-    activeTab: string
-    setActiveTab: (value: string) => void
+// 제네릭 TabsContext 정의
+interface TabsContextType<T extends string = string> {
+    activeTab: T
+    setActiveTab: (value: T) => void
 }
 
-const TabsContext = React.createContext<TabsContextType | undefined>(undefined)
+const TabsContext = React.createContext<TabsContextType<any> | undefined>(undefined)
 
-interface TabsProps {
-    defaultValue: string
-    value?: string
-    onValueChange?: (value: string) => void
+interface TabsProps<T extends string = string> {
+    defaultValue: T
+    value?: T
+    onValueChange?: (value: T) => void
     className?: string
     children: React.ReactNode
 }
 
-export function Tabs({
-                         defaultValue,
-                         value,
-                         onValueChange,
-                         className,
-                         children
-                     }: TabsProps) {
-    const [internalValue, setInternalValue] = React.useState(defaultValue)
+export function Tabs<T extends string = string>({
+                                                    defaultValue,
+                                                    value,
+                                                    onValueChange,
+                                                    className,
+                                                    children
+                                                }: TabsProps<T>) {
+    const [internalValue, setInternalValue] = React.useState<T>(defaultValue)
     const activeTab = value ?? internalValue
 
-    const setActiveTab = React.useCallback((newValue: string) => {
+    const setActiveTab = React.useCallback((newValue: T) => {
         if (!value) {
             setInternalValue(newValue)
         }
         onValueChange?.(newValue)
     }, [value, onValueChange])
 
-    const contextValue = React.useMemo(
+    const contextValue = React.useMemo<TabsContextType<T>>(
         () => ({activeTab, setActiveTab}),
         [activeTab, setActiveTab]
     )
@@ -72,7 +73,7 @@ export function TabsTrigger({
                                 disabled = false,
                                 children
                             }: TabsTriggerProps) {
-    const context = useTabsContext()
+    const context = useTabsContext<string>()
     const isActive = context.activeTab === value
 
     return (
@@ -110,7 +111,7 @@ export function TabsContent({
                                 forceMount = false,
                                 children
                             }: TabsContentProps) {
-    const {activeTab} = useTabsContext()
+    const {activeTab} = useTabsContext<string>()
     const isActive = activeTab === value
 
     if (!forceMount && !isActive) return null
@@ -130,9 +131,9 @@ export function TabsContent({
     )
 }
 
-// Hook to use tabs context
-export function useTabsContext() {
-    const context = React.useContext(TabsContext)
+// 제네릭 Context Hook
+export function useTabsContext<T extends string = string>() {
+    const context = React.useContext(TabsContext) as TabsContextType<T> | undefined
     if (!context) {
         throw new Error('Tabs components must be used within a Tabs provider')
     }
