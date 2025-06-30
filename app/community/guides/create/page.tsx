@@ -159,16 +159,16 @@ export default function CreateGuidePage() {
                         <p className="text-gray-400 mb-8">
                             가이드 작성은 로그인이 필요한 서비스입니다.
                         </p>
-                        <div className="flex justify-center space-x-4">
+                        <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
                             <Link
                                 href="/auth/login?redirect=/community/guides/create"
-                                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all"
+                                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all w-full sm:w-auto text-center"
                             >
                                 로그인하기
                             </Link>
                             <Link
                                 href="/community/guides"
-                                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all"
+                                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all w-full sm:w-auto text-center"
                             >
                                 가이드 목록으로
                             </Link>

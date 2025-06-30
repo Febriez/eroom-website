@@ -113,7 +113,7 @@ export default function MapDetailPage() {
                 </button>
 
                 {/* 맵 헤더 */}
-                <div className="grid grid-cols-3 gap-8 mb-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12">
                     {/* 맵 이미지/프리뷰 */}
                     <div className="col-span-2">
                         <div className="aspect-video bg-gradient-to-br from-green-900/30 to-black rounded-2xl overflow-hidden border border-gray-800">
@@ -206,8 +206,8 @@ export default function MapDetailPage() {
                 </div>
 
                 {/* 맵 상세 정보 */}
-                <div className="grid grid-cols-3 gap-8 mb-32">
-                    <div className="col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-16 lg:mb-32">
+                    <div className="col-span-1 lg:col-span-2 space-y-6 lg:space-y-8">
                         {/* 설명 */}
                         <div className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                             <h2 className="text-xl font-bold mb-4">맵 설명</h2>

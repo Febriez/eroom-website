@@ -231,7 +231,7 @@ export default function GuidesPage() {
                 </div>
 
                 {/* Search and Filter */}
-                <div className="flex gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
                     <div className="flex-1 relative">
                         <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"/>
                         <input
@@ -242,7 +242,7 @@ export default function GuidesPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-4 sm:mt-0 overflow-x-auto pb-2 sm:pb-0">
                         <button
                             onClick={() => setFilter('recent')}
                             className={`px-6 py-4 rounded-xl font-medium transition-all ${

@@ -11,12 +11,14 @@ import {
     Key,
     Lock,
     LogOut,
+    Menu,
     Shield,
     ShoppingCart,
     Sparkles,
     Star,
     User,
-    Users
+    Users,
+    X
 } from 'lucide-react'
 import Link from 'next/link'
 import {useAuth} from '../contexts/AuthContext'
@@ -59,6 +61,7 @@ export default function Navigation() {
     const [activeDropdown, setActiveDropdown] = useState<number | null>(null)
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const {user, logout, loading} = useAuth()
 
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -208,20 +211,32 @@ export default function Navigation() {
                     <Link href="/" className="flex items-center space-x-4">
                         <div className="relative group">
                             <div
-                                className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center transform rotate-12 transition-all duration-300 group-hover:rotate-45">
+                                className="w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center transform rotate-12 transition-all duration-300 group-hover:rotate-45">
                                 <Key
-                                    className="w-7 h-7 transform -rotate-12 transition-all duration-300 group-hover:-rotate-45"/>
+                                    className="w-5 h-5 sm:w-7 sm:h-7 transform -rotate-12 transition-all duration-300 group-hover:-rotate-45"/>
                             </div>
                             <div
                                 className="absolute inset-0 bg-green-500/30 rounded-xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight">BangtalBoyBand</h1>
+                            <h1 className="text-xl sm:text-2xl font-black tracking-tight">BangtalBoyBand</h1>
                             <p className="text-xs text-gray-500 tracking-widest uppercase">AI Gaming Studio</p>
                         </div>
                     </Link>
 
-                    <div className="hidden md:flex items-center space-x-1">
+                    {/* 모바일 메뉴 버튼 */}
+                    <button 
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="lg:hidden ml-auto mr-4 p-2"
+                    >
+                        {mobileMenuOpen ? (
+                            <X className="w-6 h-6 text-gray-300" />
+                        ) : (
+                            <Menu className="w-6 h-6 text-gray-300" />
+                        )}
+                    </button>
+
+                    <div className="hidden lg:flex items-center space-x-1">
                         {menuItems.map((item, index) => (
                             <div key={index} className="relative" onMouseEnter={() => setActiveDropdown(index)}
                                  onMouseLeave={() => setActiveDropdown(null)}>
@@ -254,6 +269,60 @@ export default function Navigation() {
                             </div>
                         ))}
                     </div>
+
+                    {/* 모바일 메뉴 */}
+                    {mobileMenuOpen && (
+                        <div className="lg:hidden fixed inset-0 z-40 pt-20 bg-black/95 overflow-y-auto">
+                            <div className="px-4 py-6 space-y-4">
+                                {menuItems.map((item, index) => (
+                                    <div key={index} className="border-b border-gray-800 pb-4">
+                                        <button 
+                                            onClick={() => setActiveDropdown(activeDropdown === index ? null : index)}
+                                            className="w-full flex justify-between items-center py-2 text-gray-300 font-medium"
+                                        >
+                                            {item.title}
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === index ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        <div className={`mt-2 space-y-2 ${activeDropdown === index ? 'block' : 'hidden'}`}>
+                                            {item.submenu.map((subitem, subIndex) => (
+                                                <Link key={subIndex} href={subitem.href}
+                                                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-green-900/20 transition-all duration-200"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <div className="p-2 bg-green-900/30 rounded-lg text-green-400">
+                                                        {subitem.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-white">{subitem.name}</h4>
+                                                        <p className="text-sm text-gray-500">{subitem.desc}</p>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* 모바일 메뉴 로그인/회원가입 버튼 */}
+                                {!user && (
+                                    <div className="pt-4 flex flex-col space-y-3">
+                                        <Link href="/auth/login"
+                                            className="w-full px-4 py-3 text-center text-gray-300 hover:text-white font-medium transition-colors duration-200 border border-gray-800 rounded-lg"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            로그인
+                                        </Link>
+                                        <Link href="/auth/signup"
+                                            className="w-full px-4 py-3 text-center bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            회원가입
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex items-center ml-4">
                         {loading ? (
@@ -344,7 +413,7 @@ export default function Navigation() {
                                 </div>
                             </>
                         ) : (
-                            <div className="hidden md:flex items-center space-x-4">
+                            <div className="hidden lg:flex items-center space-x-4">
                                 <Link href="/auth/login"
                                       className="px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors duration-200">
                                     로그인

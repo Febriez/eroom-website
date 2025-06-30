@@ -489,8 +489,8 @@ export default function ProfilePage() {
                 {/* Profile Header */}
                 <div
                     className="bg-gradient-to-br from-gray-900/50 to-black rounded-3xl p-12 border border-gray-800 mb-12">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-8">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-6">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 w-full sm:w-auto">
                             {/* Avatar */}
                             <div className="relative">
                                 <div
@@ -687,7 +687,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-4 gap-6 mt-12">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mt-8 sm:mt-12">
                         <div className="bg-gray-900/50 rounded-xl p-6 text-center">
                             <p className="text-3xl font-bold text-green-400">{profile.points?.toLocaleString() || 0}</p>
                             <p className="text-gray-400 mt-1">포인트</p>
@@ -832,16 +832,16 @@ export default function ProfilePage() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                     {/* Achievements */}
-                    <div className="col-span-2">
+                    <div className="col-span-1 lg:col-span-2">
                         <div
                             className="bg-gradient-to-br from-gray-900/50 to-black rounded-2xl p-8 border border-gray-800">
                             <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                                 <Trophy className="w-6 h-6 text-green-400"/>
                                 업적
                             </h2>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 {achievements.map((achievement) => (
                                     <div
                                         key={achievement.id}

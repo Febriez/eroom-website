@@ -130,29 +130,30 @@ export default function HeroSection() {
 
                 {/* Main Title */}
                 <h1 className="mb-12">
-          <span className="block text-7xl font-black text-white mb-4 tracking-tight">
+          <span className="block text-4xl sm:text-5xl md:text-7xl font-black text-white mb-4 tracking-tight">
             차세대 AI 게이밍
           </span>
-                    <span className="block text-9xl font-black gradient-text tracking-tight">
+                    <span className="block text-6xl sm:text-7xl md:text-9xl font-black gradient-text tracking-tight">
             EROOM
           </span>
                 </h1>
 
                 {/* Description */}
-                <p className="text-2xl text-gray-300 mb-20 max-w-4xl mx-auto leading-relaxed font-light">
+                <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 sm:mb-20 max-w-4xl mx-auto leading-relaxed font-light px-4 sm:px-0">
                     인공지능이 실시간으로 생성하는 독창적인 방탈출 퍼즐.
-                    <br/>
+                    <br className="hidden sm:block"/>
+                    <span className="sm:hidden"> </span>
                     당신의 창의력으로 만든 방을 전 세계와 공유하세요.
                 </p>
 
                 {/* CTA Buttons */}
-                <div className="flex gap-8 justify-center items-center mb-32">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 justify-center items-center mb-16 sm:mb-32 px-4 sm:px-0">
                     <Link
                         href="/download"
-                        className="group relative px-12 py-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl font-bold text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-900/50 overflow-hidden flex items-center gap-4"
+                        className="group relative w-full sm:w-auto px-6 sm:px-12 py-4 sm:py-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl font-bold text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-900/50 overflow-hidden flex items-center justify-center gap-3 sm:gap-4"
                     >
-            <span className="relative z-10 flex items-center gap-4">
-              <Download className="w-6 h-6"/>
+            <span className="relative z-10 flex items-center gap-3 sm:gap-4">
+              <Download className="w-5 h-5 sm:w-6 sm:h-6"/>
               무료 다운로드
             </span>
                         <div
@@ -160,14 +161,14 @@ export default function HeroSection() {
                     </Link>
 
                     <button
-                        className="group px-12 py-6 border-2 border-green-700 rounded-xl font-bold text-xl hover:bg-green-900/30 backdrop-blur-sm transition-all duration-300 flex items-center gap-4">
-                        <Play className="w-6 h-6 group-hover:scale-110 transition-transform"/>
+                        className="group w-full sm:w-auto px-6 sm:px-12 py-4 sm:py-6 border-2 border-green-700 rounded-xl font-bold text-lg sm:text-xl hover:bg-green-900/30 backdrop-blur-sm transition-all duration-300 flex items-center justify-center gap-3 sm:gap-4">
+                        <Play className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform"/>
                         게임플레이 영상
                     </button>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-12 max-w-3xl mx-auto mb-24">  {/* 하단 여백 추가 */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-12 max-w-3xl mx-auto mb-16 sm:mb-24 px-4 sm:px-0">  {/* 하단 여백 추가 */}
                     <div className="text-center group">
                         <div
                             className="text-5xl font-black text-green-400 mb-3 group-hover:scale-110 transition-transform">

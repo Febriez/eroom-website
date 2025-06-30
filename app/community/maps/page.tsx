@@ -145,7 +145,7 @@ export default function MapsPage() {
 
                 {/* 필터 및 검색 */}
                 <div className="bg-gray-900/50 rounded-2xl p-6 mb-10 border border-gray-800">
-                    <div className="flex flex-wrap gap-6">
+                    <div className="flex flex-wrap gap-4 sm:gap-6">
                         {/* 검색 */}
                         <div className="flex-1 min-w-[300px]">
                             <div className="relative">
@@ -232,7 +232,7 @@ export default function MapsPage() {
                         <p className="text-gray-400">검색 조건을 변경하거나 필터를 초기화해보세요.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         {filteredMaps.map((map) => (
                             <Link href={`/community/maps/${map.id}`} key={map.id}>
                                 <div

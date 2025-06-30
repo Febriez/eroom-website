@@ -12,16 +12,16 @@ export default function LoginRequiredPage() {
                 <p className="text-gray-400 mb-8">
                     프로필 정보 확인은 로그인이 필요한 서비스입니다.
                 </p>
-                <div className="flex flex-col space-y-3">
+                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                     <Link
                         href="/auth/login"
-                        className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all"
+                        className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all w-full sm:w-auto text-center"
                     >
                         로그인하기
                     </Link>
                     <Link
                         href="/"
-                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all"
+                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all w-full sm:w-auto text-center"
                     >
                         홈으로 돌아가기
                     </Link>
