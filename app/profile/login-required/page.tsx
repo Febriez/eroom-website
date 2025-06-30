@@ -10,7 +10,7 @@ export default function LoginRequiredPage() {
                 <User className="w-16 h-16 text-green-500 mx-auto mb-6" />
                 <h2 className="text-3xl font-bold mb-4">로그인이 필요합니다</h2>
                 <p className="text-gray-400 mb-8">
-                    프로필 정보를 확인하기 위해서는 로그인이 필요한 서비스입니다.
+                    프로필 정보 확인은 로그인이 필요한 서비스입니다.
                 </p>
                 <div className="flex flex-col space-y-3">
                     <Link
