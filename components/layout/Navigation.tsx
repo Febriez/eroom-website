@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
+// @ts-ignore - useConversations를 아직 생성 중
+import {useConversations} from '@/lib/hooks/useConversations'
 import {Avatar} from '../ui/Avatar'
 import {Dropdown} from '../ui/Dropdown'
 import {Button} from '../ui/Button'
@@ -41,8 +43,12 @@ interface MenuItem {
 export default function Navigation() {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [activeMenu, setActiveMenu] = useState<number | null>(null)
+    const [showNotifications, setShowNotifications] = useState(false)
+    const [showMessages, setShowMessages] = useState(false)
     const {user, logout} = useAuth()
-    const {unreadCount} = useNotifications()
+    const {notifications, unreadCount} = useNotifications()
+    const {conversations, totalUnreadCount} = useConversations()
     const router = useRouter()
 
     useEffect(() => {
@@ -108,10 +114,57 @@ export default function Navigation() {
         }
     }
 
+    const formatTime = (timestamp: any) => {
+        if (!timestamp) return ''
+
+        // Firestore Timestamp를 Date로 변환
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+        const now = new Date()
+        const diff = now.getTime() - date.getTime()
+        const minutes = Math.floor(diff / 60000)
+        const hours = Math.floor(diff / 3600000)
+        const days = Math.floor(diff / 86400000)
+
+        if (minutes < 1) return '방금'
+        if (minutes < 60) return `${minutes}분 전`
+        if (hours < 24) return `${hours}시간 전`
+        return `${days}일 전`
+    }
+
+    const getNotificationIcon = (type: string) => {
+        switch (type) {
+            case 'friend_request':
+                return {
+                    icon: <Users className="w-4 h-4 text-blue-400"/>,
+                    bg: 'bg-gray-800'
+                }
+            case 'message':
+                return {
+                    icon: <MessageSquare className="w-4 h-4 text-green-400"/>,
+                    bg: 'bg-gray-800'
+                }
+            case 'game_invite':
+                return {
+                    icon: <Sparkles className="w-4 h-4 text-purple-400"/>,
+                    bg: 'bg-gray-800'
+                }
+            case 'achievement':
+                return {
+                    icon: <Star className="w-4 h-4 text-yellow-400"/>,
+                    bg: 'bg-gray-800'
+                }
+            default:
+                return {
+                    icon: <Bell className="w-4 h-4 text-gray-400"/>,
+                    bg: 'bg-gray-800'
+                }
+        }
+    }
+
     return (
         <>
-            <nav className={`fixed w-full z-50 transition-all duration-300 safe-top ${
-                scrolled ? 'bg-black/98 backdrop-blur-xl shadow-lg shadow-black/50' : 'bg-gradient-to-b from-black to-transparent'
+            <nav className={`fixed w-full z-40 transition-all duration-300 safe-top ${
+                scrolled ? 'bg-black/90 backdrop-blur-xl shadow-lg shadow-black/50' : 'bg-gradient-to-b from-black to-transparent'
             }`}>
                 <div className="container-custom">
                     <div className="flex items-center justify-between h-16 sm:h-20">
@@ -133,40 +186,52 @@ export default function Navigation() {
                             </div>
                         </Link>
 
-                        {/* Desktop Menu */}
+                        {/* Desktop Menu with Hover */}
                         <div className="hidden lg:flex items-center space-x-1">
                             {menuItems.map((item, index) => (
-                                <Dropdown
+                                <div
                                     key={index}
-                                    trigger={
-                                        <button
-                                            className="px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200 flex items-center gap-1">
-                                            {item.title}
-                                            <ChevronDown className="w-4 h-4"/>
-                                        </button>
-                                    }
+                                    className="relative"
+                                    onMouseEnter={() => setActiveMenu(index)}
+                                    onMouseLeave={() => setActiveMenu(null)}
                                 >
-                                    <div className="p-2">
-                                        {item.submenu.map((subitem, subIndex) => (
-                                            <Link
-                                                key={subIndex}
-                                                href={subitem.href}
-                                                className="flex items-start gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200 group"
-                                            >
-                                                <div
-                                                    className="p-2 bg-green-900/30 rounded-lg text-green-400 group-hover:bg-green-800/40 transition-colors">
-                                                    {subitem.icon}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-white group-hover:text-green-400 transition-colors">
-                                                        {subitem.name}
-                                                    </h4>
-                                                    <p className="text-sm text-gray-500 mt-1">{subitem.desc}</p>
-                                                </div>
-                                            </Link>
-                                        ))}
+                                    <button
+                                        className="px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200 flex items-center gap-1">
+                                        {item.title}
+                                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                                            activeMenu === index ? 'rotate-180' : ''
+                                        }`}/>
+                                    </button>
+
+                                    {/* Dropdown Menu */}
+                                    <div
+                                        className={`absolute top-full left-0 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
+                                            activeMenu === index
+                                                ? 'opacity-100 visible translate-y-0'
+                                                : 'opacity-0 invisible -translate-y-2'
+                                        }`}>
+                                        <div className="p-2">
+                                            {item.submenu.map((subitem, subIndex) => (
+                                                <Link
+                                                    key={subIndex}
+                                                    href={subitem.href}
+                                                    className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-900 transition-all duration-200 group"
+                                                >
+                                                    <div
+                                                        className="p-2 bg-gray-800 rounded-lg text-green-400 group-hover:bg-gray-700 transition-colors">
+                                                        {subitem.icon}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-semibold text-white group-hover:text-green-400 transition-colors">
+                                                            {subitem.name}
+                                                        </h4>
+                                                        <p className="text-sm text-gray-500 mt-1">{subitem.desc}</p>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
                                     </div>
-                                </Dropdown>
+                                </div>
                             ))}
                         </div>
 
@@ -174,27 +239,168 @@ export default function Navigation() {
                         <div className="flex items-center gap-2 sm:gap-4">
                             {user ? (
                                 <>
-                                    {/* Message Button */}
-                                    <button
-                                        onClick={() => router.push('/messages')}
-                                        className="relative p-2 sm:p-3"
+                                    {/* Message Button with Preview */}
+                                    <div
+                                        className="relative"
+                                        onMouseEnter={() => setShowMessages(true)}
+                                        onMouseLeave={() => setShowMessages(false)}
                                     >
-                                        <MessageSquare
-                                            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
-                                    </button>
+                                        <button
+                                            onClick={() => router.push('/messages')}
+                                            className="relative p-2 sm:p-3"
+                                        >
+                                            <MessageSquare
+                                                className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
+                                            {totalUnreadCount > 0 && (
+                                                <span
+                                                    className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                                            )}
+                                        </button>
 
-                                    {/* Notification Button */}
-                                    <button
-                                        onClick={() => router.push('/notifications')}
-                                        className="relative p-2 sm:p-3"
+                                        {/* Message Preview */}
+                                        <div
+                                            className={`absolute top-full right-0 mt-2 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
+                                                showMessages
+                                                    ? 'opacity-100 visible translate-y-0'
+                                                    : 'opacity-0 invisible -translate-y-2'
+                                            }`}>
+                                            <div className="p-4 border-b border-gray-800">
+                                                <h3 className="font-semibold flex items-center justify-between">
+                                                    메시지
+                                                    <button
+                                                        onClick={() => router.push(`/profile/${user.username}`)}
+                                                        className="text-xs text-gray-500 hover:text-green-400 transition-colors"
+                                                    >
+                                                        모두 보기
+                                                    </button>
+                                                </h3>
+                                            </div>
+                                            <div className="max-h-80 overflow-y-auto">
+                                                {conversations.length > 0 ? (
+                                                    conversations.slice(0, 3).map((conversation) => {
+                                                        const unreadCount = conversation.unreadCount?.[user.uid] || 0
+                                                        const hasUnread = unreadCount > 0
+
+                                                        return (
+                                                            <div
+                                                                key={conversation.id}
+                                                                className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
+                                                                    hasUnread ? 'bg-gray-900' : ''
+                                                                }`}
+                                                                onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <Avatar
+                                                                        src={conversation.otherParticipant?.avatarUrl}
+                                                                        size="sm"
+                                                                    />
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div
+                                                                            className="flex items-center justify-between">
+                                                                            <p className="font-medium text-sm">
+                                                                                {conversation.otherParticipant?.displayName || 'Unknown'}
+                                                                            </p>
+                                                                            <span className="text-xs text-gray-500">
+                                                                                {conversation.lastMessage && formatTime(conversation.lastMessage.timestamp)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-sm text-gray-400 truncate mt-1">
+                                                                            {conversation.lastMessage?.content || '대화를 시작하세요'}
+                                                                        </p>
+                                                                    </div>
+                                                                    {hasUnread && (
+                                                                        <span
+                                                                            className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
+                                                                            {unreadCount}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })
+                                                ) : (
+                                                    <div className="p-8 text-center text-gray-500">
+                                                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50"/>
+                                                        <p className="text-sm">메시지가 없습니다</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Notification Button with Preview */}
+                                    <div
+                                        className="relative"
+                                        onMouseEnter={() => setShowNotifications(true)}
+                                        onMouseLeave={() => setShowNotifications(false)}
                                     >
-                                        <Bell
-                                            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
-                                        {unreadCount > 0 && (
-                                            <span
-                                                className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                                        )}
-                                    </button>
+                                        <button
+                                            onClick={() => router.push('/notifications')}
+                                            className="relative p-2 sm:p-3"
+                                        >
+                                            <Bell
+                                                className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
+                                            {unreadCount > 0 && (
+                                                <span
+                                                    className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                            )}
+                                        </button>
+
+                                        {/* Notification Preview */}
+                                        <div
+                                            className={`absolute top-full right-0 mt-2 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
+                                                showNotifications
+                                                    ? 'opacity-100 visible translate-y-0'
+                                                    : 'opacity-0 invisible -translate-y-2'
+                                            }`}>
+                                            <div className="p-4 border-b border-gray-800">
+                                                <h3 className="font-semibold flex items-center justify-between">
+                                                    알림
+                                                    <button
+                                                        onClick={() => router.push(`/profile/${user.username}`)}
+                                                        className="text-xs text-gray-500 hover:text-green-400 transition-colors"
+                                                    >
+                                                        모두 보기
+                                                    </button>
+                                                </h3>
+                                            </div>
+                                            <div className="max-h-80 overflow-y-auto">
+                                                {notifications.length > 0 ? (
+                                                    notifications.slice(0, 3).map((notif) => {
+                                                        const icon = getNotificationIcon(notif.type)
+                                                        return (
+                                                            <div
+                                                                key={notif.id}
+                                                                className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
+                                                                    !notif.read ? 'bg-gray-900' : ''
+                                                                }`}
+                                                                onClick={() => router.push('/notifications')}
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className={`p-2 ${icon.bg} rounded-lg`}>
+                                                                        {icon.icon}
+                                                                    </div>
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-sm">{notif.title}</p>
+                                                                        <p className="text-sm text-gray-400 mt-1">{notif.body}</p>
+                                                                        <span
+                                                                            className="text-xs text-gray-500 mt-2 block">
+                                                                            {formatTime(notif.createdAt)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })
+                                                ) : (
+                                                    <div className="p-8 text-center text-gray-500">
+                                                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-50"/>
+                                                        <p className="text-sm">새로운 알림이 없습니다</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     {/* User Menu - Desktop */}
                                     <div className="hidden sm:block">
@@ -212,14 +418,14 @@ export default function Navigation() {
                                             <div className="p-2">
                                                 <Link
                                                     href={`/profile/${user.username}`}
-                                                    className="flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200"
+                                                    className="flex items-center gap-4 p-4 rounded-lg hover:bg-gray-800 transition-all duration-200"
                                                 >
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
                                                 </Link>
                                                 <button
                                                     onClick={handleLogout}
-                                                    className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-green-900/20 transition-all duration-200 text-left"
+                                                    className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-gray-800 transition-all duration-200 text-left"
                                                 >
                                                     <LogOut className="w-5 h-5 text-green-400"/>
                                                     <span>로그아웃</span>
@@ -258,7 +464,7 @@ export default function Navigation() {
 
                 {/* Mobile Menu */}
                 <div
-                    className={`lg:hidden fixed inset-0 top-16 bg-black/98 backdrop-blur-xl transition-all duration-300 ${
+                    className={`lg:hidden fixed inset-0 top-16 bg-gray-950 transition-all duration-300 ${
                         mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
                     }`}>
                     <div className="container-custom py-6 h-full overflow-y-auto scrollbar-thin">
@@ -305,7 +511,7 @@ export default function Navigation() {
                             <div className="pt-6 mt-6 border-t border-gray-800">
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full flex items-center gap-4 p-4 rounded-lg bg-red-900/20 hover:bg-red-900/30 transition-colors"
+                                    className="w-full flex items-center gap-4 p-4 rounded-lg bg-red-950 hover:bg-red-900 transition-colors"
                                 >
                                     <LogOut className="w-5 h-5 text-red-400"/>
                                     <span className="text-red-400">로그아웃</span>

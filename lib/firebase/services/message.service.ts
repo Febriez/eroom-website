@@ -8,8 +8,8 @@ import {SocialService} from "@/lib/firebase/services/social.service";
 
 export class MessageService extends BaseService {
     static async createConversation(
-        participant1: { uid: string; username: string; displayName: string },
-        participant2: { uid: string; username: string; displayName: string }
+        participant1: { uid: string; username: string; displayName: string; avatarUrl?: string },
+        participant2: { uid: string; username: string; displayName: string; avatarUrl?: string }
     ): Promise<string> {
         // 이미 대화가 있는지 확인
         const existing = await this.queryDocuments<Conversation>(
@@ -31,8 +31,16 @@ export class MessageService extends BaseService {
         const conversationRef = await addDoc(collection(db, COLLECTIONS.CONVERSATIONS), {
             participants: [participant1.uid, participant2.uid],
             participantInfo: {
-                [participant1.uid]: participant1,
-                [participant2.uid]: participant2
+                [participant1.uid]: {
+                    username: participant1.username,
+                    displayName: participant1.displayName,
+                    avatarUrl: participant1.avatarUrl
+                },
+                [participant2.uid]: {
+                    username: participant2.username,
+                    displayName: participant2.displayName,
+                    avatarUrl: participant2.avatarUrl
+                }
             },
             unreadCount: {
                 [participant1.uid]: 0,
@@ -117,5 +125,15 @@ export class MessageService extends BaseService {
             ],
             callback
         )
+    }
+
+    static async markMessagesAsRead(
+        conversationId: string,
+        userId: string
+    ): Promise<void> {
+        // 대화의 unreadCount를 0으로 리셋
+        await updateDoc(doc(db, COLLECTIONS.CONVERSATIONS, conversationId), {
+            [`unreadCount.${userId}`]: 0
+        })
     }
 }

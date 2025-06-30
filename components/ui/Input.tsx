@@ -23,20 +23,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         </div>
                     )}
 
-                        <input
-                            ref={ref}
-                            className={`
+                    <input
+                        ref={ref}
+                        className={`
               w-full bg-gray-800 border rounded-lg px-4 py-3
               text-gray-100 placeholder-gray-500
-              focus:border-green-500 focus:ring-1 focus:ring-green-500
-              focus:outline-none transition-all duration-200
+              focus:border-green-500 focus:outline-none
+              transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed
               ${icon ? 'pl-10' : ''}
               ${error ? 'border-red-500' : 'border-gray-700'}
               ${className}
             `}
-                            {...props}
-                        />
+                        {...props}
+                    />
                 </div>
 
                 {error && (

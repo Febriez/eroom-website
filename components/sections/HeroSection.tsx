@@ -33,29 +33,28 @@ export default function HeroSection() {
         if (isMobile) return
 
         const handleMouseMove = (e: MouseEvent) => {
-            if (heroRef.current) {
-                const rect = heroRef.current.getBoundingClientRect()
-                setMousePosition({
-                    x: ((e.clientX - rect.left) / rect.width) * 100,
-                    y: ((e.clientY - rect.top) / rect.height) * 100,
-                })
-            }
+            // 전체 window 기준으로 마우스 위치 계산
+            const windowWidth = window.innerWidth
+            const windowHeight = window.innerHeight
+            setMousePosition({
+                x: (e.clientX / windowWidth) * 100,
+                y: (e.clientY / windowHeight) * 100,
+            })
         }
 
-        const hero = heroRef.current
-        if (hero) {
-            hero.addEventListener('mousemove', handleMouseMove)
-            return () => hero.removeEventListener('mousemove', handleMouseMove)
-        }
+        // window에 이벤트 리스너 추가
+        window.addEventListener('mousemove', handleMouseMove)
+        return () => window.removeEventListener('mousemove', handleMouseMove)
     }, [isMobile])
 
     return (
         <section
             ref={heroRef}
             className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 sm:pt-32"
+            style={{position: 'relative', zIndex: 1}}
         >
             {/* Dynamic Background */}
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 pointer-events-none">
                 {/* Base gradient */}
                 <div className="absolute inset-0 bg-gradient-to-br from-black via-green-950/10 to-black"></div>
 
@@ -70,6 +69,7 @@ export default function HeroSection() {
                             transform: 'translate(-50%, -50%)',
                             filter: 'blur(100px)',
                             transition: 'all 0.3s ease-out',
+                            pointerEvents: 'none',
                         }}
                     />
                 )}
@@ -95,7 +95,7 @@ export default function HeroSection() {
                 </div>
 
                 {/* Floating particles */}
-                <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {particles.map((particle, i) => (
                         <div
                             key={i}
@@ -111,7 +111,7 @@ export default function HeroSection() {
                 </div>
 
                 {/* Larger floating particles */}
-                <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {largeParticles.map((particle, i) => (
                         <div
                             key={`large-${i}`}
