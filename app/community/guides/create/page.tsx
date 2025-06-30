@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
-import {AlertTriangle, ArrowLeft, Book, Clock, Save} from 'lucide-react'
+import {AlertTriangle, ArrowLeft, Book, Clock, Link, Save} from 'lucide-react'
 import {useAuth} from '@/app/contexts/AuthContext'
 import {addDoc, collection, getDocs, query, serverTimestamp, where} from 'firebase/firestore'
 import {db} from '@/app/lib/firebase'
@@ -154,7 +154,7 @@ export default function CreateGuidePage() {
                     </div>
 
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-                        <Book className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                        <Book className="w-16 h-16 text-green-500 mx-auto mb-6"/>
                         <h2 className="text-2xl font-bold mb-4">로그인이 필요합니다</h2>
                         <p className="text-gray-400 mb-8">
                             가이드 작성은 로그인이 필요한 서비스입니다.
