@@ -72,7 +72,8 @@ export default function ProfileRedirectPage() {
                         router.push('/')
                     }
                 } else {
-                    router.push('/auth/login')
+                    // 로그인 페이지로 리다이렉트하는 대신 로그인 필요 메시지를 표시하기 위해 프로필 페이지로 이동
+                    router.push('/profile/login-required')
                 }
                 setChecking(false)
             }

@@ -28,7 +28,8 @@ export default function CreateGuidePage() {
     useEffect(() => {
         const loadUserProfile = async () => {
             if (!user) {
-                router.push('/auth/login?redirect=/community/guides/create')
+                // 로그인 페이지로 리다이렉트하는 대신 로그인 필요 메시지를 보여줌
+                setError('이 기능은 로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.')
                 return
             }
 
@@ -138,7 +139,44 @@ export default function CreateGuidePage() {
     const readTimes = ['3분', '5분', '8분', '10분', '15분', '20분 이상']
 
     if (!user) {
-        return null // 로그인 페이지로 리다이렉트 중
+        return (
+            <div className="min-h-screen bg-black pt-32 px-8 pb-20">
+                <div className="max-w-screen-xl mx-auto">
+                    <div className="mb-8">
+                        <button
+                            onClick={() => router.push('/community/guides')}
+                            className="flex items-center gap-2 text-gray-400 hover:text-white mb-4"
+                        >
+                            <ArrowLeft className="w-4 h-4"/>
+                            가이드 목록으로 돌아가기
+                        </button>
+                        <h1 className="text-4xl font-bold mb-4">가이드 작성</h1>
+                    </div>
+
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
+                        <Book className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                        <h2 className="text-2xl font-bold mb-4">로그인이 필요합니다</h2>
+                        <p className="text-gray-400 mb-8">
+                            가이드 작성은 로그인이 필요한 서비스입니다.
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                            <Link
+                                href="/auth/login?redirect=/community/guides/create"
+                                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all"
+                            >
+                                로그인하기
+                            </Link>
+                            <Link
+                                href="/community/guides"
+                                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all"
+                            >
+                                가이드 목록으로
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (

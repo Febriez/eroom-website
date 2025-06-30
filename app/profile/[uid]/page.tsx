@@ -93,6 +93,9 @@ export default function ProfilePage() {
     const params = useParams()
     const userId = params.uid as string
 
+    // 비로그인 상태인 경우 로그인 필요 메시지를 보여주기 위한 상태
+    const [showLoginRequired, setShowLoginRequired] = useState(false)
+
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
@@ -119,8 +122,13 @@ export default function ProfilePage() {
     const isOwnProfile = currentUserProfile?.userId === userId
 
     useEffect(() => {
+        // 로그인 상태 확인
+        if (!user && !loading) {
+            setShowLoginRequired(true)
+            return
+        }
         loadProfile()
-    }, [userId, user])
+    }, [userId, user, loading])
 
     useEffect(() => {
         if (user && profile) {
@@ -414,6 +422,35 @@ export default function ProfilePage() {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="text-2xl text-gray-400">로딩 중...</div>
+            </div>
+        )
+    }
+
+    // 로그인이 필요한 경우 안내 메시지 표시
+    if (showLoginRequired) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="text-center bg-gray-900 border border-gray-800 rounded-2xl p-10 max-w-md">
+                    <User className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                    <h2 className="text-3xl font-bold mb-4">로그인이 필요합니다</h2>
+                    <p className="text-gray-400 mb-8">
+                        프로필 정보를 확인하기 위해서는 로그인이 필요한 서비스입니다.
+                    </p>
+                    <div className="flex flex-col space-y-3">
+                        <Link
+                            href="/auth/login"
+                            className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition-all"
+                        >
+                            로그인하기
+                        </Link>
+                        <Link
+                            href="/"
+                            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-all"
+                        >
+                            홈으로 돌아가기
+                        </Link>
+                    </div>
+                </div>
             </div>
         )
     }
