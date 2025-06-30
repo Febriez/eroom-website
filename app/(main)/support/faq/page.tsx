@@ -1,6 +1,6 @@
 'use client'
 
-import {useState} from 'react'
+import React, {useState} from 'react'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
