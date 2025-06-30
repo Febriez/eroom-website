@@ -1,0 +1,15 @@
+{
+  "name": "Eroom",
+  "short_name": "Eroom",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "39x41",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
+}
