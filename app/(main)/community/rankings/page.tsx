@@ -76,8 +76,12 @@ export default function RankingsPage() {
 
             <Container className="py-12">
                 {/* 탭 메뉴 */}
-                <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)} defaultValue="global"
-                      className="mb-8">
+                <Tabs
+                    defaultValue="global"
+                    value={activeTab}
+                    onValueChange={(val: 'global' | 'weekly' | 'monthly') => setActiveTab(val)}
+                    className="mb-8"
+                >
                     <TabsList className="w-full sm:w-auto">
                         <TabsTrigger value="global">전체 랭킹</TabsTrigger>
                         <TabsTrigger value="weekly">주간 랭킹</TabsTrigger>
