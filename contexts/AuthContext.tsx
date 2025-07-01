@@ -43,7 +43,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     // Firestore에서 사용자 정보를 가져오는 함수
     const fetchUserData = async (firebaseUser: FirebaseUser): Promise<User | null> => {
         try {
-            const userData = await UserService.getUser(firebaseUser.uid)
+            const userData = await UserService.getUserById(firebaseUser.uid)
             setUser(userData)
             return userData
         } catch (error) {
@@ -217,7 +217,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             const {user: firebaseUser} = result
 
             // 기존 사용자인지 확인
-            let userData = await UserService.getUser(firebaseUser.uid)
+            let userData = await UserService.getUserById(firebaseUser.uid)
 
             if (!userData) {
                 // 새 사용자라면 랜덤 username으로 계정 생성
