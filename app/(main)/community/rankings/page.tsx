@@ -1,33 +1,50 @@
 'use client'
 
 import {useEffect, useState} from 'react'
+import {useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Button} from '@/components/ui/Button'
 import {Badge} from '@/components/ui/Badge'
-import {Avatar} from '@/components/ui/Avatar'
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/Tabs'
-import {GameService} from '@/lib/firebase/services'
-import type {LeaderboardEntry} from '@/lib/firebase/types'
-import {Clock, Crown, Medal, Target, TrendingUp, Trophy} from 'lucide-react'
+import {MapService} from '@/lib/firebase/services/map.service'
+import type {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
+import {Crown, Eye, Heart, Medal, TrendingUp, Trophy, Users} from 'lucide-react'
 
 export default function RankingsPage() {
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+    const router = useRouter()
+    const [maps, setMaps] = useState<GameMapCard[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'global' | 'weekly' | 'monthly'>('global')
+    const [activeTab, setActiveTab] = useState<'popular' | 'liked' | 'recent'>('popular')
 
     useEffect(() => {
-        loadLeaderboard(activeTab)
+        loadMaps(activeTab)
     }, [activeTab])
 
-    const loadLeaderboard = async (type: 'global' | 'weekly' | 'monthly') => {
+    const loadMaps = async (type: 'popular' | 'liked' | 'recent') => {
         setLoading(true)
         try {
-            const data = await GameService.getLeaderboard(type, undefined, {limit: 100})
-            setLeaderboard(data)
+            let data: GameMapCard[] = []
+
+            switch (type) {
+                case 'popular':
+                    data = await MapService.getPopularMaps(50)
+                    break
+                case 'liked':
+                    data = await MapService.getFilteredMaps({
+                        sortBy: 'liked',
+                        limit: 50
+                    })
+                    break
+                case 'recent':
+                    data = await MapService.getRecentMaps(50)
+                    break
+            }
+
+            setMaps(data)
         } catch (error) {
-            console.error('Error loading leaderboard:', error)
+            console.error('Error loading maps:', error)
         } finally {
             setLoading(false)
         }
@@ -59,139 +76,246 @@ export default function RankingsPage() {
         }
     }
 
-    const formatTime = (seconds: number) => {
-        const minutes = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${minutes}:${secs.toString().padStart(2, '0')}`
+    const formatCount = (count: number) => {
+        if (count >= 1000000) {
+            return `${(count / 1000000).toFixed(1)}M`
+        } else if (count >= 1000) {
+            return `${(count / 1000).toFixed(1)}k`
+        }
+        return count.toString()
+    }
+
+    const getDifficultyColor = (difficulty: string) => {
+        switch (difficulty.toLowerCase()) {
+            case 'easy':
+                return 'success'
+            case 'medium':
+                return 'info'
+            case 'hard':
+                return 'warning'
+            case 'extreme':
+                return 'danger'
+            default:
+                return 'default'
+        }
+    }
+
+    const getDifficultyLabel = (difficulty: string) => {
+        switch (difficulty.toLowerCase()) {
+            case 'easy':
+                return '쉬움'
+            case 'medium':
+                return '보통'
+            case 'hard':
+                return '어려움'
+            case 'extreme':
+                return '극악'
+            default:
+                return difficulty
+        }
+    }
+
+    const handleMapClick = (mapId: string) => {
+        router.push(`/games/eroom?mapId=${mapId}`)
     }
 
     return (
         <>
             <PageHeader
-                title="글로벌 랭킹"
-                description="최고의 플레이어들과 경쟁하고 정상에 도전하세요"
+                title="인기 맵 랭킹"
+                description="가장 많이 플레이되고 사랑받는 맵들을 확인하세요"
                 badge="실시간 업데이트"
                 icon={<Trophy className="w-5 h-5"/>}
             />
 
             <Container className="py-12">
                 {/* 탭 메뉴 */}
-                <Tabs<'global' | 'weekly' | 'monthly'>
+                <Tabs<'popular' | 'liked' | 'recent'>
                     value={activeTab}
                     onValueChange={(val) => setActiveTab(val)}
-                    defaultValue="global"
+                    defaultValue="popular"
                 >
                     <TabsList>
-                        <TabsTrigger value="global">전체 랭킹</TabsTrigger>
-                        <TabsTrigger value="weekly">주간 랭킹</TabsTrigger>
-                        <TabsTrigger value="monthly">월간 랭킹</TabsTrigger>
+                        <TabsTrigger value="popular">
+                            <Users className="w-4 h-4"/>
+                            플레이 순위
+                        </TabsTrigger>
+                        <TabsTrigger value="liked">
+                            <Heart className="w-4 h-4"/>
+                            인기 순위
+                        </TabsTrigger>
+                        <TabsTrigger value="recent">
+                            <TrendingUp className="w-4 h-4"/>
+                            최신 맵
+                        </TabsTrigger>
                     </TabsList>
                 </Tabs>
 
-
-                {/* 상위 3명 하이라이트 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    {[1, 2, 3].map((rank) => {
-                        const player = leaderboard[rank - 1]
-                        if (!player) return null
-
-                        return (
-                            <Card
-                                key={rank}
-                                className={`p-6 text-center ${getRankStyle(rank)} hover:scale-105 transition-transform`}
-                            >
-                                <div className="mb-4">
-                                    {getRankIcon(rank)}
-                                </div>
-                                <Avatar
-                                    src={player.player.avatarUrl}
-                                    size="lg"
-                                    className="mx-auto mb-4"
-                                />
-                                <h3 className="text-xl font-bold mb-1">{player.player.displayName}</h3>
-                                <p className="text-gray-400 mb-4">@{player.player.username}</p>
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <Target className="w-4 h-4 text-green-400"/>
-                                        <span className="text-2xl font-bold">{player.score.toLocaleString()}</span>
-                                    </div>
-                                    {player.clearTime && (
-                                        <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-                                            <Clock className="w-4 h-4"/>
-                                            <span>{formatTime(player.clearTime)}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        )
-                    })}
-                </div>
-
-                {/* 전체 랭킹 리스트 */}
-                <Card className="overflow-hidden">
-                    <div className="p-4 border-b border-gray-800">
-                        <h2 className="text-xl font-bold">전체 순위</h2>
+                {/* 로딩 상태 */}
+                {loading && (
+                    <div className="text-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+                        <p className="mt-4 text-gray-400">랭킹을 불러오는 중...</p>
                     </div>
+                )}
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-900/50">
-                            <tr>
-                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">순위</th>
-                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">플레이어</th>
-                                <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">점수</th>
-                                <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">클리어 타임</th>
-                                <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">변동</th>
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                            {leaderboard.slice(3).map((entry, index) => (
-                                <tr key={entry.id} className="hover:bg-gray-900/30 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-gray-500">
-                          #{entry.rank}
-                        </span>
+                {/* 상위 3개 맵 하이라이트 */}
+                {!loading && maps.length > 0 && (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                            {maps.slice(0, 3).map((map, index) => {
+                                const rank = index + 1
+                                return (
+                                    <Card
+                                        key={map.id}
+                                        className={`p-6 ${getRankStyle(rank)} hover:scale-105 transition-transform cursor-pointer`}
+                                        onClick={() => handleMapClick(map.id)}
+                                    >
+                                        <div className="text-center mb-4">
+                                            {getRankIcon(rank)}
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar src={entry.player.avatarUrl} size="sm"/>
-                                            <div>
-                                                <p className="font-medium">{entry.player.displayName}</p>
-                                                <p className="text-sm text-gray-400">@{entry.player.username}</p>
+
+                                        {/* 맵 썸네일 */}
+                                        <div
+                                            className="aspect-video bg-gradient-to-br from-green-600 to-green-800 rounded-lg mb-4 overflow-hidden">
+                                            {map.thumbnail && (
+                                                <img
+                                                    src={map.thumbnail}
+                                                    alt={map.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
+                                        </div>
+
+                                        <h3 className="text-xl font-bold mb-2 text-center line-clamp-1">
+                                            {map.name}
+                                        </h3>
+
+                                        <div className="text-center mb-3">
+                                            <Badge variant={getDifficultyColor(map.difficulty) as any}>
+                                                {getDifficultyLabel(map.difficulty)}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-center gap-4">
+                                                <div className="flex items-center gap-1">
+                                                    <Eye className="w-4 h-4 text-blue-400"/>
+                                                    <span
+                                                        className="font-bold">{formatCount(map.stats.playCount)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Heart className="w-4 h-4 text-red-400"/>
+                                                    <span
+                                                        className="font-bold">{formatCount(map.stats.likeCount)}</span>
+                                                </div>
                                             </div>
+                                            <p className="text-sm text-gray-400">by @{map.creator.username}</p>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="text-lg font-bold">{entry.score.toLocaleString()}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {entry.clearTime ? (
-                                            <span className="text-gray-300">{formatTime(entry.clearTime)}</span>
-                                        ) : (
-                                            <span className="text-gray-500">-</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <Badge variant="success" size="sm">
-                                            <TrendingUp className="w-3 h-3"/>
-                                            +{Math.floor(Math.random() * 5) + 1}
-                                        </Badge>
-                                    </td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                    </Card>
+                                )
+                            })}
+                        </div>
 
-                    {/* 더보기 버튼 */}
-                    <div className="p-4 border-t border-gray-800 text-center">
-                        <Button variant="secondary">
-                            더 많은 순위 보기
-                        </Button>
+                        {/* 전체 랭킹 리스트 */}
+                        <Card className="overflow-hidden">
+                            <div className="p-4 border-b border-gray-800">
+                                <h2 className="text-xl font-bold">전체 순위</h2>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-900/50">
+                                    <tr>
+                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">순위</th>
+                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">맵 정보</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">난이도</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">플레이</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">좋아요</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">제작자</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                    {maps.slice(3).map((map, index) => (
+                                        <tr
+                                            key={map.id}
+                                            className="hover:bg-gray-900/30 transition-colors cursor-pointer"
+                                            onClick={() => handleMapClick(map.id)}
+                                        >
+                                            <td className="px-6 py-4">
+                                                    <span className="text-2xl font-bold text-gray-500">
+                                                        #{index + 4}
+                                                    </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-16 h-10 bg-gradient-to-br from-green-600 to-green-800 rounded overflow-hidden flex-shrink-0">
+                                                        {map.thumbnail && (
+                                                            <img
+                                                                src={map.thumbnail}
+                                                                alt={map.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium line-clamp-1">{map.name}</p>
+                                                        <p className="text-sm text-gray-400 line-clamp-1">{map.description}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <Badge variant={getDifficultyColor(map.difficulty) as any} size="sm">
+                                                    {getDifficultyLabel(map.difficulty)}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Eye className="w-4 h-4 text-blue-400"/>
+                                                    <span
+                                                        className="font-bold">{formatCount(map.stats.playCount)}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Heart className="w-4 h-4 text-red-400"/>
+                                                    <span
+                                                        className="font-bold">{formatCount(map.stats.likeCount)}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="text-sm text-gray-400">@{map.creator.username}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* 더보기 버튼 */}
+                            {maps.length === 50 && (
+                                <div className="p-4 border-t border-gray-800 text-center">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => router.push('/community/maps')}
+                                    >
+                                        모든 맵 보기
+                                    </Button>
+                                </div>
+                            )}
+                        </Card>
+                    </>
+                )}
+
+                {/* 빈 상태 */}
+                {!loading && maps.length === 0 && (
+                    <div className="text-center py-20">
+                        <Trophy className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
+                        <h3 className="text-xl font-bold mb-2">아직 랭킹 데이터가 없습니다</h3>
+                        <p className="text-gray-400">맵이 등록되면 여기에 표시됩니다</p>
                     </div>
-                </Card>
+                )}
             </Container>
         </>
     )
