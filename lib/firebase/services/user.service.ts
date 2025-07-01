@@ -3,11 +3,11 @@ import {
     arrayUnion,
     collection,
     doc,
-    getDoc,
     getDocs,
     increment,
     orderBy,
     query,
+    Unsubscribe,
     updateDoc,
     where
 } from 'firebase/firestore'
@@ -18,16 +18,17 @@ import type {User} from '@/lib/firebase/types'
 
 export class UserService extends BaseService {
     /**
-     * UID로 사용자 정보 가져오기
+     * 사용자 실시간 구독
+     */
+    static subscribeToUser(uid: string, callback: (user: User | null) => void): Unsubscribe {
+        return this.subscribeToDocument<User>(COLLECTIONS.USERS, uid, callback)
+    }
+
+    /**
+     * UID로 사용자 정보 가져오기 (일회성)
      */
     static async getUserById(uid: string): Promise<User | null> {
-        const docRef = doc(db, COLLECTIONS.USERS, uid)
-        const docSnap = await getDoc(docRef)
-
-        if (docSnap.exists()) {
-            return {id: docSnap.id, ...docSnap.data()} as User
-        }
-        return null
+        return this.getDocument<User>(COLLECTIONS.USERS, uid)
     }
 
     /**
