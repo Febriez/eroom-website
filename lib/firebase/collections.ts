@@ -1,6 +1,6 @@
 export const COLLECTIONS = {
     USERS: 'User',
-    MAPS: 'Map',
+    ROOMS: 'Room',  // Room 컬렉션 사용
     CONVERSATIONS: 'Conversation',
     MESSAGES: 'Message',
     NOTIFICATIONS: 'Notification',

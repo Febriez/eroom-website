@@ -341,7 +341,16 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             await signOut(auth)
             setUser(null)
             setFirebaseUser(null)
+
+            // 로그아웃 후 메인 페이지로 이동하고 새로고침
             router.push('/')
+
+            // 상태가 완전히 정리될 때까지 약간의 지연 후 새로고침
+            setTimeout(() => {
+                router.refresh()
+                // 또는 완전한 페이지 새로고침을 원한다면:
+                // window.location.href = '/'
+            }, 100)
         } catch (error) {
             console.error('Logout error:', error)
             throw error

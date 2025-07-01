@@ -112,8 +112,9 @@ export default function Navigation() {
 
     const handleLogout = async () => {
         try {
-            await logout()
             setMobileMenuOpen(false)
+            await logout()
+            // logout 함수 내부에서 이미 라우팅과 새로고침을 처리함
         } catch (error) {
             console.error('Logout error:', error)
         }

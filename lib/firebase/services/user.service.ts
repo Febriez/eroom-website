@@ -132,7 +132,15 @@ export class UserService extends BaseService {
             updatedAt: serverTimestamp(),
             lastLoginAt: serverTimestamp()
         };
-        const docRef = await addDoc(collection(db, COLLECTIONS.USERS), newUser);
+
+        // BaseService에 맞는 메서드로 변경 필요
+        // createDocument가 없으면 addDoc 사용
+        const docRef = await addDoc(collection(db, COLLECTIONS.USERS), {
+            ...newUser,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp()
+        });
         return docRef.id;
     }
 }
