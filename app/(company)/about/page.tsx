@@ -7,35 +7,47 @@ import {PageHeader} from '@/components/layout/PageHeader'
 
 const teamMembers = [
     {
-        name: '김태훈',
-        role: 'CEO & Game Designer',
+        name: '김도형 (방탈소년단 리더)',
+        role: 'CEO & Unity Engineer',
         description: 'AI와 게임의 만남을 꿈꾸는 기획자',
         avatar: '👨‍💼'
     },
     {
-        name: '이지은',
+        name: '옥병준 (개발 총괄)',
         role: 'CTO & Lead Developer',
         description: '혁신적인 기술로 게임의 미래를 만드는 개발자',
         avatar: '👩‍💻'
     },
     {
-        name: '박성민',
+        name: '우혜주 (디자인 총괄)',
         role: 'Art Director',
         description: '독특한 비주얼로 몰입감을 선사하는 아티스트',
         avatar: '🎨'
     },
     {
-        name: '최유진',
-        role: 'AI Engineer',
-        description: 'AI로 더 똑똑한 게임을 만드는 엔지니어',
+        name: '권채영 (페르소나 그 자체)',
+        role: 'Model Engineer',
+        description: '보는 사람을 놀랍게 만드는 shap-e 모델 엔지니어',
         avatar: '🤖'
+    },
+    {
+        name: '한준희 (행복조)',
+        role: 'Happy Engineer',
+        description: '레크레이션 강사',
+        avatar: '👻'
+    },
+    {
+        name: '황혜원 (춘식이)',
+        role: 'Microservices Developer',
+        description: '춘식이.',
+        avatar: '👾'
     }
 ]
 
 const milestones = [
     {
         year: '2023',
-        title: '방탈보이밴드 설립',
+        title: '방탈소년단 설립',
         description: 'AI 게임 스튜디오의 시작'
     },
     {
@@ -74,7 +86,7 @@ export default function AboutPage() {
                         className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl mb-6 transform rotate-12">
                         <Key className="w-12 h-12 text-white transform -rotate-12"/>
                     </div>
-                    <h2 className="text-4xl font-bold mb-4">방탈보이밴드</h2>
+                    <h2 className="text-4xl font-bold mb-4">방탈소년단</h2>
                     <p className="text-xl text-gray-400 max-w-3xl mx-auto">
                         우리는 AI 기술과 창의적인 게임 디자인을 결합하여
                         플레이어에게 매번 새로운 경험을 선사하는 게임을 만듭니다.
@@ -124,7 +136,7 @@ export default function AboutPage() {
                             <div className="text-center">
                                 <h3 className="text-3xl font-bold mb-6">우리의 미션</h3>
                                 <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto">
-                                    방탈보이밴드는 AI 기술을 활용하여 무한한 가능성의 게임을 만듭니다.
+                                    방탈소년단은 AI 기술을 활용하여 무한한 가능성의 게임을 만듭니다.
                                     매번 플레이할 때마다 새로운 도전과 경험을 제공하며,
                                     플레이어의 창의성과 문제 해결 능력을 자극하는 게임을 개발합니다.
                                 </p>
@@ -219,7 +231,7 @@ export default function AboutPage() {
                             <div className="text-center mb-12">
                                 <h3 className="text-3xl font-bold mb-6">우리 팀</h3>
                                 <p className="text-lg text-gray-300">
-                                    열정과 재능으로 가득한 방탈보이밴드 멤버들
+                                    열정과 재능으로 가득한 방탈소년단 멤버들
                                 </p>
                             </div>
 
@@ -267,7 +279,7 @@ export default function AboutPage() {
                 <div className="text-center mt-24 py-16 bg-gradient-to-r from-green-600/20 to-green-700/20 rounded-2xl">
                     <h3 className="text-3xl font-bold mb-6">함께 미래를 만들어갈 당신을 기다립니다</h3>
                     <p className="text-lg text-gray-300 mb-8">
-                        방탈보이밴드와 함께 AI 게임의 새로운 역사를 써내려갈 인재를 찾고 있습니다
+                        방탈소년단와 함께 AI 게임의 새로운 역사를 써내려갈 인재를 찾고 있습니다
                     </p>
                     <button
                         onClick={() => window.location.href = '/careers'}
