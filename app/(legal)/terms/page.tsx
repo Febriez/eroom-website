@@ -7,27 +7,63 @@ import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {AlertTriangle, Ban, FileText, Info, MessageSquare, Scale, Shield, Users} from 'lucide-react'
 
+// 섹션 타입 정의
+interface BaseSection {
+    id: string
+    title: string
+    icon: React.ReactNode
+}
+
+interface ContentSection extends BaseSection {
+    type: 'content'
+    content: string
+}
+
+interface ListSection extends BaseSection {
+    type: 'list'
+    items: string[]
+}
+
+interface ConditionsSection extends BaseSection {
+    type: 'conditions'
+    conditions: Array<{
+        title: string
+        items: string[]
+    }>
+}
+
+interface PoliciesSection extends BaseSection {
+    type: 'policies'
+    policies: Array<{
+        title: string
+        description: string
+    }>
+}
+
+interface TerminationSection extends BaseSection {
+    type: 'termination'
+    conditions: Array<{
+        by: string
+        method: string
+    }>
+}
+
+type Section = ContentSection | ListSection | ConditionsSection | PoliciesSection | TerminationSection
+
 export default function TermsPage() {
-    // 조건부 타입 체크를 위한 타입 가드 함수들
-    const hasItems = (obj: any): obj is { title: string; items: string[] } => {
-        return 'items' in obj && Array.isArray(obj.items);
-    };
-
-    const hasByMethod = (obj: any): obj is { by: string; method: string } => {
-        return 'by' in obj && 'method' in obj;
-    };
-
-    const sections = [
+    const sections: Section[] = [
         {
             id: 'intro',
             title: '서비스 소개',
             icon: <Info className="w-5 h-5"/>,
+            type: 'content',
             content: '본 이용약관("약관")은 BangtalBoyBand(이하 "당사")가 제공하는 EROOM 게임 서비스(이하 "서비스") 이용에 관한 조건과 규정을 설명합니다.'
         },
         {
             id: 'use',
             title: '서비스 이용',
             icon: <Users className="w-5 h-5"/>,
+            type: 'conditions',
             conditions: [
                 {
                     title: '이용 자격',
@@ -53,6 +89,7 @@ export default function TermsPage() {
             id: 'account',
             title: '계정 관리',
             icon: <Shield className="w-5 h-5"/>,
+            type: 'policies',
             policies: [
                 {
                     title: '계정 생성',
@@ -72,7 +109,8 @@ export default function TermsPage() {
             id: 'content',
             title: '사용자 콘텐츠',
             icon: <FileText className="w-5 h-5"/>,
-            rules: [
+            type: 'list',
+            items: [
                 '귀하는 업로드하는 콘텐츠에 대한 모든 권리를 보유해야 합니다',
                 '당사에 콘텐츠 사용에 대한 라이선스를 부여합니다',
                 '불법적이거나 부적절한 콘텐츠는 삭제될 수 있습니다',
@@ -83,13 +121,15 @@ export default function TermsPage() {
             id: 'intellectual',
             title: '지적재산권',
             icon: <Scale className="w-5 h-5"/>,
+            type: 'content',
             content: '당사의 서비스, 소프트웨어, 상표, 로고 및 콘텐츠에 대한 모든 지적재산권은 당사 또는 라이선스 제공자의 소유입니다.'
         },
         {
             id: 'disclaimer',
             title: '면책 조항',
             icon: <AlertTriangle className="w-5 h-5"/>,
-            disclaimers: [
+            type: 'list',
+            items: [
                 '서비스는 "있는 그대로" 제공됩니다',
                 '서비스의 정확성이나 완전성을 보장하지 않습니다',
                 '서비스 이용으로 인한 손해에 책임지지 않습니다',
@@ -100,6 +140,7 @@ export default function TermsPage() {
             id: 'termination',
             title: '계약 해지',
             icon: <Ban className="w-5 h-5"/>,
+            type: 'termination',
             conditions: [
                 {
                     by: '이용자',
@@ -113,6 +154,122 @@ export default function TermsPage() {
         }
     ]
 
+    // 공통 헤더 컴포넌트
+    const SectionHeader = ({section}: { section: Section }) => (
+        <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gray-800 rounded-lg text-green-400">
+                {section.icon}
+            </div>
+            <h2 className="text-2xl font-bold">{section.title}</h2>
+        </div>
+    )
+
+    // 섹션 렌더링 함수
+    const renderSection = (section: Section) => {
+        switch (section.type) {
+            case 'content':
+                return (
+                    <Card key={section.id} id={section.id} className="p-8">
+                        <SectionHeader section={section}/>
+                        <p className="text-gray-300 leading-relaxed">
+                            {section.content}
+                        </p>
+                        {section.id === 'intellectual' && (
+                            <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4 mt-4">
+                                <p className="text-yellow-400 text-sm">
+                                    ⚠️ 당사의 허가 없이 콘텐츠를 복제, 수정, 배포하는 것은 금지됩니다.
+                                </p>
+                            </div>
+                        )}
+                    </Card>
+                )
+
+            case 'list':
+                return (
+                    <Card key={section.id} id={section.id} className="p-8">
+                        <SectionHeader section={section}/>
+                        <div className="bg-gray-800 rounded-lg p-6">
+                            <ul className="space-y-3">
+                                {section.items.map((item, index) => (
+                                    <li key={index} className="flex items-start gap-3">
+                                        {section.id === 'content' ? (
+                                            <>
+                                                <span className="text-green-400 font-bold">{index + 1}.</span>
+                                                <span className="text-gray-300">{item}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertTriangle
+                                                    className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5"/>
+                                                <span className="text-gray-300">{item}</span>
+                                            </>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </Card>
+                )
+
+            case 'conditions':
+                return (
+                    <Card key={section.id} id={section.id} className="p-8">
+                        <SectionHeader section={section}/>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {section.conditions.map((condition, index) => (
+                                <div key={index} className="bg-gray-800 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg mb-4 text-green-400">{condition.title}</h3>
+                                    <ul className="space-y-2">
+                                        {condition.items.map((item, idx) => (
+                                            <li key={idx} className="flex items-start gap-2">
+                                                <span className="text-green-400 mt-1">•</span>
+                                                <span className="text-gray-300">{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                )
+
+            case 'policies':
+                return (
+                    <Card key={section.id} id={section.id} className="p-8">
+                        <SectionHeader section={section}/>
+                        <div className="space-y-4">
+                            {section.policies.map((policy, index) => (
+                                <div key={index} className="bg-gray-800 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg mb-2">{policy.title}</h3>
+                                    <p className="text-gray-400">{policy.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                )
+
+            case 'termination':
+                return (
+                    <Card key={section.id} id={section.id} className="p-8">
+                        <SectionHeader section={section}/>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {section.conditions.map((condition, index) => (
+                                <div key={index} className="bg-gray-800 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg mb-2 text-green-400">
+                                        {condition.by}에 의한 해지
+                                    </h3>
+                                    <p className="text-gray-400">{condition.method}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                )
+
+            default:
+                return null
+        }
+    }
+
     return (
         <>
             <PageHeader
@@ -123,25 +280,6 @@ export default function TermsPage() {
             />
 
             <Container className="py-12">
-                {/* 중요 고지 */}
-                <Card className="p-8 mb-12 bg-gradient-to-br from-purple-900/20 to-purple-800/20">
-                    <div className="flex items-start gap-4">
-                        <Scale className="w-8 h-8 text-purple-400 flex-shrink-0"/>
-                        <div>
-                            <h2 className="text-xl font-bold mb-3">약관 동의</h2>
-                            <p className="text-gray-300 mb-4">
-                                본 서비스를 이용함으로써 귀하는 본 약관에 동의하게 됩니다.
-                                약관에 동의하지 않는 경우 서비스를 이용하실 수 없습니다.
-                                본 약관을 주의 깊게 읽어보시기 바랍니다.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                <Badge variant="warning">필수 동의</Badge>
-                                <Badge variant="info">정기 검토 필요</Badge>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* 사이드바 네비게이션 */}
                     <div className="lg:col-span-1">
@@ -171,155 +309,7 @@ export default function TermsPage() {
 
                     {/* 메인 콘텐츠 */}
                     <div className="lg:col-span-3 space-y-8">
-                        {/* 서비스 소개 */}
-                        <Card id="intro" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[0].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[0].title}</h2>
-                            </div>
-                            <p className="text-gray-300 leading-relaxed">
-                                {sections[0].content}
-                            </p>
-                        </Card>
-
-                        {/* 서비스 이용 */}
-                        <Card id="use" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[1].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[1].title}</h2>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {sections[1].conditions?.map((condition, index) => (
-                                    <div key={index} className="bg-gray-800 rounded-lg p-6">
-                                        <h3 className="font-bold text-lg mb-4 text-green-400">{condition.title}</h3>
-                                        <ul className="space-y-2">
-                                            {'items' in condition && condition.items.map((item, idx) => (
-                                                <li key={idx} className="flex items-start gap-2">
-                                                    <span className="text-green-400 mt-1">•</span>
-                                                    <span className="text-gray-300">{item}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-
-                        {/* 계정 관리 */}
-                        <Card id="account" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[2].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[2].title}</h2>
-                            </div>
-                            <div className="space-y-4">
-                                {sections[2].policies?.map((policy, index) => (
-                                    <div key={index} className="bg-gray-800 rounded-lg p-6">
-                                        <h3 className="font-bold text-lg mb-2">{policy.title}</h3>
-                                        <p className="text-gray-400">{policy.description}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-
-                        {/* 사용자 콘텐츠 */}
-                        <Card id="content" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[3].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[3].title}</h2>
-                            </div>
-                            <div className="bg-gray-800 rounded-lg p-6">
-                                <ul className="space-y-3">
-                                    {sections[3].rules?.map((rule, index) => (
-                                        <li key={index} className="flex items-start gap-3">
-                                            <span className="text-green-400 font-bold">{index + 1}.</span>
-                                            <span className="text-gray-300">{rule}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </Card>
-
-                        {/* 지적재산권 */}
-                        <Card id="intellectual" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[4].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[4].title}</h2>
-                            </div>
-                            <p className="text-gray-300 leading-relaxed mb-4">
-                                {sections[4].content}
-                            </p>
-                            <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4">
-                                <p className="text-yellow-400 text-sm">
-                                    ⚠️ 당사의 허가 없이 콘텐츠를 복제, 수정, 배포하는 것은 금지됩니다.
-                                </p>
-                            </div>
-                        </Card>
-
-                        {/* 면책 조항 */}
-                        <Card id="disclaimer" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[5].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[5].title}</h2>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {sections[5].disclaimers?.map((disclaimer, index) => (
-                                    <div key={index} className="bg-gray-800 rounded-lg p-4 flex items-start gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5"/>
-                                        <span className="text-gray-300">{disclaimer}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-
-                        {/* 계약 해지 */}
-                        <Card id="termination" className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                    {sections[6].icon}
-                                </div>
-                                <h2 className="text-2xl font-bold">{sections[6].title}</h2>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {sections[6].conditions?.map((condition, index) => (
-                                    <div key={index} className="bg-gray-800 rounded-lg p-6">
-                                        {'by' in condition && (
-                                            <>
-                                                <h3 className="font-bold text-lg mb-2 text-green-400">{condition.by}에 의한
-                                                    해지</h3>
-                                                <p className="text-gray-400">{condition.method}</p>
-                                            </>
-                                        )}
-                                        {'title' in condition && (
-                                            <>
-                                                <h3 className="font-bold text-lg mb-4 text-green-400">{condition.title}</h3>
-                                                {'items' in condition && (
-                                                    <ul className="space-y-2">
-                                                        {condition.items.map((item, idx) => (
-                                                            <li key={idx} className="flex items-start gap-2">
-                                                                <span className="text-green-400 mt-1">•</span>
-                                                                <span className="text-gray-300">{item}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
+                        {sections.map(renderSection)}
 
                         {/* 문의하기 */}
                         <Card id="contact" className="p-8 bg-gradient-to-br from-gray-900 to-gray-800">
@@ -330,8 +320,10 @@ export default function TermsPage() {
                             <div className="space-y-3">
                                 <div>
                                     <span className="text-gray-400">이메일:</span>
-                                    <a href="mailto:legal@example.com"
-                                       className="ml-2 text-green-400 hover:text-green-300">
+                                    <a
+                                        href="mailto:pickpictest@gmail.com"
+                                        className="ml-2 text-green-400 hover:text-green-300"
+                                    >
                                         legal@example.com
                                     </a>
                                 </div>
