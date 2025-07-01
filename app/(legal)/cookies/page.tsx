@@ -84,7 +84,7 @@ export default function CookiesPage() {
             <li>필수 쿠키만 허용</li>
             <li>선호 설정에 따라 쿠키 선택</li>
           </ul>
-          <p className="mt-3">언제든지 당사 웹사이트 하단의 "쿠키 설정"을 클릭하여 쿠키 환경설정을 변경할 수 있습니다.</p>
+          <p className="mt-3">언제든지 당사 웹사이트 하단의 &quot;쿠키 설정&quot;을 클릭하여 쿠키 환경설정을 변경할 수 있습니다.</p>
         </section>
 
         <section className="mb-8">

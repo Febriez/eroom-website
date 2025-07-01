@@ -161,13 +161,13 @@ export default function StoreItemsPage() {
 
     const handlePurchase = (itemId: string, itemName: string) => {
         if (!selectedItem || selectedItem !== itemId) {
-            alert(`먼저 "${itemName}"을(를) 선택해주세요.`)
+            alert(`먼저 &quot;${itemName}&quot;을(를) 선택해주세요.`)
             setSelectedItem(itemId)
             return
         }
 
         // 실제 구매 로직
-        alert(`"${itemName}"을(를) 구매하시겠습니까?`)
+        alert(`&quot;${itemName}&quot;을(를) 구매하시겠습니까?`)
     }
 
     return (

@@ -67,7 +67,7 @@ export default function TermsPage() {
 
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">6. 면책 조항</h2>
-          <p>당사 서비스는 "있는 그대로" 및 "이용 가능한 대로" 제공됩니다. 당사는 다음 사항에 대해 명시적 또는 묵시적 보증을 하지 않습니다:</p>
+          <p>당사 서비스는 &quot;있는 그대로&quot; 및 &quot;이용 가능한 대로&quot; 제공됩니다. 당사는 다음 사항에 대해 명시적 또는 묵시적 보증을 하지 않습니다:</p>
           <ul className="list-disc pl-6 mt-3 space-y-2">
             <li>서비스의 정확성, 완전성, 신뢰성 또는 가용성</li>
             <li>서비스가 귀하의 요구사항을 충족하거나 중단 없이 안전하게 운영될 것이라는 보장</li>
