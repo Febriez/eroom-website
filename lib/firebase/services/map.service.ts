@@ -1,263 +1,244 @@
-import {collection, doc, getDoc, getDocs, orderBy, where} from 'firebase/firestore'
+// lib/firebase/services/map.service.ts
+import {addDoc, collection, doc, getDoc, orderBy, serverTimestamp, updateDoc, where} from 'firebase/firestore'
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import {db} from '../config'
 import type {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
-import {roomToGameMapCard} from '@/lib/firebase/types/game-map-card.types'
 
-/**
- * 읽기 전용 맵 서비스
- * Room 컬렉션에서 게임 맵 데이터를 조회만 합니다
- */
+interface MapFilters {
+    difficulty?: string
+    theme?: string
+    sortBy?: 'popular' | 'liked' | 'recent'
+    limit?: number
+}
+
 export class MapService extends BaseService {
-    /**
-     * 단일 맵(룸) 가져오기
-     */
-    static async getMap(mapId: string): Promise<GameMapCard | null> {
-        try {
-            const docRef = doc(db, COLLECTIONS.ROOMS, mapId)
-            const docSnap = await getDoc(docRef)
-
-            if (docSnap.exists()) {
-                return roomToGameMapCard({id: docSnap.id, ...docSnap.data()})
-            }
-            return null
-        } catch (error) {
-            console.error('Error getting room:', error)
-            return null
-        }
-    }
-
-    /**
-     * 추천 맵 가져오기 (PlayCount가 높은 룸들)
-     */
-    static async getFeaturedMaps(limit: number = 12): Promise<GameMapCard[]> {
-        const rooms = await this.queryDocuments<any>(
-            COLLECTIONS.ROOMS,
-            [
-                orderBy('PlayCount', 'desc'),
-                orderBy('LikeCount', 'desc')
-            ],
-            {limit}
-        )
-        return rooms.map(room => roomToGameMapCard(room))
-    }
-
     /**
      * 인기 맵 가져오기
      */
-    static async getPopularMaps(limit: number = 12): Promise<GameMapCard[]> {
-        const rooms = await this.queryDocuments<any>(
+    static async getPopularMaps(limit: number = 20): Promise<GameMapCard[]> {
+        return this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
             [
-                orderBy('PlayCount', 'desc')
+                where('metadata.status', '==', 'published'),
+                orderBy('stats.playCount', 'desc')
             ],
             {limit}
         )
-        return rooms.map(room => roomToGameMapCard(room))
     }
 
     /**
      * 최신 맵 가져오기
      */
-    static async getRecentMaps(limit: number = 12): Promise<GameMapCard[]> {
-        const rooms = await this.queryDocuments<any>(
+    static async getRecentMaps(limit: number = 20): Promise<GameMapCard[]> {
+        return this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
             [
-                orderBy('CreatedDate', 'desc')
+                where('metadata.status', '==', 'published'),
+                orderBy('createdAt', 'desc')
             ],
             {limit}
         )
-        return rooms.map(room => roomToGameMapCard(room))
     }
 
     /**
-     * 사용자가 만든 맵 가져오기
+     * 필터링된 맵 가져오기
      */
-    static async getUserMaps(uid: string): Promise<GameMapCard[]> {
-        const rooms = await this.queryDocuments<any>(
+    static async getFilteredMaps(filters: MapFilters): Promise<GameMapCard[]> {
+        const constraints: any[] = [
+            where('metadata.status', '==', 'published')
+        ]
+
+        // 난이도 필터
+        if (filters.difficulty) {
+            constraints.push(where('difficulty', '==', filters.difficulty))
+        }
+
+        // 테마 필터
+        if (filters.theme) {
+            constraints.push(where('theme', '==', filters.theme))
+        }
+
+        // 정렬
+        switch (filters.sortBy) {
+            case 'popular':
+                constraints.push(orderBy('stats.playCount', 'desc'))
+                break
+            case 'liked':
+                constraints.push(orderBy('stats.likeCount', 'desc'))
+                break
+            case 'recent':
+            default:
+                constraints.push(orderBy('createdAt', 'desc'))
+                break
+        }
+
+        return this.queryDocuments<GameMapCard>(
+            COLLECTIONS.ROOMS,
+            constraints,
+            {limit: filters.limit || 20}
+        )
+    }
+
+    /**
+     * 특정 유저가 만든 맵 가져오기
+     */
+    static async getMapsByCreator(creatorUid: string): Promise<GameMapCard[]> {
+        return this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
             [
-                where('CreatorId', '==', uid),
-                orderBy('CreatedDate', 'desc')
+                where('creator.uid', '==', creatorUid),
+                where('metadata.status', '==', 'published'),
+                orderBy('createdAt', 'desc')
             ]
         )
-        return rooms.map(room => roomToGameMapCard(room))
+    }
+
+    /**
+     * 단일 맵 가져오기
+     */
+    static async getMap(mapId: string): Promise<GameMapCard | null> {
+        const docRef = doc(db, COLLECTIONS.ROOMS, mapId)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+            return {id: docSnap.id, ...docSnap.data()} as GameMapCard
+        }
+        return null
+    }
+
+    /**
+     * 맵 생성
+     */
+    static async createMap(mapData: Omit<GameMapCard, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+        const docRef = await addDoc(collection(db, COLLECTIONS.ROOMS), {
+            ...mapData,
+            stats: {
+                // 기본값 설정 (맵 데이터에 있는 값이 우선됨)
+                ...{
+                    playCount: 0,
+                    likeCount: 0,
+                    dislikeCount: 0,
+                    avgRating: 0,
+                    avgClearTime: 0,
+                    completionRate: 0,
+                    comments: 0
+                },
+                ...(mapData.stats || {})
+            },
+            metadata: {
+                // 기본값 설정 (맵 데이터에 있는 값이 우선됨)
+                ...{
+                    status: 'draft',
+                    isAIGenerated: false,
+                    isFeatured: false,
+                    isOfficial: false,
+                    version: '1.0.0'
+                },
+                ...(mapData.metadata || {})
+            },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        })
+
+        return docRef.id
+    }
+
+    /**
+     * 맵 업데이트
+     */
+    static async updateMap(mapId: string, updates: Partial<GameMapCard>): Promise<void> {
+        await updateDoc(doc(db, COLLECTIONS.ROOMS, mapId), {
+            ...updates,
+            updatedAt: serverTimestamp()
+        })
+    }
+
+    /**
+     * 맵 통계 업데이트
+     */
+    static async updateMapStats(
+        mapId: string,
+        stats: Partial<GameMapCard['stats']>
+    ): Promise<void> {
+        const updates: any = {}
+
+        Object.entries(stats).forEach(([key, value]) => {
+            updates[`stats.${key}`] = value
+        })
+
+        await updateDoc(doc(db, COLLECTIONS.ROOMS, mapId), updates)
     }
 
     /**
      * 맵 검색
      */
     static async searchMaps(searchTerm: string): Promise<GameMapCard[]> {
-        try {
-            const lowerSearch = searchTerm.toLowerCase()
+        const lowerSearch = searchTerm.toLowerCase()
 
-            // 제목으로 검색
-            const roomsByTitle = await this.queryDocuments<any>(
-                COLLECTIONS.ROOMS,
-                [
-                    where('RoomTitle', '>=', searchTerm),
-                    where('RoomTitle', '<=', searchTerm + '\uf8ff')
-                ],
-                {limit: 20}
-            )
-
-            // 키워드로 검색
-            const roomsByKeyword = await this.queryDocuments<any>(
-                COLLECTIONS.ROOMS,
-                [
-                    where('Keywords', 'array-contains', lowerSearch)
-                ],
-                {limit: 20}
-            )
-
-            // 중복 제거 후 반환
-            const roomIds = new Set<string>()
-            const results: any[] = []
-
-            const allRooms = [...roomsByTitle, ...roomsByKeyword]
-            allRooms.forEach((room) => {
-                if (!roomIds.has(room.id)) {
-                    roomIds.add(room.id)
-                    results.push(room)
-                }
-            })
-
-            return results.map(room => roomToGameMapCard(room))
-        } catch (error) {
-            console.error('Error searching rooms:', error)
-            return []
-        }
-    }
-
-    /**
-     * 난이도별 맵 가져오기
-     */
-    static async getMapsByDifficulty(difficulty: string, limit: number = 12): Promise<GameMapCard[]> {
-        const capitalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-        const rooms = await this.queryDocuments<any>(
+        // 이름으로 검색
+        const nameResults = await this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
             [
-                where('Difficulty', '==', capitalizedDifficulty),
-                orderBy('PlayCount', 'desc')
+                where('metadata.status', '==', 'published'),
+                where('name', '>=', searchTerm),
+                where('name', '<=', searchTerm + '\uf8ff')
             ],
-            {limit}
+            {limit: 20}
         )
-        return rooms.map(room => roomToGameMapCard(room))
-    }
 
-    /**
-     * 테마별 맵 가져오기
-     */
-    static async getMapsByTheme(theme: string, limit: number = 12): Promise<GameMapCard[]> {
-        const rooms = await this.queryDocuments<any>(
+        // 태그로 검색 (실제로는 더 복잡한 검색 로직 필요)
+        const tagResults = await this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
             [
-                where('Theme', '==', theme),
-                orderBy('PlayCount', 'desc')
+                where('metadata.status', '==', 'published'),
+                where('tags', 'array-contains', lowerSearch)
             ],
-            {limit}
+            {limit: 20}
         )
-        return rooms.map(room => roomToGameMapCard(room))
-    }
 
-    /**
-     * 실시간 맵 구독
-     */
-    static subscribeToMaps(
-        filter: 'featured' | 'popular' | 'new',
-        callback: (maps: GameMapCard[]) => void
-    ) {
-        let constraints: any[] = []
+        // 중복 제거
+        const mapIds = new Set<string>()
+        const results: GameMapCard[] = []
+        const allResults = [...nameResults, ...tagResults]
 
-        switch (filter) {
-            case 'featured':
-            case 'popular':
-                constraints.push(orderBy('PlayCount', 'desc'))
-                break
-            case 'new':
-                constraints.push(orderBy('CreatedDate', 'desc'))
-                break
-        }
-
-        return this.subscribeToQuery<any>(
-            COLLECTIONS.ROOMS,
-            constraints,
-            (rooms) => {
-                const gameMaps = rooms.map(room => roomToGameMapCard(room))
-                callback(gameMaps)
+        allResults.forEach(map => {
+            if (!mapIds.has(map.id)) {
+                mapIds.add(map.id)
+                results.push(map)
             }
-        )
+        })
+
+        return results
     }
 
     /**
-     * 여러 필터를 조합한 맵 가져오기
+     * 추천 맵 가져오기
      */
-    static async getFilteredMaps(filters: {
-        difficulty?: string
-        theme?: string
-        sortBy?: 'popular' | 'recent' | 'liked'
-        limit?: number
-    }): Promise<GameMapCard[]> {
-        const constraints: any[] = []
-
-        if (filters.difficulty) {
-            const capitalizedDifficulty = filters.difficulty.charAt(0).toUpperCase() + filters.difficulty.slice(1)
-            constraints.push(where('Difficulty', '==', capitalizedDifficulty))
-        }
-
-        if (filters.theme) {
-            constraints.push(where('Theme', '==', filters.theme))
-        }
-
-        // 정렬 조건
-        switch (filters.sortBy) {
-            case 'popular':
-                constraints.push(orderBy('PlayCount', 'desc'))
-                break
-            case 'liked':
-                constraints.push(orderBy('LikeCount', 'desc'))
-                break
-            case 'recent':
-            default:
-                constraints.push(orderBy('CreatedDate', 'desc'))
-                break
-        }
-
-        const rooms = await this.queryDocuments<any>(
+    static async getFeaturedMaps(limit: number = 10): Promise<GameMapCard[]> {
+        return this.queryDocuments<GameMapCard>(
             COLLECTIONS.ROOMS,
-            constraints,
-            {limit: filters.limit || 12}
+            [
+                where('metadata.status', '==', 'published'),
+                where('metadata.isFeatured', '==', true),
+                orderBy('stats.playCount', 'desc')
+            ],
+            {limit}
         )
-
-        return rooms.map(room => roomToGameMapCard(room))
     }
 
     /**
-     * 전체 맵 개수 가져오기
+     * 공식 맵 가져오기
      */
-    static async getTotalMapCount(): Promise<number> {
-        try {
-            const snapshot = await getDocs(collection(db, COLLECTIONS.ROOMS))
-            return snapshot.size
-        } catch (error) {
-            console.error('Error getting total map count:', error)
-            return 0
-        }
-    }
-
-    /**
-     * 특정 테마의 맵 개수 가져오기
-     */
-    static async getMapCountByTheme(theme: string): Promise<number> {
-        try {
-            const q = await getDocs(
-                collection(db, COLLECTIONS.ROOMS)
-            )
-            return q.docs.filter(doc => doc.data().Theme === theme).length
-        } catch (error) {
-            console.error('Error getting map count by theme:', error)
-            return 0
-        }
+    static async getOfficialMaps(limit: number = 20): Promise<GameMapCard[]> {
+        return this.queryDocuments<GameMapCard>(
+            COLLECTIONS.ROOMS,
+            [
+                where('metadata.status', '==', 'published'),
+                where('metadata.isOfficial', '==', true),
+                orderBy('createdAt', 'desc')
+            ],
+            {limit}
+        )
     }
 }

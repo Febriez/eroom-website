@@ -1,6 +1,7 @@
+// app/(auth)/signup/page.tsx
 'use client'
 
-import {useState} from 'react'
+import React, {useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {createUserWithEmailAndPassword, signInWithPopup} from 'firebase/auth'
@@ -21,6 +22,11 @@ export default function SignupPage() {
         confirmPassword: '',
         displayName: '',
         username: ''
+    })
+    const [agreements, setAgreements] = useState({
+        terms: false,
+        privacy: false,
+        all: false
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(false)
@@ -67,6 +73,11 @@ export default function SignupPage() {
             if (existingUser) {
                 newErrors.username = '이미 사용중인 사용자명입니다'
             }
+        }
+
+        // 약관 동의 확인
+        if (!agreements.terms || !agreements.privacy) {
+            newErrors.agreements = '필수 약관에 모두 동의해주세요'
         }
 
         setErrors(newErrors)
@@ -169,6 +180,12 @@ export default function SignupPage() {
     }
 
     const handleGoogleSignup = async () => {
+        // 약관 동의 확인
+        if (!agreements.terms || !agreements.privacy) {
+            setErrors({agreements: '필수 약관에 모두 동의해주세요'})
+            return
+        }
+
         setLoading(true)
         try {
             const result = await signInWithPopup(auth, googleProvider)
@@ -289,6 +306,33 @@ export default function SignupPage() {
         }
     }
 
+    const handleAllAgreements = (checked: boolean) => {
+        setAgreements({
+            terms: checked,
+            privacy: checked,
+            all: checked
+        })
+        // 약관 동의 에러 제거
+        if (checked) {
+            const newErrors = {...errors}
+            delete newErrors.agreements
+            setErrors(newErrors)
+        }
+    }
+
+    const handleSingleAgreement = (type: 'terms' | 'privacy', checked: boolean) => {
+        const newAgreements = {...agreements, [type]: checked}
+        newAgreements.all = newAgreements.terms && newAgreements.privacy
+        setAgreements(newAgreements)
+
+        // 모두 동의했으면 에러 제거
+        if (newAgreements.terms && newAgreements.privacy) {
+            const newErrors = {...errors}
+            delete newErrors.agreements
+            setErrors(newErrors)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md">
@@ -385,6 +429,69 @@ export default function SignupPage() {
                         />
                         <p className="text-xs text-gray-400 mt-1">프로필 URL에 사용됩니다:
                             /profile/{formData.username || 'username'}</p>
+                    </div>
+
+                    {/* 약관 동의 */}
+                    <div className="space-y-3">
+                        <div className="border border-gray-800 rounded-lg p-4 space-y-3">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={agreements.all}
+                                    onChange={(e) => handleAllAgreements(e.target.checked)}
+                                    className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                />
+                                <span className="ml-3 text-sm font-medium">전체 동의</span>
+                            </label>
+
+                            <hr className="border-gray-800"/>
+
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={agreements.terms}
+                                    onChange={(e) => handleSingleAgreement('terms', e.target.checked)}
+                                    className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                />
+                                <span className="ml-3 text-sm">
+                                    <span className="text-red-400">*</span>{' '}
+                                    <a
+                                        href="/terms"
+                                        target="_blank"
+                                        className="text-green-400 hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        이용약관
+                                    </a>
+                                    에 동의합니다
+                                </span>
+                            </label>
+
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={agreements.privacy}
+                                    onChange={(e) => handleSingleAgreement('privacy', e.target.checked)}
+                                    className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                />
+                                <span className="ml-3 text-sm">
+                                    <span className="text-red-400">*</span>{' '}
+                                    <a
+                                        href="/privacy"
+                                        target="_blank"
+                                        className="text-green-400 hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        개인정보처리방침
+                                    </a>
+                                    에 동의합니다
+                                </span>
+                            </label>
+                        </div>
+
+                        {errors.agreements && (
+                            <p className="text-red-500 text-xs mt-1">{errors.agreements}</p>
+                        )}
                     </div>
 
                     <Button

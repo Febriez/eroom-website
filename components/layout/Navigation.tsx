@@ -1,3 +1,4 @@
+// components/layout/Navigation.tsx
 'use client'
 
 import React, {useEffect, useState} from 'react'
@@ -27,7 +28,6 @@ import {useNotifications} from '@/lib/hooks/useNotifications'
 // @ts-ignore - useConversations를 아직 생성 중
 import {useConversations} from '@/lib/hooks/useConversations'
 import {Avatar} from '../ui/Avatar'
-import {Dropdown} from '../ui/Dropdown'
 import {Button} from '../ui/Button'
 
 interface MenuItem {
@@ -46,6 +46,7 @@ export default function Navigation() {
     const [activeMenu, setActiveMenu] = useState<number | null>(null)
     const [showNotifications, setShowNotifications] = useState(false)
     const [showMessages, setShowMessages] = useState(false)
+    const [showProfileMenu, setShowProfileMenu] = useState(false)
     const {user, loading: authLoading, logout} = useAuth()
     const {notifications, unreadCount} = useNotifications()
     const {conversations, totalUnreadCount} = useConversations()
@@ -81,7 +82,7 @@ export default function Navigation() {
             submenu: [
                 {name: 'EROOM', desc: 'AI 방탈출 게임', icon: <Key className="w-4 h-4"/>, href: '/games/eroom'},
                 {name: '출시 예정', desc: '곧 만나보세요', icon: <Sparkles className="w-4 h-4"/>, href: '/games/upcoming'},
-                {name: '업데이트', desc: '최신 소식', icon: <Globe className="w-4 h-4"/>, href: '/news/updates'}
+                {name: '업데이트', desc: '최신 소식', icon: <Globe className="w-4 h-4"/>, href: '/games/updates'}
             ]
         },
         {
@@ -105,7 +106,7 @@ export default function Navigation() {
             submenu: [
                 {name: '다운로드', desc: 'Windows PC', icon: <Download className="w-4 h-4"/>, href: '/support/download'},
                 {name: '시스템 요구사항', desc: '권장 사양', icon: <Shield className="w-4 h-4"/>, href: '/support/requirements'},
-                {name: '고객센터', desc: '도움이 필요하신가요?', icon: <Users className="w-4 h-4"/>, href: '/support/help'}
+                {name: '고객센터', desc: '도움이 필요하신가요?', icon: <Users className="w-4 h-4"/>, href: '/support'}
             ]
         }
     ]
@@ -255,7 +256,7 @@ export default function Navigation() {
                                         onMouseLeave={() => setShowMessages(false)}
                                     >
                                         <button
-                                            onClick={() => router.push('/messages')}
+                                            onClick={() => router.push(`/profile/${user.username}`)}
                                             className="relative p-2 sm:p-3"
                                         >
                                             <MessageSquare
@@ -344,7 +345,7 @@ export default function Navigation() {
                                         onMouseLeave={() => setShowNotifications(false)}
                                     >
                                         <button
-                                            onClick={() => router.push('/notifications')}
+                                            onClick={() => router.push(`/profile/${user.username}`)}
                                             className="relative p-2 sm:p-3"
                                         >
                                             <Bell
@@ -383,7 +384,7 @@ export default function Navigation() {
                                                                 className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
                                                                     !notif.read ? 'bg-gray-900' : ''
                                                                 }`}
-                                                                onClick={() => router.push('/notifications')}
+                                                                onClick={() => router.push(`/profile/${user.username}`)}
                                                             >
                                                                 <div className="flex items-start gap-3">
                                                                     <div className={`p-2 ${icon.bg} rounded-lg`}>
@@ -412,22 +413,34 @@ export default function Navigation() {
                                     </div>
 
                                     {/* User Menu - Desktop */}
-                                    <div className="hidden sm:block relative h-full">
-                                        <Dropdown
-                                            trigger={
-                                                <button
-                                                    className="flex items-center gap-3 px-4 sm:px-6 h-full text-gray-300 hover:text-white font-medium transition-colors duration-200">
-                                                    <Avatar src={user.avatarUrl} size="sm"/>
-                                                    <span className="hidden sm:block">{user.displayName}</span>
-                                                    <ChevronDown className="w-4 h-4"/>
-                                                </button>
-                                            }
-                                            align="right"
+                                    <div
+                                        className="hidden sm:block relative h-full"
+                                        onMouseEnter={() => setShowProfileMenu(true)}
+                                        onMouseLeave={() => setShowProfileMenu(false)}
+                                    >
+                                        <button
+                                            className="flex items-center gap-3 px-4 sm:px-6 h-full text-gray-300 hover:text-white font-medium transition-colors duration-200">
+                                            <Avatar src={user.avatarUrl} size="sm"/>
+                                            <span className="hidden sm:block">{user.displayName}</span>
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                                                showProfileMenu ? 'rotate-180' : ''
+                                            }`}/>
+                                        </button>
+
+                                        {/* Profile Dropdown */}
+                                        <div
+                                            className={`absolute top-full right-0 w-56 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
+                                                showProfileMenu
+                                                    ? 'opacity-100 visible translate-y-0 z-50'
+                                                    : 'opacity-0 invisible -translate-y-2 z-40'
+                                            }`}
+                                            style={{marginTop: '0px'}}
                                         >
                                             <div className="p-2">
                                                 <Link
                                                     href={`/profile/${user.username}`}
                                                     className="flex items-center gap-4 p-4 rounded-lg hover:bg-gray-800 transition-all duration-200"
+                                                    onClick={() => setShowProfileMenu(false)}
                                                 >
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
@@ -440,7 +453,7 @@ export default function Navigation() {
                                                     <span>로그아웃</span>
                                                 </button>
                                             </div>
-                                        </Dropdown>
+                                        </div>
                                     </div>
 
                                     {/* User Avatar - Mobile */}

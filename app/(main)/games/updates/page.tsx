@@ -74,6 +74,126 @@ export default function UpdatesPage() {
                 {type: 'fix', description: '특정 상황에서 게임이 종료되는 문제 긴급 수정'},
                 {type: 'fix', description: '클라우드 저장 동기화 오류 수정'}
             ]
+        },
+        {
+            id: '4',
+            version: '1.1.3',
+            date: '2024-02-10',
+            title: 'UI/UX 개선 업데이트',
+            category: 'minor',
+            highlights: [
+                '새로운 메뉴 디자인',
+                '접근성 개선',
+                '사용자 경험 향상'
+            ],
+            changes: [
+                {type: 'improvement', description: '메인 메뉴 디자인 개선'},
+                {type: 'improvement', description: '색맹 사용자를 위한 색상 옵션 추가'},
+                {type: 'feature', description: '키보드 단축키 커스터마이징 기능 추가'},
+                {type: 'fix', description: '일부 UI 요소가 겹치는 문제 수정'}
+            ]
+        },
+        {
+            id: '5',
+            version: '1.1.2',
+            date: '2024-01-25',
+            title: '밸런스 조정',
+            category: 'patch',
+            highlights: [
+                '게임 난이도 조정',
+                '점수 시스템 개선'
+            ],
+            changes: [
+                {type: 'balance', description: '챕터 2의 퍼즐 난이도 하향 조정'},
+                {type: 'balance', description: '보너스 점수 계산 방식 개선'},
+                {type: 'fix', description: '순위표 표시 오류 수정'}
+            ]
+        },
+        {
+            id: '6',
+            version: '1.1.1',
+            date: '2024-01-15',
+            title: '출시 후 첫 번째 패치',
+            category: 'patch',
+            highlights: [
+                '초기 버그 수정',
+                '안정성 개선'
+            ],
+            changes: [
+                {type: 'fix', description: '게임 시작 시 충돌 문제 수정'},
+                {type: 'fix', description: '일부 언어에서 텍스트가 잘리는 문제 해결'},
+                {type: 'improvement', description: '전반적인 성능 최적화'}
+            ]
+        },
+        {
+            id: '7',
+            version: '1.1.0',
+            date: '2024-01-05',
+            title: '첫 번째 콘텐츠 업데이트',
+            category: 'minor',
+            highlights: [
+                '새로운 테마 방 3개 추가',
+                '업적 시스템 도입',
+                '사운드 효과 개선'
+            ],
+            changes: [
+                {type: 'feature', description: '병원 테마의 새로운 방 3개 추가'},
+                {type: 'feature', description: '28개의 업적과 도전 과제 추가'},
+                {type: 'improvement', description: '배경 음악 및 효과음 품질 향상'},
+                {type: 'improvement', description: '힌트 시스템 개선'},
+                {type: 'fix', description: '특정 아이템 상호작용 오류 수정'}
+            ]
+        },
+        {
+            id: '8',
+            version: '1.0.2',
+            date: '2023-12-28',
+            title: '연말 안정화 패치',
+            category: 'patch',
+            highlights: [
+                '안정성 향상',
+                '번역 품질 개선'
+            ],
+            changes: [
+                {type: 'fix', description: '메모리 누수 문제 해결'},
+                {type: 'improvement', description: '한국어 번역 품질 개선'},
+                {type: 'fix', description: '저장 시스템 안정성 향상'},
+                {type: 'improvement', description: '튜토리얼 설명 보완'}
+            ]
+        },
+        {
+            id: '9',
+            version: '1.0.1',
+            date: '2023-12-22',
+            title: '출시일 핫픽스',
+            category: 'hotfix',
+            highlights: [
+                '출시일 긴급 수정사항'
+            ],
+            changes: [
+                {type: 'fix', description: '게임 로딩 중 멈춤 현상 긴급 수정'},
+                {type: 'fix', description: '일부 퍼즐의 해답 인식 오류 수정'},
+                {type: 'fix', description: '오디오 드라이버 호환성 문제 해결'}
+            ]
+        },
+        {
+            id: '10',
+            version: '1.0.0',
+            date: '2023-12-21',
+            title: 'EROOM 정식 출시',
+            category: 'major',
+            highlights: [
+                '정식 버전 출시',
+                '15개 방탈출 방',
+                '완전한 스토리 모드'
+            ],
+            changes: [
+                {type: 'feature', description: '총 15개의 방탈출 방 제공'},
+                {type: 'feature', description: '완성된 스토리 모드와 엔딩'},
+                {type: 'feature', description: '다양한 난이도 옵션'},
+                {type: 'feature', description: '힌트 시스템 및 도움말 기능'},
+                {type: 'feature', description: '성과 추적 및 통계 시스템'}
+            ]
         }
     ]
 
@@ -125,14 +245,41 @@ export default function UpdatesPage() {
     return (
         <>
             <PageHeader
-                title="업데이트 소식"
-                description="EROOM의 최신 업데이트와 패치 노트를 확인하세요"
-                badge="최신 정보"
+                title="전체 업데이트 소식"
+                description="EROOM의 모든 업데이트 히스토리와 패치 노트를 확인하세요"
+                badge="완전한 기록"
                 icon={<Sparkles className="w-5 h-5"/>}
             />
 
-            {/* 상단 패딩 추가로 헤더 겹침 해결 */}
-            <Container className="py-12 pt-24">
+            <Container className="py-12">
+                {/* 업데이트 통계 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <Card className="p-4 text-center">
+                        <div className="text-2xl font-bold text-green-400">
+                            {updates.filter(u => u.category === 'major').length}
+                        </div>
+                        <div className="text-sm text-gray-400">메이저 업데이트</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                        <div className="text-2xl font-bold text-blue-400">
+                            {updates.filter(u => u.category === 'minor').length}
+                        </div>
+                        <div className="text-sm text-gray-400">마이너 업데이트</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                        <div className="text-2xl font-bold text-yellow-400">
+                            {updates.filter(u => u.category === 'patch').length}
+                        </div>
+                        <div className="text-sm text-gray-400">패치</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                        <div className="text-2xl font-bold text-red-400">
+                            {updates.filter(u => u.category === 'hotfix').length}
+                        </div>
+                        <div className="text-sm text-gray-400">핫픽스</div>
+                    </Card>
+                </div>
+
                 {/* 업데이트 목록 */}
                 <div className="space-y-6">
                     {updates.map(update => {
@@ -186,7 +333,7 @@ export default function UpdatesPage() {
 
                                 {/* 상세 내용 */}
                                 {isExpanded && (
-                                    <div className="px-6 pb-6 border-t border-gray-800 animate-slide-down">
+                                    <div className="px-6 pb-6 border-t border-gray-800">
                                         <div className="pt-6 space-y-6">
                                             {/* 주요 변경사항 */}
                                             <div>
@@ -223,13 +370,14 @@ export default function UpdatesPage() {
                     })}
                 </div>
 
-                {/* 더 보기 */}
+                {/* 완료 메시지 */}
                 <div className="mt-12 text-center">
-                    <p className="text-gray-400 mb-6">더 많은 업데이트 내역을 확인하고 싶으신가요?</p>
-                    <button
-                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors">
-                        전체 패치 노트 보기
-                    </button>
+                    <p className="text-gray-400 mb-2">
+                        총 {updates.length}개의 업데이트 내역을 모두 확인했습니다.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        EROOM의 정식 출시부터 현재까지의 모든 변경사항이 포함되어 있습니다.
+                    </p>
                 </div>
             </Container>
         </>

@@ -10,5 +10,6 @@ export const COLLECTIONS = {
     REPORTS: 'Report',
     STORE: 'Store',
     PURCHASES: 'Purchase',
+    GUIDES: 'Guide',
     SYSTEM: 'System'
 } as const

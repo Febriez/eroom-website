@@ -1,6 +1,8 @@
+// app/(main)/support/download/page.tsx
 'use client'
 
 import {useState} from 'react'
+import {useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
@@ -8,8 +10,11 @@ import {Button} from '@/components/ui/Button'
 import {Badge} from '@/components/ui/Badge'
 import {AlertCircle, CheckCircle, Download, ExternalLink, HardDrive, Monitor, Shield, Zap} from 'lucide-react'
 import {useDevice} from '@/lib/hooks/useDevice'
+import {getDownloadURL, ref} from 'firebase/storage'
+import {storage} from '@/lib/firebase/config'
 
 export default function DownloadPage() {
+    const router = useRouter()
     const {isMobile} = useDevice()
     const [selectedVersion, setSelectedVersion] = useState<'stable' | 'beta'>('stable')
     const [downloading, setDownloading] = useState(false)
@@ -62,13 +67,31 @@ export default function DownloadPage() {
         }
     ]
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         setDownloading(true)
-        // 실제 다운로드 로직
-        setTimeout(() => {
-            setDownloading(false)
-            window.location.href = '/downloads/eroom-installer.exe'
-        }, 1000)
+
+        try {
+            // Firebase Storage에서 파일 다운로드 URL 가져오기
+            const fileRef = ref(storage, 'pirate.jpg') // 실제로는 게임 설치 파일 경로
+            const downloadUrl = await getDownloadURL(fileRef)
+
+            // 다운로드 시작
+            const link = document.createElement('a')
+            link.href = downloadUrl
+            link.download = 'eroom-installer.exe' // 다운로드될 파일명
+            link.target = '_blank'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+
+        } catch (error) {
+            console.error('Download error:', error)
+            alert('다운로드 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        } finally {
+            setTimeout(() => {
+                setDownloading(false)
+            }, 2000)
+        }
     }
 
     if (isMobile) {
@@ -263,7 +286,12 @@ export default function DownloadPage() {
                             <li>• GTX 1050 / RX 560 이상</li>
                             <li>• 25GB 저장 공간</li>
                         </ul>
-                        <Button variant="outline" size="sm" className="mt-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => router.push('/support/requirements')}
+                        >
                             <ExternalLink className="w-4 h-4"/>
                             상세 사양 보기
                         </Button>
@@ -280,7 +308,12 @@ export default function DownloadPage() {
                             <li>• 네트워크 연결 문제</li>
                             <li>• 그래픽 설정 가이드</li>
                         </ul>
-                        <Button variant="outline" size="sm" className="mt-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4"
+                            onClick={() => router.push('/support/faq')}
+                        >
                             <ExternalLink className="w-4 h-4"/>
                             FAQ 보기
                         </Button>

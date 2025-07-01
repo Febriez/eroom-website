@@ -18,8 +18,21 @@ export interface GameMapCard {
     stats: {
         playCount: number
         likeCount: number
+        dislikeCount?: number
+        avgRating?: number
+        avgClearTime?: number
+        completionRate?: number
+        comments?: number
+    }
+    metadata?: {
+        status?: string
+        isAIGenerated?: boolean
+        isFeatured?: boolean
+        isOfficial?: boolean
+        version?: string
     }
     createdAt: Timestamp
+    updatedAt?: Timestamp
 }
 
 // Room을 GameMapCard로 변환

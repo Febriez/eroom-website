@@ -1,3 +1,4 @@
+// app/(main)/community/rankings/page.tsx
 'use client'
 
 import {useEffect, useState} from 'react'
@@ -5,46 +6,82 @@ import {useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
-import {Button} from '@/components/ui/Button'
 import {Badge} from '@/components/ui/Badge'
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/Tabs'
+import {UserService} from '@/lib/firebase/services/user.service'
 import {MapService} from '@/lib/firebase/services/map.service'
-import type {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
-import {Crown, Eye, Heart, Medal, TrendingUp, Trophy, Users} from 'lucide-react'
+import type {User} from '@/lib/firebase/types'
+import {Avatar} from '@/components/ui/Avatar'
+import {Crown, MapPin, Medal, Star, Trophy, Users, Zap} from 'lucide-react'
+
+interface UserWithStats extends User {
+    totalMapPlays?: number
+    avgMapRating?: number
+}
 
 export default function RankingsPage() {
     const router = useRouter()
-    const [maps, setMaps] = useState<GameMapCard[]>([])
+    const [users, setUsers] = useState<UserWithStats[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'popular' | 'liked' | 'recent'>('popular')
+    const [activeTab, setActiveTab] = useState<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>('playCount')
 
     useEffect(() => {
-        loadMaps(activeTab)
+        loadUsers(activeTab)
     }, [activeTab])
 
-    const loadMaps = async (type: 'popular' | 'liked' | 'recent') => {
+    const loadUsers = async (type: 'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating') => {
         setLoading(true)
         try {
-            let data: GameMapCard[] = []
+            let userData: User[] = []
 
+            // 모든 유저 가져오기
+            userData = await UserService.getAllUsers()
+
+            // 추가 통계 계산
+            const usersWithStats: UserWithStats[] = await Promise.all(
+                userData.map(async (user) => {
+                    let totalMapPlays = 0
+                    let avgMapRating = 0
+
+                    if (user.stats.mapsCreated > 0) {
+                        // 유저가 만든 맵들의 통계 가져오기
+                        const userMaps = await MapService.getMapsByCreator(user.uid)
+
+                        totalMapPlays = userMaps.reduce((sum: number, map) => sum + map.stats.playCount, 0)
+
+                        const totalRating = userMaps.reduce((sum: number, map) => sum + ((map.stats.avgRating || 0) * map.stats.playCount), 0)
+                        const totalRatingCount = userMaps.reduce((sum: number, map) => sum + map.stats.playCount, 0)
+                        avgMapRating = totalRatingCount > 0 ? totalRating / totalRatingCount : 0
+                    }
+
+                    return {
+                        ...user,
+                        totalMapPlays,
+                        avgMapRating
+                    }
+                })
+            )
+
+            // 정렬
+            let sortedUsers = [...usersWithStats]
             switch (type) {
-                case 'popular':
-                    data = await MapService.getPopularMaps(50)
+                case 'playCount':
+                    sortedUsers.sort((a, b) => b.stats.mapsCompleted - a.stats.mapsCompleted)
                     break
-                case 'liked':
-                    data = await MapService.getFilteredMaps({
-                        sortBy: 'liked',
-                        limit: 50
-                    })
+                case 'mapsCreated':
+                    sortedUsers.sort((a, b) => b.stats.mapsCreated - a.stats.mapsCreated)
                     break
-                case 'recent':
-                    data = await MapService.getRecentMaps(50)
+                case 'totalPlays':
+                    sortedUsers.sort((a, b) => (b.totalMapPlays || 0) - (a.totalMapPlays || 0))
+                    break
+                case 'avgRating':
+                    sortedUsers.sort((a, b) => (b.avgMapRating || 0) - (a.avgMapRating || 0))
                     break
             }
 
-            setMaps(data)
+            setUsers(sortedUsers.slice(0, 50)) // 상위 50명만 표시
         } catch (error) {
-            console.error('Error loading maps:', error)
+            console.error('Error loading users:', error)
         } finally {
             setLoading(false)
         }
@@ -85,68 +122,79 @@ export default function RankingsPage() {
         return count.toString()
     }
 
-    const getDifficultyColor = (difficulty: string) => {
-        switch (difficulty.toLowerCase()) {
-            case 'easy':
-                return 'success'
-            case 'medium':
-                return 'info'
-            case 'hard':
-                return 'warning'
-            case 'extreme':
-                return 'danger'
+    const getRankLabel = (type: string) => {
+        switch (type) {
+            case 'playCount':
+                return '플레이 횟수'
+            case 'mapsCreated':
+                return '제작한 맵'
+            case 'totalPlays':
+                return '총 플레이 수'
+            case 'avgRating':
+                return '평균 평점'
             default:
-                return 'default'
+                return ''
         }
     }
 
-    const getDifficultyLabel = (difficulty: string) => {
-        switch (difficulty.toLowerCase()) {
-            case 'easy':
-                return '쉬움'
-            case 'medium':
-                return '보통'
-            case 'hard':
-                return '어려움'
-            case 'extreme':
-                return '극악'
+    const getRankValue = (user: UserWithStats, type: string) => {
+        switch (type) {
+            case 'playCount':
+                return formatCount(user.stats.mapsCompleted)
+            case 'mapsCreated':
+                return formatCount(user.stats.mapsCreated)
+            case 'totalPlays':
+                return formatCount(user.totalMapPlays || 0)
+            case 'avgRating':
+                return (user.avgMapRating || 0).toFixed(1) + ' ⭐'
             default:
-                return difficulty
+                return '0'
         }
     }
 
-    const handleMapClick = (mapId: string) => {
-        router.push(`/games/eroom?mapId=${mapId}`)
+    const getLevelBadgeColor = (level: number) => {
+        if (level >= 50) return 'danger'
+        if (level >= 30) return 'warning'
+        if (level >= 10) return 'info'
+        return 'success'
+    }
+
+    const handleUserClick = (username: string) => {
+        router.push(`/profile/${username}`)
     }
 
     return (
         <>
             <PageHeader
-                title="인기 맵 랭킹"
-                description="가장 많이 플레이되고 사랑받는 맵들을 확인하세요"
+                title="유저 랭킹"
+                description="최고의 방탈출 마스터들을 확인하세요"
                 badge="실시간 업데이트"
                 icon={<Trophy className="w-5 h-5"/>}
             />
 
             <Container className="py-12">
                 {/* 탭 메뉴 */}
-                <Tabs<'popular' | 'liked' | 'recent'>
+                <Tabs<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>
                     value={activeTab}
                     onValueChange={(val) => setActiveTab(val)}
-                    defaultValue="popular"
+                    defaultValue="playCount"
                 >
                     <TabsList>
-                        <TabsTrigger value="popular">
+                        <TabsTrigger value="playCount">
+                            <Trophy className="w-4 h-4"/>
+                            플레이 횟수
+                        </TabsTrigger>
+                        <TabsTrigger value="mapsCreated">
+                            <MapPin className="w-4 h-4"/>
+                            맵 제작
+                        </TabsTrigger>
+                        <TabsTrigger value="totalPlays">
                             <Users className="w-4 h-4"/>
-                            플레이 순위
+                            총 플레이 수
                         </TabsTrigger>
-                        <TabsTrigger value="liked">
-                            <Heart className="w-4 h-4"/>
-                            인기 순위
-                        </TabsTrigger>
-                        <TabsTrigger value="recent">
-                            <TrendingUp className="w-4 h-4"/>
-                            최신 맵
+                        <TabsTrigger value="avgRating">
+                            <Star className="w-4 h-4"/>
+                            평균 평점
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -159,58 +207,47 @@ export default function RankingsPage() {
                     </div>
                 )}
 
-                {/* 상위 3개 맵 하이라이트 */}
-                {!loading && maps.length > 0 && (
+                {/* 상위 3명 하이라이트 */}
+                {!loading && users.length > 0 && (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                            {maps.slice(0, 3).map((map, index) => {
+                            {users.slice(0, 3).map((user, index) => {
                                 const rank = index + 1
                                 return (
                                     <Card
-                                        key={map.id}
+                                        key={user.id}
                                         className={`p-6 ${getRankStyle(rank)} hover:scale-105 transition-transform cursor-pointer`}
-                                        onClick={() => handleMapClick(map.id)}
+                                        onClick={() => handleUserClick(user.username)}
                                     >
                                         <div className="text-center mb-4">
                                             {getRankIcon(rank)}
                                         </div>
 
-                                        {/* 맵 썸네일 */}
-                                        <div
-                                            className="aspect-video bg-gradient-to-br from-green-600 to-green-800 rounded-lg mb-4 overflow-hidden">
-                                            {map.thumbnail && (
-                                                <img
-                                                    src={map.thumbnail}
-                                                    alt={map.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            )}
-                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <Avatar src={user.avatarUrl} size="lg" className="mb-4"/>
 
-                                        <h3 className="text-xl font-bold mb-2 text-center line-clamp-1">
-                                            {map.name}
-                                        </h3>
+                                            <h3 className="text-xl font-bold mb-1 text-center">
+                                                {user.displayName}
+                                            </h3>
 
-                                        <div className="text-center mb-3">
-                                            <Badge variant={getDifficultyColor(map.difficulty) as any}>
-                                                {getDifficultyLabel(map.difficulty)}
+                                            <p className="text-sm text-gray-400 mb-3">@{user.username}</p>
+
+                                            <Badge variant={getLevelBadgeColor(user.level) as any} className="mb-4">
+                                                Lv.{user.level}
                                             </Badge>
-                                        </div>
 
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-center gap-4">
-                                                <div className="flex items-center gap-1">
-                                                    <Eye className="w-4 h-4 text-blue-400"/>
+                                            <div className="w-full space-y-2">
+                                                <div className="flex items-center justify-between">
                                                     <span
-                                                        className="font-bold">{formatCount(map.stats.playCount)}</span>
+                                                        className="text-sm text-gray-400">{getRankLabel(activeTab)}</span>
+                                                    <span
+                                                        className="font-bold text-lg">{getRankValue(user, activeTab)}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Heart className="w-4 h-4 text-red-400"/>
-                                                    <span
-                                                        className="font-bold">{formatCount(map.stats.likeCount)}</span>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-gray-500">포인트</span>
+                                                    <span>{formatCount(user.points)}</span>
                                                 </div>
                                             </div>
-                                            <p className="text-sm text-gray-400">by @{map.creator.username}</p>
                                         </div>
                                     </Card>
                                 )
@@ -228,92 +265,66 @@ export default function RankingsPage() {
                                     <thead className="bg-gray-900/50">
                                     <tr>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">순위</th>
-                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">맵 정보</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">난이도</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">플레이</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">좋아요</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">제작자</th>
+                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">유저</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">레벨</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">{getRankLabel(activeTab)}</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">포인트</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">승률</th>
                                     </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
-                                    {maps.slice(3).map((map, index) => (
+                                    {users.slice(3).map((user, index) => (
                                         <tr
-                                            key={map.id}
+                                            key={user.id}
                                             className="hover:bg-gray-900/30 transition-colors cursor-pointer"
-                                            onClick={() => handleMapClick(map.id)}
+                                            onClick={() => handleUserClick(user.username)}
                                         >
                                             <td className="px-6 py-4">
-                                                    <span className="text-2xl font-bold text-gray-500">
-                                                        #{index + 4}
-                                                    </span>
+                                                <span className="text-2xl font-bold text-gray-500">
+                                                    #{index + 4}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div
-                                                        className="w-16 h-10 bg-gradient-to-br from-green-600 to-green-800 rounded overflow-hidden flex-shrink-0">
-                                                        {map.thumbnail && (
-                                                            <img
-                                                                src={map.thumbnail}
-                                                                alt={map.name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        )}
-                                                    </div>
+                                                    <Avatar src={user.avatarUrl} size="sm"/>
                                                     <div>
-                                                        <p className="font-medium line-clamp-1">{map.name}</p>
-                                                        <p className="text-sm text-gray-400 line-clamp-1">{map.description}</p>
+                                                        <p className="font-medium">{user.displayName}</p>
+                                                        <p className="text-sm text-gray-400">@{user.username}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <Badge variant={getDifficultyColor(map.difficulty) as any} size="sm">
-                                                    {getDifficultyLabel(map.difficulty)}
+                                                <Badge variant={getLevelBadgeColor(user.level) as any} size="sm">
+                                                    Lv.{user.level}
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Eye className="w-4 h-4 text-blue-400"/>
-                                                    <span
-                                                        className="font-bold">{formatCount(map.stats.playCount)}</span>
-                                                </div>
+                                                <span className="font-bold">{getRankValue(user, activeTab)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Heart className="w-4 h-4 text-red-400"/>
-                                                    <span
-                                                        className="font-bold">{formatCount(map.stats.likeCount)}</span>
+                                                    <Zap className="w-4 h-4 text-yellow-400"/>
+                                                    <span>{formatCount(user.points)}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="text-sm text-gray-400">@{map.creator.username}</span>
+                                                <span className="text-sm">{user.stats.winRate}%</span>
                                             </td>
                                         </tr>
                                     ))}
                                     </tbody>
                                 </table>
                             </div>
-
-                            {/* 더보기 버튼 */}
-                            {maps.length === 50 && (
-                                <div className="p-4 border-t border-gray-800 text-center">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => router.push('/community/maps')}
-                                    >
-                                        모든 맵 보기
-                                    </Button>
-                                </div>
-                            )}
                         </Card>
                     </>
                 )}
 
                 {/* 빈 상태 */}
-                {!loading && maps.length === 0 && (
+                {!loading && users.length === 0 && (
                     <div className="text-center py-20">
                         <Trophy className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
                         <h3 className="text-xl font-bold mb-2">아직 랭킹 데이터가 없습니다</h3>
-                        <p className="text-gray-400">맵이 등록되면 여기에 표시됩니다</p>
+                        <p className="text-gray-400">유저들의 활동이 기록되면 여기에 표시됩니다</p>
                     </div>
                 )}
             </Container>

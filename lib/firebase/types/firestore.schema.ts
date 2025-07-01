@@ -53,37 +53,81 @@ export interface UserSchema {
     usernameChangedAt?: Timestamp
 }
 
-// 게임 맵
-export interface MapSchema {
+// 실제 Room 스키마 (Firestore 구조 기반)
+export interface RoomSchema {
+    // 기본 식별자
+    id: string                          // Firestore 문서 ID
+    RoomId: string                      // 게임 내부 UUID
+
+    // 기본 정보
+    RoomTitle: string
+    RoomDescription: string
+    CreatorId: string
+
+    // 게임 설정
+    Difficulty: 'Easy' | 'Normal' | 'Hard' | 'Extreme'
+    Theme: string
+    Keywords: string[]                  // 태그/키워드
+
+    // 미디어
+    Thumbnail: string                   // URL (빈 문자열 가능)
+    RoomPrefabUrl: string              // URL (빈 문자열 가능)
+
+    // 통계 (랭킹/프로필용)
+    PlayCount: number
+    LikeCount: number
+    CommentAuthorIds: string[]         // 댓글 작성자 ID들
+
+    // 메타데이터
+    Version: number
+    CreatedDate: Timestamp
+    LastUpdated: Timestamp
+
+    // Objects 배열은 클라이언트용이므로 제외
+}
+
+// Room을 카드 형태로 표시하기 위한 인터페이스
+export interface RoomCardDisplay {
     id: string
-    name: string
+    title: string
     description: string
-    difficulty: 'easy' | 'normal' | 'hard' | 'extreme'
+    thumbnail?: string
+    difficulty: string
     theme: string
     tags: string[]
-
     creator: {
-        uid: string
-        username: string
-        displayName: string
+        id: string
+        username: string  // 실제로는 사용자 정보 조회 필요
     }
-
     stats: {
         playCount: number
         likeCount: number
-        avgRating: number
-        avgClearTime: number
-        completionRate: number
+        commentCount: number
     }
-
-    metadata: {
-        isAIGenerated: boolean
-        isFeatured: boolean
-        status: 'draft' | 'published' | 'archived'
-    }
-
     createdAt: Timestamp
-    updatedAt: Timestamp
+}
+
+// Room을 RoomCardDisplay로 변환하는 함수
+export function roomToCardDisplay(room: RoomSchema): RoomCardDisplay {
+    return {
+        id: room.id,
+        title: room.RoomTitle,
+        description: room.RoomDescription,
+        thumbnail: room.Thumbnail || undefined,
+        difficulty: room.Difficulty.toLowerCase(),
+        theme: room.Theme,
+        tags: room.Keywords || [],
+        creator: {
+            id: room.CreatorId,
+            username: room.CreatorId // 실제로는 사용자 정보 조회 필요
+        },
+        stats: {
+            playCount: room.PlayCount || 0,
+            likeCount: room.LikeCount || 0,
+            commentCount: room.CommentAuthorIds?.length || 0
+        },
+        createdAt: room.CreatedDate
+    }
 }
 
 // 대화
