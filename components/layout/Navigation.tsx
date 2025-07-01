@@ -186,36 +186,39 @@ export default function Navigation() {
                             </div>
                         </Link>
 
-                        {/* Desktop Menu with Hover */}
-                        <div className="hidden lg:flex items-center space-x-1">
+                        {/* Desktop Menu with Hover - 스크롤 위치 관계없이 항상 작동하도록 수정 */}
+                        <div className="hidden lg:flex items-center h-full">
                             {menuItems.map((item, index) => (
                                 <div
                                     key={index}
-                                    className="relative"
+                                    className="relative h-full"
                                     onMouseEnter={() => setActiveMenu(index)}
                                     onMouseLeave={() => setActiveMenu(null)}
                                 >
                                     <button
-                                        className="px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200 flex items-center gap-1">
+                                        className="h-full px-6 text-gray-300 hover:text-white font-medium transition-colors duration-200 flex items-center gap-1">
                                         {item.title}
                                         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
                                             activeMenu === index ? 'rotate-180' : ''
                                         }`}/>
                                     </button>
 
-                                    {/* Dropdown Menu */}
+                                    {/* Dropdown Menu - z-index와 포지셔닝 개선 */}
                                     <div
                                         className={`absolute top-full left-0 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
                                             activeMenu === index
-                                                ? 'opacity-100 visible translate-y-0'
-                                                : 'opacity-0 invisible -translate-y-2'
-                                        }`}>
+                                                ? 'opacity-100 visible translate-y-0 z-50'
+                                                : 'opacity-0 invisible -translate-y-2 z-40'
+                                        }`}
+                                        style={{marginTop: '0px'}} // 드롭다운이 네비게이션 바에 바로 붙도록
+                                    >
                                         <div className="p-2">
                                             {item.submenu.map((subitem, subIndex) => (
                                                 <Link
                                                     key={subIndex}
                                                     href={subitem.href}
                                                     className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-900 transition-all duration-200 group"
+                                                    onClick={() => setActiveMenu(null)}
                                                 >
                                                     <div
                                                         className="p-2 bg-gray-800 rounded-lg text-green-400 group-hover:bg-gray-700 transition-colors">
@@ -261,8 +264,8 @@ export default function Navigation() {
                                         <div
                                             className={`absolute top-full right-0 mt-2 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
                                                 showMessages
-                                                    ? 'opacity-100 visible translate-y-0'
-                                                    : 'opacity-0 invisible -translate-y-2'
+                                                    ? 'opacity-100 visible translate-y-0 z-50'
+                                                    : 'opacity-0 invisible -translate-y-2 z-40'
                                             }`}>
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
@@ -350,8 +353,8 @@ export default function Navigation() {
                                         <div
                                             className={`absolute top-full right-0 mt-2 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
                                                 showNotifications
-                                                    ? 'opacity-100 visible translate-y-0'
-                                                    : 'opacity-0 invisible -translate-y-2'
+                                                    ? 'opacity-100 visible translate-y-0 z-50'
+                                                    : 'opacity-0 invisible -translate-y-2 z-40'
                                             }`}>
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
@@ -403,11 +406,11 @@ export default function Navigation() {
                                     </div>
 
                                     {/* User Menu - Desktop */}
-                                    <div className="hidden sm:block">
+                                    <div className="hidden sm:block relative h-full">
                                         <Dropdown
                                             trigger={
                                                 <button
-                                                    className="flex items-center gap-3 px-4 sm:px-6 py-8 text-gray-300 hover:text-white font-medium transition-colors duration-200">
+                                                    className="flex items-center gap-3 px-4 sm:px-6 h-full text-gray-300 hover:text-white font-medium transition-colors duration-200">
                                                     <Avatar src={user.avatarUrl} size="sm"/>
                                                     <span className="hidden sm:block">{user.displayName}</span>
                                                     <ChevronDown className="w-4 h-4"/>

@@ -1,6 +1,7 @@
 'use client'
 
 import {useState} from 'react'
+import {useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
@@ -23,9 +24,11 @@ interface ShopItem {
 }
 
 export default function StoreItemsPage() {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [selectedRarity, setSelectedRarity] = useState<string | null>(null)
+    const [selectedItem, setSelectedItem] = useState<string | null>(null)
 
     const items: ShopItem[] = [
         {
@@ -118,7 +121,22 @@ export default function StoreItemsPage() {
         }
     }
 
-    const getRarityBorder = (rarity: string) => {
+    const getRarityBorder = (rarity: string, isSelected: boolean) => {
+        if (isSelected) {
+            switch (rarity) {
+                case 'common':
+                    return 'border-gray-500 ring-2 ring-gray-500'
+                case 'rare':
+                    return 'border-blue-500 ring-2 ring-blue-500'
+                case 'epic':
+                    return 'border-purple-500 ring-2 ring-purple-500'
+                case 'legendary':
+                    return 'border-orange-500 ring-2 ring-orange-500'
+                default:
+                    return 'border-gray-500 ring-2 ring-gray-500'
+            }
+        }
+
         switch (rarity) {
             case 'common':
                 return 'border-gray-700'
@@ -140,6 +158,17 @@ export default function StoreItemsPage() {
         const matchesRarity = !selectedRarity || item.rarity === selectedRarity
         return matchesSearch && matchesCategory && matchesRarity
     })
+
+    const handlePurchase = (itemId: string, itemName: string) => {
+        if (!selectedItem || selectedItem !== itemId) {
+            alert(`먼저 "${itemName}"을(를) 선택해주세요.`)
+            setSelectedItem(itemId)
+            return
+        }
+
+        // 실제 구매 로직
+        alert(`"${itemName}"을(를) 구매하시겠습니까?`)
+    }
 
     return (
         <>
@@ -237,12 +266,14 @@ export default function StoreItemsPage() {
                         const discount = item.originalPrice
                             ? Math.round((1 - item.price / item.originalPrice) * 100)
                             : 0
+                        const isSelected = selectedItem === item.id
 
                         return (
                             <Card
                                 key={item.id}
                                 hover
-                                className={`p-6 relative overflow-hidden ${getRarityBorder(item.rarity)}`}
+                                className={`p-6 relative overflow-hidden cursor-pointer transition-all ${getRarityBorder(item.rarity, isSelected)}`}
+                                onClick={() => setSelectedItem(item.id)}
                             >
                                 {/* 배지들 */}
                                 <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -264,15 +295,15 @@ export default function StoreItemsPage() {
                                 </div>
 
                                 {/* 정보 */}
-                                <h3 className="text-lg font-bold mb-2">{item.name}</h3>
-                                <p className="text-sm text-gray-400 mb-4">{item.description}</p>
+                                <h3 className="text-lg font-bold mb-2 break-keep-all">{item.name}</h3>
+                                <p className="text-sm text-gray-400 mb-4 break-keep-all">{item.description}</p>
 
                                 {/* 희귀도 */}
                                 <div className="flex items-center gap-2 mb-4">
                                     <Star className={`w-4 h-4 ${rarity?.color}`}/>
                                     <span className={`text-sm font-medium ${rarity?.color}`}>
-                    {rarity?.name}
-                  </span>
+                                        {rarity?.name}
+                                    </span>
                                 </div>
 
                                 {/* 가격 및 구매 버튼 */}
@@ -287,7 +318,14 @@ export default function StoreItemsPage() {
                                             {item.price.toLocaleString()} 크레딧
                                         </p>
                                     </div>
-                                    <Button variant="primary" size="sm">
+                                    <Button
+                                        variant={isSelected ? "primary" : "secondary"}
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            handlePurchase(item.id, item.name)
+                                        }}
+                                    >
                                         구매
                                     </Button>
                                 </div>

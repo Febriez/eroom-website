@@ -22,6 +22,7 @@ interface BugReport {
 export default function BugReportPage() {
     const {user} = useAuth()
     const [submitted, setSubmitted] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
     const [formData, setFormData] = useState<BugReport>({
         title: '',
         category: 'bug',
@@ -62,11 +63,21 @@ export default function BugReportPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // 실제 제출 로직
-        console.log('Submitting bug report:', formData)
-        setSubmitted(true)
+        setSubmitting(true)
+
+        // 실제 제출 로직 시뮬레이션
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1500)) // API 호출 시뮬레이션
+            console.log('Submitting bug report:', formData)
+            setSubmitted(true)
+        } catch (error) {
+            console.error('Error submitting bug report:', error)
+        } finally {
+            setSubmitting(false)
+        }
     }
 
+    // 로그인하지 않은 경우
     if (!user) {
         return (
             <>
@@ -93,6 +104,7 @@ export default function BugReportPage() {
         )
     }
 
+    // 제출 완료 상태
     if (submitted) {
         return (
             <>
@@ -104,35 +116,55 @@ export default function BugReportPage() {
                 />
 
                 <Container className="py-12">
-                    <Card className="p-8 text-center max-w-md mx-auto">
-                        <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4"/>
-                        <h2 className="text-xl font-bold mb-4">제출 완료!</h2>
-                        <p className="text-gray-400 mb-6">
-                            소중한 의견 감사합니다. 빠른 시일 내에 검토하여 개선하겠습니다.
+                    <Card className="p-12 text-center max-w-md mx-auto animate-fade-in">
+                        <div className="relative">
+                            <CheckCircle className="w-20 h-20 text-green-400 mx-auto mb-6 animate-slide-up"/>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div
+                                    className="w-32 h-32 bg-green-400/20 rounded-full blur-3xl animate-pulse-slow"></div>
+                            </div>
+                        </div>
+                        <h2 className="text-2xl font-bold mb-4">제출 완료!</h2>
+                        <p className="text-gray-300 mb-2">
+                            소중한 의견 감사합니다.
                         </p>
-                        <Button
-                            variant="primary"
-                            onClick={() => {
-                                setSubmitted(false)
-                                setFormData({
-                                    title: '',
-                                    category: 'bug',
-                                    severity: 'medium',
-                                    description: '',
-                                    steps: '',
-                                    system: '',
-                                    attachments: []
-                                })
-                            }}
-                        >
-                            새 리포트 작성
-                        </Button>
+                        <p className="text-gray-400 mb-8">
+                            빠른 시일 내에 검토하여 개선하겠습니다.
+                        </p>
+                        <div className="space-y-3">
+                            <Button
+                                variant="primary"
+                                fullWidth
+                                onClick={() => {
+                                    setSubmitted(false)
+                                    setFormData({
+                                        title: '',
+                                        category: 'bug',
+                                        severity: 'medium',
+                                        description: '',
+                                        steps: '',
+                                        system: '',
+                                        attachments: []
+                                    })
+                                }}
+                            >
+                                새 리포트 작성
+                            </Button>
+                            <Button
+                                variant="outline"
+                                fullWidth
+                                onClick={() => window.location.href = '/'}
+                            >
+                                홈으로 돌아가기
+                            </Button>
+                        </div>
                     </Card>
                 </Container>
             </>
         )
     }
 
+    // 리포트 작성 폼
     return (
         <>
             <PageHeader
@@ -303,10 +335,10 @@ export default function BugReportPage() {
                                                      className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
                                                     <div className="flex items-center gap-3">
                                                         <Paperclip className="w-4 h-4 text-gray-400"/>
-                                                        <span className="text-sm">{file.name}</span>
+                                                        <span className="text-sm break-keep-all">{file.name}</span>
                                                         <span className="text-xs text-gray-500">
-                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                            </span>
+                                                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                                        </span>
                                                     </div>
                                                     <button
                                                         type="button"
@@ -327,10 +359,10 @@ export default function BugReportPage() {
                                 <Button
                                     type="submit"
                                     variant="primary"
-                                    disabled={!formData.title || !formData.description}
+                                    disabled={!formData.title || !formData.description || submitting}
                                     fullWidth
                                 >
-                                    리포트 제출
+                                    {submitting ? '제출 중...' : '리포트 제출'}
                                 </Button>
                             </div>
                         </form>

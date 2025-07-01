@@ -50,6 +50,20 @@
     :focus-visible {
         @apply outline-none ring-2 ring-green-500 ring-offset-2 ring-offset-gray-900;
     }
+
+    /* 텍스트 줄바꿈 수정 (문제 3번) */
+    p, span, div {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+    }
+
+    /* 모바일 터치 영역 개선 */
+    @media (max-width: 768px) {
+        button, a, .clickable {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    }
 }
 
 @layer components {
@@ -70,9 +84,16 @@
         disabled:opacity-50 disabled:cursor-not-allowed;
     }
 
-    /* 카드 베이스 */
+    /* 카드 베이스 - 패딩 추가 (문제 2번) */
     .card {
-        @apply bg-gray-900 border border-gray-800 rounded-xl;
+        @apply bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6;
+    }
+
+    /* 모바일 카드 패딩 조정 */
+    @media (max-width: 640px) {
+        .card-mobile {
+            @apply p-3;
+        }
     }
 
     /* 그라데이션 텍스트 */
@@ -81,14 +102,35 @@
         bg-clip-text text-transparent;
     }
 
-    /* 섹션 패딩 */
+    /* 섹션 패딩 - 모바일 대응 개선 (문제 2번) */
     .section-padding {
-        @apply py-16 sm:py-24 lg:py-32;
+        @apply py-12 sm:py-16 md:py-24 lg:py-32;
     }
 
-    /* 컨테이너 */
+    /* 컨테이너 - 모바일 패딩 개선 */
     .container-custom {
         @apply max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+
+    /* 이미지 선택 방지 (문제 9번) */
+    .no-select {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    /* 이미지와 함께 있는 텍스트 선택 방지 */
+    .image-with-text {
+        @apply relative;
+    }
+
+    .image-with-text img {
+        @apply pointer-events-none select-none;
+    }
+
+    .image-with-text > * {
+        @apply pointer-events-auto;
     }
 }
 
@@ -232,21 +274,31 @@
         @apply bg-green-500/30 text-green-100;
     }
 
-    /* 안전 영역 (모바일 노치 대응) */
+    /* 안전 영역 (모바일 노치 대응) - 패딩 개선 */
     .safe-top {
-        padding-top: env(safe-area-inset-top);
+        padding-top: max(1rem, env(safe-area-inset-top));
     }
 
     .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
 
     .safe-left {
-        padding-left: env(safe-area-inset-left);
+        padding-left: max(1rem, env(safe-area-inset-left));
     }
 
     .safe-right {
-        padding-right: env(safe-area-inset-right);
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+
+    /* 텍스트 줄바꿈 유틸리티 (문제 3번) */
+    .break-keep-all {
+        word-break: keep-all;
+    }
+
+    .break-word {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
     }
 }
 

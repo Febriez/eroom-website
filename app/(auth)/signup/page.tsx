@@ -8,6 +8,7 @@ import {doc, getDoc, setDoc} from 'firebase/firestore'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {UserService} from '@/lib/firebase/services'
+import {validateUsername} from '@/lib/validators'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
 import {AlertCircle, Key, Lock, Mail, User} from 'lucide-react'
@@ -45,12 +46,17 @@ export default function SignupPage() {
             newErrors.confirmPassword = '비밀번호가 일치하지 않습니다'
         }
 
-        // 닉네임 검증
+        // 닉네임 검증 (validators.ts 사용)
         if (!formData.displayName) {
             newErrors.displayName = '닉네임을 입력해주세요'
+        } else {
+            const nicknameValidation = validateUsername(formData.displayName)
+            if (!nicknameValidation.isValid) {
+                newErrors.displayName = nicknameValidation.error!
+            }
         }
 
-        // 사용자명 검증
+        // 사용자명 검증 (영문만 허용)
         if (!formData.username) {
             newErrors.username = '사용자명을 입력해주세요'
         } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
@@ -183,11 +189,19 @@ export default function SignupPage() {
                     counter++
                 }
 
+                // Google 사용자의 displayName도 검증
+                let displayName = user.displayName || username
+                const displayNameValidation = validateUsername(displayName)
+                if (!displayNameValidation.isValid) {
+                    // 유효하지 않으면 username을 사용
+                    displayName = username
+                }
+
                 await setDoc(doc(db, COLLECTIONS.USERS, user.uid), {
                     uid: user.uid,
                     email: user.email,
                     username: username,
-                    displayName: user.displayName || username,
+                    displayName: displayName,
                     bio: '안녕하세요. 잘 부탁드립니다.',
                     avatarUrl: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
 
@@ -261,6 +275,20 @@ export default function SignupPage() {
         }
     }
 
+    const handleDisplayNameChange = (value: string) => {
+        setFormData({...formData, displayName: value})
+
+        // 실시간 검증
+        const validation = validateUsername(value)
+        if (!validation.isValid && value.length > 0) {
+            setErrors({...errors, displayName: validation.error!})
+        } else {
+            const newErrors = {...errors}
+            delete newErrors.displayName
+            setErrors(newErrors)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md">
@@ -322,12 +350,20 @@ export default function SignupPage() {
                         <label className="block text-sm font-medium mb-2">닉네임</label>
                         <Input
                             value={formData.displayName}
-                            onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+                            onChange={(e) => handleDisplayNameChange(e.target.value)}
                             placeholder="게임에서 표시될 이름"
                             icon={<User className="w-5 h-5"/>}
                             error={errors.displayName}
+                            maxLength={32} // 여유있게 설정 (한글 16자 = 최대 32바이트)
                         />
-                        <p className="text-xs text-gray-400 mt-1">언제든지 변경 가능합니다</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            최대 16자 (한글 8자), 공백 사용 가능, 언제든지 변경 가능
+                        </p>
+                        {formData.displayName && !errors.displayName && (
+                            <p className="text-xs text-green-400 mt-1">
+                                사용 가능한 닉네임입니다
+                            </p>
+                        )}
                     </div>
 
                     <div>

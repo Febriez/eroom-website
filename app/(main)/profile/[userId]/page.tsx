@@ -14,7 +14,7 @@ import {Input} from '@/components/ui/Input'
 import {Modal} from '@/components/ui/Modal'
 import ConversationList from '@/components/messaging/ConversationList'
 import MessageThread from '@/components/messaging/MessageThread'
-import {Bell, Check, Clock, Edit, MapPin, MessageSquare, Settings, Shield, Trophy, X} from 'lucide-react'
+import {Bell, Check, CheckCircle, Clock, Edit, MapPin, MessageSquare, Settings, Shield, Trophy, X} from 'lucide-react'
 import {doc, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
@@ -25,7 +25,7 @@ export default function ProfilePage() {
     const params = useParams()
     const router = useRouter()
     const searchParams = useSearchParams()
-    const {user: currentUser} = useAuth()
+    const {user: currentUser, updateUserProfile} = useAuth()
     const {notifications} = useNotifications()
     const {conversations, createConversation} = useConversations()
 
@@ -45,6 +45,8 @@ export default function ProfilePage() {
     const [newUsername, setNewUsername] = useState('')
     const [usernameError, setUsernameError] = useState('')
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
+    const [savingSettings, setSavingSettings] = useState(false)
+    const [settingsSaved, setSettingsSaved] = useState(false)
     const [tempSettings, setTempSettings] = useState({
         privacy: {
             showProfile: true,
@@ -133,6 +135,15 @@ export default function ProfilePage() {
             await UserService.updateUser(profileUser.id, {
                 displayName: editForm.displayName
             })
+
+            // 프로필 유저 정보 즉시 업데이트
+            setProfileUser({...profileUser, displayName: editForm.displayName})
+
+            // 로그인한 유저의 정보도 업데이트
+            if (isOwnProfile) {
+                await updateUserProfile({displayName: editForm.displayName})
+            }
+
             setIsEditingDisplayName(false)
         } catch (error) {
             console.error('Error updating display name:', error)
@@ -146,6 +157,15 @@ export default function ProfilePage() {
             await UserService.updateUser(profileUser.id, {
                 bio: editForm.bio
             })
+
+            // 프로필 유저 정보 즉시 업데이트
+            setProfileUser({...profileUser, bio: editForm.bio})
+
+            // 로그인한 유저의 정보도 업데이트
+            if (isOwnProfile) {
+                await updateUserProfile({bio: editForm.bio})
+            }
+
             setIsEditingBio(false)
         } catch (error) {
             console.error('Error updating bio:', error)
@@ -206,6 +226,10 @@ export default function ProfilePage() {
                 canChangeUsername: false,
                 usernameChangedAt: new Date()
             })
+
+            // URL 변경
+            router.replace(`/profile/${newUsername}`)
+
             setShowUsernameModal(false)
         } catch (error) {
             console.error('Error updating username:', error)
@@ -215,21 +239,44 @@ export default function ProfilePage() {
     const handleSaveSettings = async () => {
         if (!profileUser || !currentUser) return
 
+        setSavingSettings(true)
+        setSettingsSaved(false)
+
         try {
-            await UserService.updateUser(profileUser.id, {
-                settings: {
-                    ...profileUser.settings,
-                    privacy: tempSettings.privacy,
-                    notifications: tempSettings.notifications,
-                    preferences: {
-                        ...profileUser.settings.preferences,
-                        soundEnabled: tempSettings.preferences.soundEnabled
-                    }
+            const updatedSettings = {
+                ...profileUser.settings,
+                privacy: tempSettings.privacy,
+                notifications: tempSettings.notifications,
+                preferences: {
+                    ...profileUser.settings.preferences,
+                    soundEnabled: tempSettings.preferences.soundEnabled
                 }
+            }
+
+            await UserService.updateUser(profileUser.id, {
+                settings: updatedSettings
             })
-            setShowSettingsModal(false)
+
+            // 프로필 유저 정보 즉시 업데이트
+            setProfileUser({...profileUser, settings: updatedSettings})
+
+            // 로그인한 유저의 정보도 업데이트
+            if (isOwnProfile) {
+                await updateUserProfile({settings: updatedSettings})
+            }
+
+            setSettingsSaved(true)
+
+            // 2초 후 모달 닫기
+            setTimeout(() => {
+                setShowSettingsModal(false)
+                setSettingsSaved(false)
+            }, 1500)
+
         } catch (error) {
             console.error('Error updating settings:', error)
+        } finally {
+            setSavingSettings(false)
         }
     }
 
@@ -355,7 +402,7 @@ export default function ProfilePage() {
                                                     ...editForm,
                                                     displayName: e.target.value
                                                 })}
-                                                className="text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500"
+                                                className="text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500 break-keep-all"
                                                 autoFocus
                                             />
                                             <button
@@ -378,7 +425,7 @@ export default function ProfilePage() {
                                         </div>
                                     ) : (
                                         <>
-                                            <h1 className="text-3xl font-bold">{profileUser.displayName}</h1>
+                                            <h1 className="text-3xl font-bold break-keep-all">{profileUser.displayName}</h1>
                                             {isOwnProfile && (
                                                 <button
                                                     onClick={() => setIsEditingDisplayName(true)}
@@ -438,7 +485,7 @@ export default function ProfilePage() {
                                                         handleSaveBio()
                                                     }
                                                 }}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none"
+                                                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none break-keep-all"
                                                 rows={3}
                                                 placeholder="자기소개를 입력하세요... (Ctrl+Enter로 저장, Esc로 취소)"
                                                 autoFocus
@@ -465,7 +512,7 @@ export default function ProfilePage() {
                                         <div className="flex items-start gap-2">
                                             {profileUser.bio ? (
                                                 <p
-                                                    className="text-gray-300"
+                                                    className="text-gray-300 break-keep-all"
                                                     dangerouslySetInnerHTML={{__html: renderMarkdown(profileUser.bio)}}
                                                 />
                                             ) : (
@@ -593,8 +640,8 @@ export default function ProfilePage() {
                                     >
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <h3 className="font-medium mb-1">{notif.title}</h3>
-                                                <p className="text-sm text-gray-400">{notif.body}</p>
+                                                <h3 className="font-medium mb-1 break-keep-all">{notif.title}</h3>
+                                                <p className="text-sm text-gray-400 break-keep-all">{notif.body}</p>
                                                 <p className="text-xs text-gray-500 mt-2">
                                                     {formatTime(notif.createdAt)}
                                                 </p>
@@ -608,7 +655,7 @@ export default function ProfilePage() {
                             ) : (
                                 <p className="text-center text-gray-500 py-8">
                                     {notificationFilter === 'unread'
-                                        ? '읽지 않은 알림이 없습니다'
+                                        ? '새로운 알림이 없습니다'
                                         : notificationFilter === 'read'
                                             ? '읽은 알림이 없습니다'
                                             : '알림이 없습니다'
@@ -661,22 +708,34 @@ export default function ProfilePage() {
                 <Modal
                     isOpen={showSettingsModal}
                     onClose={() => {
-                        setShowSettingsModal(false)
-                        // 변경사항 취소 - 원래 값으로 복원
-                        if (profileUser?.settings) {
-                            setTempSettings({
-                                privacy: profileUser.settings.privacy || tempSettings.privacy,
-                                notifications: profileUser.settings.notifications || tempSettings.notifications,
-                                preferences: {
-                                    soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
-                                }
-                            })
+                        if (!savingSettings) {
+                            setShowSettingsModal(false)
+                            setSettingsSaved(false)
+                            // 변경사항 취소 - 원래 값으로 복원
+                            if (profileUser?.settings) {
+                                setTempSettings({
+                                    privacy: profileUser.settings.privacy || tempSettings.privacy,
+                                    notifications: profileUser.settings.notifications || tempSettings.notifications,
+                                    preferences: {
+                                        soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
+                                    }
+                                })
+                            }
                         }
                     }}
                     title="환경설정"
                     size="lg"
                 >
                     <div className="space-y-6">
+                        {/* 저장 완료 메시지 */}
+                        {settingsSaved && (
+                            <div
+                                className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
+                                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0"/>
+                                <p className="text-green-400 text-sm">설정이 저장되었습니다!</p>
+                            </div>
+                        )}
+
                         {/* 개인정보 설정 */}
                         <div>
                             <h3 className="text-lg font-semibold mb-4 text-white">개인정보 설정</h3>
@@ -881,23 +940,31 @@ export default function ProfilePage() {
                             <Button
                                 variant="outline"
                                 onClick={() => {
-                                    setShowSettingsModal(false)
-                                    // 변경사항 취소
-                                    if (profileUser?.settings) {
-                                        setTempSettings({
-                                            privacy: profileUser.settings.privacy || tempSettings.privacy,
-                                            notifications: profileUser.settings.notifications || tempSettings.notifications,
-                                            preferences: {
-                                                soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
-                                            }
-                                        })
+                                    if (!savingSettings) {
+                                        setShowSettingsModal(false)
+                                        setSettingsSaved(false)
+                                        // 변경사항 취소
+                                        if (profileUser?.settings) {
+                                            setTempSettings({
+                                                privacy: profileUser.settings.privacy || tempSettings.privacy,
+                                                notifications: profileUser.settings.notifications || tempSettings.notifications,
+                                                preferences: {
+                                                    soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
+                                                }
+                                            })
+                                        }
                                     }
                                 }}
+                                disabled={savingSettings}
                             >
                                 취소
                             </Button>
-                            <Button variant="primary" onClick={handleSaveSettings}>
-                                적용
+                            <Button
+                                variant="primary"
+                                onClick={handleSaveSettings}
+                                disabled={savingSettings || settingsSaved}
+                            >
+                                {savingSettings ? '저장 중...' : settingsSaved ? '저장됨' : '적용'}
                             </Button>
                         </div>
                     </div>

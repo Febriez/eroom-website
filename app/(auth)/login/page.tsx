@@ -10,7 +10,7 @@ import {COLLECTIONS} from '@/lib/firebase/collections'
 import {UserService} from '@/lib/firebase/services'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
-import {Key, Lock, Mail} from 'lucide-react'
+import {CheckCircle, Key, Lock, Mail, XCircle} from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
@@ -20,6 +20,8 @@ export default function LoginPage() {
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(false)
+    const [loginStatus, setLoginStatus] = useState<'idle' | 'success' | 'error'>('idle')
+    const [successMessage, setSuccessMessage] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -35,17 +37,49 @@ export default function LoginPage() {
         }
 
         setLoading(true)
+        setLoginStatus('idle')
+        setErrors({})
+
         try {
-            await signInWithEmailAndPassword(auth, formData.email, formData.password)
-            router.push('/')
+            const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+
+            // 로그인 성공 표시
+            setLoginStatus('success')
+            setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
+
+            // 성공 메시지를 보여준 후 이동
+            setTimeout(() => {
+                router.push('/')
+            }, 1500)
+
         } catch (error: any) {
             console.error('Login error:', error)
+            setLoginStatus('error')
+
+            // 에러 메시지를 더 명확하게 표시
             if (error.code === 'auth/user-not-found') {
-                setErrors({email: '등록되지 않은 이메일입니다'})
+                setErrors({
+                    email: '등록되지 않은 이메일입니다',
+                    general: '계정이 존재하지 않습니다. 회원가입을 진행해주세요.'
+                })
             } else if (error.code === 'auth/wrong-password') {
-                setErrors({password: '비밀번호가 올바르지 않습니다'})
+                setErrors({
+                    password: '비밀번호가 올바르지 않습니다',
+                    general: '비밀번호를 확인해주세요.'
+                })
+            } else if (error.code === 'auth/invalid-email') {
+                setErrors({
+                    email: '올바른 이메일 형식이 아닙니다',
+                    general: '이메일 형식을 확인해주세요.'
+                })
+            } else if (error.code === 'auth/too-many-requests') {
+                setErrors({
+                    general: '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.'
+                })
             } else {
-                setErrors({general: '로그인 중 오류가 발생했습니다'})
+                setErrors({
+                    general: '로그인 중 오류가 발생했습니다. 다시 시도해주세요.'
+                })
             }
         } finally {
             setLoading(false)
@@ -54,6 +88,9 @@ export default function LoginPage() {
 
     const handleGoogleLogin = async () => {
         setLoading(true)
+        setLoginStatus('idle')
+        setErrors({})
+
         try {
             const result = await signInWithPopup(auth, googleProvider)
             const user = result.user
@@ -140,12 +177,28 @@ export default function LoginPage() {
                     updatedAt: new Date(),
                     lastLoginAt: new Date()
                 })
+
+                setSuccessMessage('환영합니다! 새 계정이 생성되었습니다.')
+            } else {
+                setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
             }
 
-            router.push('/')
-        } catch (error) {
+            setLoginStatus('success')
+            setTimeout(() => {
+                router.push('/')
+            }, 1500)
+
+        } catch (error: any) {
             console.error('Google login error:', error)
-            setErrors({general: '구글 로그인 중 오류가 발생했습니다'})
+            setLoginStatus('error')
+
+            if (error.code === 'auth/popup-closed-by-user') {
+                setErrors({general: '로그인이 취소되었습니다.'})
+            } else if (error.code === 'auth/popup-blocked') {
+                setErrors({general: '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.'})
+            } else {
+                setErrors({general: '구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.'})
+            }
         } finally {
             setLoading(false)
         }
@@ -166,9 +219,20 @@ export default function LoginPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {errors.general && (
-                        <div className="bg-red-900/20 border border-red-600/50 rounded-lg p-4 text-red-400 text-sm">
-                            {errors.general}
+                    {/* 상태 메시지 */}
+                    {loginStatus === 'success' && (
+                        <div
+                            className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
+                            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0"/>
+                            <p className="text-green-400 text-sm">{successMessage}</p>
+                        </div>
+                    )}
+
+                    {loginStatus === 'error' && errors.general && (
+                        <div
+                            className="bg-red-900/20 border border-red-600/50 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
+                            <XCircle className="w-5 h-5 text-red-400 flex-shrink-0"/>
+                            <p className="text-red-400 text-sm">{errors.general}</p>
                         </div>
                     )}
 
@@ -179,11 +243,13 @@ export default function LoginPage() {
                             value={formData.email}
                             onChange={(e) => {
                                 setFormData({...formData, email: e.target.value})
-                                setErrors({...errors, email: ''})
+                                setErrors({...errors, email: '', general: ''})
+                                setLoginStatus('idle')
                             }}
                             placeholder="your@email.com"
                             icon={<Mail className="w-5 h-5"/>}
                             error={errors.email}
+                            disabled={loading}
                         />
                     </div>
 
@@ -194,11 +260,13 @@ export default function LoginPage() {
                             value={formData.password}
                             onChange={(e) => {
                                 setFormData({...formData, password: e.target.value})
-                                setErrors({...errors, password: ''})
+                                setErrors({...errors, password: '', general: ''})
+                                setLoginStatus('idle')
                             }}
                             placeholder="비밀번호 입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.password}
+                            disabled={loading}
                         />
                     </div>
 
@@ -216,9 +284,9 @@ export default function LoginPage() {
                         type="submit"
                         variant="primary"
                         fullWidth
-                        disabled={loading}
+                        disabled={loading || loginStatus === 'success'}
                     >
-                        {loading ? '로그인 중...' : '로그인'}
+                        {loading ? '로그인 중...' : loginStatus === 'success' ? '로그인 완료!' : '로그인'}
                     </Button>
 
                     <div className="relative">
@@ -233,7 +301,7 @@ export default function LoginPage() {
                     <button
                         type="button"
                         onClick={handleGoogleLogin}
-                        disabled={loading}
+                        disabled={loading || loginStatus === 'success'}
                         className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">

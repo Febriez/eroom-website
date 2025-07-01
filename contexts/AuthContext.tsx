@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
+import {validateUsername} from '@/lib/validators'
 import {doc, serverTimestamp, setDoc} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'
@@ -96,6 +97,12 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         username: string
     ) => {
         try {
+            // 닉네임 검증
+            const displayNameValidation = validateUsername(displayName)
+            if (!displayNameValidation.isValid) {
+                throw new Error(displayNameValidation.error)
+            }
+
             // username 중복 확인
             const isAvailable = await checkUsernameAvailability(username)
             if (!isAvailable) {
@@ -190,12 +197,20 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 const userId = uuidv4()
                 const randomUsername = `user_${uuidv4().substring(0, 8)}`
 
+                // displayName 검증 및 조정
+                let displayName = firebaseUser.displayName || 'Player'
+                const displayNameValidation = validateUsername(displayName)
+                if (!displayNameValidation.isValid) {
+                    // 기본값 사용
+                    displayName = 'Player'
+                }
+
                 const newUser: User = {
                     id: userId,
                     uid: firebaseUser.uid,
                     username: randomUsername,
                     email: firebaseUser.email!,
-                    displayName: firebaseUser.displayName || 'Player',
+                    displayName: displayName,
                     avatarUrl: firebaseUser.photoURL || undefined,
                     level: 1,
                     points: 0,
@@ -291,6 +306,14 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         if (!user) throw new Error('User not found')
 
         try {
+            // 닉네임 변경 시 검증
+            if (data.displayName) {
+                const validation = validateUsername(data.displayName)
+                if (!validation.isValid) {
+                    throw new Error(validation.error)
+                }
+            }
+
             await UserService.updateUser(user.id, data)
             setUser({...user, ...data})
         } catch (error) {
