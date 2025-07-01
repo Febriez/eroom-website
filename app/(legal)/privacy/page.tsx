@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             <li>개인정보 열람 및 복사본 요청 권리</li>
             <li>부정확한 정보의 수정 요청 권리</li>
             <li>개인정보 처리 정지 요청 권리</li>
-            <li>개인정보 삭제 요청 권리(잊혀질 권리)</li>
+            <li>개인정보 삭제 요청 권리(&quot;잊혀질 권리&quot;)</li>
             <li>개인정보 이동 요청 권리</li>
             <li>동의 철회 권리</li>
           </ul>

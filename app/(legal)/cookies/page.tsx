@@ -11,7 +11,7 @@ export default function CookiesPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">1. 쿠키란 무엇인가요?</h2>
           <p>쿠키는 사용자가 웹사이트를 방문할 때 사용자의 기기에 저장되는 작은 텍스트 파일입니다. 쿠키는 웹사이트가 사용자의 기기를 인식하고, 사용자 경험을 향상시키며, 맞춤형 서비스를 제공하는 데 도움을 줍니다.</p>
-          <p className="mt-3">쿠키 외에도 웹 비콘, 픽셀 태그, 로컬 스토리지 등의 유사한 기술이 사용될 수 있으며, 본 정책에서는 이러한 모든 기술을 "쿠키"로 통칭합니다.</p>
+          <p className="mt-3">쿠키 외에도 웹 비콘, 픽셀 태그, 로컬 스토리지 등의 유사한 기술이 사용될 수 있으며, 본 정책에서는 이러한 모든 기술을 &quot;쿠키&quot;로 통칭합니다.</p>
         </section>
 
         <section className="mb-8">
