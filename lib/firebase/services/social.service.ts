@@ -44,8 +44,8 @@ export class SocialService extends BaseService {
         }
 
         // 양쪽 유저의 friends 배열 업데이트
-        const fromUser = await UserService.getUser(request.from.uid)
-        const toUser = await UserService.getUser(request.to.uid)
+        const fromUser = await UserService.getUserById(request.from.uid)
+        const toUser = await UserService.getUserById(request.to.uid)
 
         if (!fromUser || !toUser) {
             throw new Error('User not found')
@@ -87,8 +87,8 @@ export class SocialService extends BaseService {
 
     // 팔로우
     static async followUser(followerId: string, targetId: string): Promise<void> {
-        const follower = await UserService.getUser(followerId)
-        const target = await UserService.getUser(targetId)
+        const follower = await UserService.getUserById(followerId)
+        const target = await UserService.getUserById(targetId)
 
         if (!follower || !target) {
             throw new Error('User not found')
