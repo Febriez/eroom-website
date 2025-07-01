@@ -14,10 +14,9 @@ import {
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
 import {validateUsername} from '@/lib/validators'
-import {doc, serverTimestamp, setDoc} from 'firebase/firestore'
+import {doc, serverTimestamp, setDoc, Timestamp} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'
-import {v4 as uuidv4} from 'uuid'
 import type {User} from '@/lib/firebase/types'
 
 interface AuthContextType {
@@ -41,18 +40,24 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true)
     const router = useRouter()
 
+    // Firestore에서 사용자 정보를 가져오는 함수
+    const fetchUserData = async (firebaseUser: FirebaseUser): Promise<User | null> => {
+        try {
+            const userData = await UserService.getUser(firebaseUser.uid)
+            setUser(userData)
+            return userData
+        } catch (error) {
+            console.error('Error fetching user data:', error)
+            return null
+        }
+    }
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setFirebaseUser(firebaseUser)
 
             if (firebaseUser) {
-                try {
-                    // Firestore에서 사용자 정보 가져오기
-                    const userData = await UserService.getUser(firebaseUser.uid)
-                    setUser(userData)
-                } catch (error) {
-                    console.error('Error fetching user data:', error)
-                }
+                await fetchUserData(firebaseUser)
             } else {
                 setUser(null)
             }
@@ -77,13 +82,26 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         try {
             const {user: firebaseUser} = await signInWithEmailAndPassword(auth, email, password)
 
-            // 로그인 시간 업데이트
-            const userData = await UserService.getUser(firebaseUser.uid)
+            // 로그인 즉시 사용자 정보 가져오기
+            const userData = await fetchUserData(firebaseUser)
+
             if (userData) {
+                // 로그인 시간 업데이트
                 await UserService.updateUser(userData.id, {
                     lastLoginAt: serverTimestamp() as any
                 })
+
+                // 상태 다시 업데이트 (Timestamp 유지)
+                const updatedUser = {
+                    ...userData,
+                    lastLoginAt: Timestamp.now()
+                }
+                setUser(updatedUser)
             }
+
+            // 사용자 정보가 완전히 로드될 때까지 대기
+            await new Promise(resolve => setTimeout(resolve, 100))
+
         } catch (error) {
             console.error('Login error:', error)
             throw error
@@ -115,7 +133,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             await updateProfile(firebaseUser, {displayName})
 
             // Firestore에 사용자 정보 저장
-            const userId = uuidv4()
+            const userId = firebaseUser.uid // Firebase Auth UID를 그대로 사용
             const newUser: User = {
                 id: userId,
                 uid: firebaseUser.uid,
@@ -170,10 +188,19 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 createdAt: serverTimestamp() as any,
                 updatedAt: serverTimestamp() as any,
                 lastLoginAt: serverTimestamp() as any,
-                canChangeUsername: true
+                canChangeUsername: false
             }
 
             await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
+
+            // 생성한 사용자 정보를 즉시 상태에 반영
+            setUser({
+                ...newUser,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                lastLoginAt: Timestamp.now()
+            })
+
         } catch (error) {
             console.error('Signup error:', error)
             throw error
@@ -194,8 +221,16 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             if (!userData) {
                 // 새 사용자라면 랜덤 username으로 계정 생성
-                const userId = uuidv4()
-                const randomUsername = `user_${uuidv4().substring(0, 8)}`
+                const userId = firebaseUser.uid
+                const baseUsername = firebaseUser.email?.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'user'
+                let username = baseUsername
+                let counter = 1
+
+                // 중복되지 않는 username 찾기
+                while (await UserService.getUserByUsername(username)) {
+                    username = `${baseUsername}${counter}`
+                    counter++
+                }
 
                 // displayName 검증 및 조정
                 let displayName = firebaseUser.displayName || 'Player'
@@ -208,13 +243,13 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 const newUser: User = {
                     id: userId,
                     uid: firebaseUser.uid,
-                    username: randomUsername,
+                    username: username,
                     email: firebaseUser.email!,
                     displayName: displayName,
                     avatarUrl: firebaseUser.photoURL || undefined,
                     level: 1,
                     points: 0,
-                    credits: 100,
+                    credits: 150, // 구글 가입 보너스
                     stats: {
                         mapsCompleted: 0,
                         mapsCreated: 0,
@@ -264,12 +299,30 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 }
 
                 await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
+
+                // 생성한 사용자 정보를 즉시 상태에 반영
+                setUser({
+                    ...newUser,
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(),
+                    lastLoginAt: Timestamp.now()
+                })
             } else {
                 // 기존 사용자라면 로그인 시간만 업데이트
                 await UserService.updateUser(userData.id, {
                     lastLoginAt: serverTimestamp() as any
                 })
+
+                // 상태 업데이트
+                setUser({
+                    ...userData,
+                    lastLoginAt: Timestamp.now()
+                })
             }
+
+            // 상태가 완전히 업데이트될 때까지 대기
+            await new Promise(resolve => setTimeout(resolve, 100))
+
         } catch (error: any) {
             console.error('Google login error:', error)
 
@@ -286,6 +339,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await signOut(auth)
+            setUser(null)
+            setFirebaseUser(null)
             router.push('/')
         } catch (error) {
             console.error('Logout error:', error)
@@ -315,7 +370,10 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             }
 
             await UserService.updateUser(user.id, data)
-            setUser({...user, ...data})
+
+            // 상태 즉시 업데이트
+            const updatedUser = {...user, ...data}
+            setUser(updatedUser)
         } catch (error) {
             console.error('Error updating user profile:', error)
             throw error

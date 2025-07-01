@@ -3,17 +3,14 @@
 import {useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
-import {signInWithEmailAndPassword, signInWithPopup} from 'firebase/auth'
-import {doc, getDoc, setDoc} from 'firebase/firestore'
-import {auth, db, googleProvider} from '@/lib/firebase/config'
-import {COLLECTIONS} from '@/lib/firebase/collections'
-import {UserService} from '@/lib/firebase/services'
+import {useAuth} from '@/contexts/AuthContext'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
 import {CheckCircle, Key, Lock, Mail, XCircle} from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
+    const {signInWithEmail, signInWithGoogle} = useAuth()
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -41,16 +38,18 @@ export default function LoginPage() {
         setErrors({})
 
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+            // AuthContext의 signInWithEmail 사용
+            await signInWithEmail(formData.email, formData.password)
 
             // 로그인 성공 표시
             setLoginStatus('success')
             setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
 
-            // 성공 메시지를 보여준 후 이동
+            // 즉시 이동 (AuthContext에서 상태 업데이트가 완료됨)
             setTimeout(() => {
                 router.push('/')
-            }, 1500)
+                router.refresh() // 페이지 새로고침 강제
+            }, 500)
 
         } catch (error: any) {
             console.error('Login error:', error)
@@ -92,110 +91,24 @@ export default function LoginPage() {
         setErrors({})
 
         try {
-            const result = await signInWithPopup(auth, googleProvider)
-            const user = result.user
-
-            // 기존 사용자인지 확인
-            const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, user.uid))
-
-            if (!userDoc.exists()) {
-                // 신규 구글 사용자 - 기본 username 생성
-                const baseUsername = user.email?.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'user'
-                let username = baseUsername
-                let counter = 1
-
-                // 중복되지 않는 username 찾기
-                while (await UserService.getUserByUsername(username)) {
-                    username = `${baseUsername}${counter}`
-                    counter++
-                }
-
-                await setDoc(doc(db, COLLECTIONS.USERS, user.uid), {
-                    uid: user.uid,
-                    email: user.email,
-                    username: username,
-                    displayName: user.displayName || username,
-                    bio: '안녕하세요. 잘 부탁드립니다.',
-                    avatarUrl: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-
-                    // 게임 정보
-                    level: 1,
-                    points: 0,
-                    credits: 150, // 구글 가입 보너스
-
-                    // 통계
-                    stats: {
-                        mapsCompleted: 0,
-                        mapsCreated: 0,
-                        totalPlayTime: 0,
-                        winRate: 0,
-                        avgClearTime: 0,
-                        achievements: []
-                    },
-
-                    // 소셜
-                    social: {
-                        followers: [],
-                        following: [],
-                        friends: [],
-                        blocked: [],
-                        friendCount: 0
-                    },
-
-                    // 설정
-                    settings: {
-                        privacy: {
-                            showProfile: true,
-                            showStats: true,
-                            showFriends: true,
-                            showActivity: true,
-                            allowMessages: true,
-                            allowFriendRequests: true
-                        },
-                        preferences: {
-                            soundEnabled: true,
-                            musicVolume: 0.7,
-                            effectsVolume: 0.7,
-                            mouseSensitivity: 1,
-                            language: 'ko',
-                            theme: 'dark'
-                        },
-                        notifications: {
-                            friendRequests: true,
-                            messages: true,
-                            gameInvites: true,
-                            achievements: true,
-                            updates: true,
-                            marketing: false
-                        }
-                    },
-
-                    // 메타데이터
-                    role: 'user',
-                    canChangeUsername: true, // 구글 사용자는 1회 변경 가능
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    lastLoginAt: new Date()
-                })
-
-                setSuccessMessage('환영합니다! 새 계정이 생성되었습니다.')
-            } else {
-                setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
-            }
+            // AuthContext의 signInWithGoogle 사용
+            await signInWithGoogle()
 
             setLoginStatus('success')
+            setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
+
+            // 즉시 이동
             setTimeout(() => {
                 router.push('/')
-            }, 1500)
+                router.refresh() // 페이지 새로고침 강제
+            }, 500)
 
         } catch (error: any) {
             console.error('Google login error:', error)
             setLoginStatus('error')
 
-            if (error.code === 'auth/popup-closed-by-user') {
-                setErrors({general: '로그인이 취소되었습니다.'})
-            } else if (error.code === 'auth/popup-blocked') {
-                setErrors({general: '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.'})
+            if (error.message) {
+                setErrors({general: error.message})
             } else {
                 setErrors({general: '구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.'})
             }

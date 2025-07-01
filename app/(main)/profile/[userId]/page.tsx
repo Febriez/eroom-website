@@ -15,7 +15,7 @@ import {Modal} from '@/components/ui/Modal'
 import ConversationList from '@/components/messaging/ConversationList'
 import MessageThread from '@/components/messaging/MessageThread'
 import {Bell, Check, CheckCircle, Clock, Edit, MapPin, MessageSquare, Settings, Shield, Trophy, X} from 'lucide-react'
-import {doc, updateDoc} from 'firebase/firestore'
+import {doc, serverTimestamp, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 
@@ -224,7 +224,7 @@ export default function ProfilePage() {
             await updateDoc(doc(db, COLLECTIONS.USERS, profileUser.id), {
                 username: newUsername,
                 canChangeUsername: false,
-                usernameChangedAt: new Date()
+                usernameChangedAt: serverTimestamp()
             })
 
             // URL 변경

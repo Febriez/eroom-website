@@ -4,7 +4,7 @@ import {useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {createUserWithEmailAndPassword, signInWithPopup} from 'firebase/auth'
-import {doc, getDoc, setDoc} from 'firebase/firestore'
+import {doc, getDoc, serverTimestamp, setDoc} from 'firebase/firestore'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {UserService} from '@/lib/firebase/services'
@@ -150,9 +150,9 @@ export default function SignupPage() {
                 // 메타데이터
                 role: 'user',
                 canChangeUsername: false, // 일반 회원가입은 변경 불가
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                lastLoginAt: new Date()
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastLoginAt: serverTimestamp()
             })
 
             router.push('/')
@@ -260,9 +260,9 @@ export default function SignupPage() {
                     // 메타데이터
                     role: 'user',
                     canChangeUsername: true, // 구글 사용자는 1회 변경 가능
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    lastLoginAt: new Date()
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    lastLoginAt: serverTimestamp()
                 })
             }
 

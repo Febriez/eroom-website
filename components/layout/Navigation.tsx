@@ -46,10 +46,15 @@ export default function Navigation() {
     const [activeMenu, setActiveMenu] = useState<number | null>(null)
     const [showNotifications, setShowNotifications] = useState(false)
     const [showMessages, setShowMessages] = useState(false)
-    const {user, logout} = useAuth()
+    const {user, loading: authLoading, logout} = useAuth()
     const {notifications, unreadCount} = useNotifications()
     const {conversations, totalUnreadCount} = useConversations()
     const router = useRouter()
+
+    // user 상태 변경 감지
+    useEffect(() => {
+        console.log('Navigation - User state changed:', user)
+    }, [user])
 
     useEffect(() => {
         const handleScroll = () => {
