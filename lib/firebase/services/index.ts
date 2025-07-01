@@ -1,5 +1,4 @@
 export {UserService} from './user.service'
-export {GameService} from './game.service'
 export {MessageService} from './message.service'
 export {SocialService} from './social.service'
 export {MapService} from './map.service'
