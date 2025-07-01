@@ -1,110 +1,15 @@
-import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    increment,
-    orderBy,
-    Timestamp,
-    updateDoc,
-    where
-} from 'firebase/firestore'
+import {collection, doc, getDoc, getDocs, orderBy, where} from 'firebase/firestore'
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import {db} from '../config'
 import type {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
 import {roomToGameMapCard} from '@/lib/firebase/types/game-map-card.types'
 
+/**
+ * 읽기 전용 맵 서비스
+ * Room 컬렉션에서 게임 맵 데이터를 조회만 합니다
+ */
 export class MapService extends BaseService {
-    /**
-     * 맵(룸) 생성
-     */
-    static async createMap(mapData: {
-        name: string
-        description: string
-        difficulty: string
-        theme: string
-        tags: string[]
-        thumbnail?: string
-        creatorId: string
-    }): Promise<string> {
-        try {
-            const roomData = {
-                CommentAuthorIds: [],
-                CreatedDate: Timestamp.now(),
-                CreatorId: mapData.creatorId,
-                Difficulty: mapData.difficulty.charAt(0).toUpperCase() + mapData.difficulty.slice(1),
-                Keywords: mapData.tags,
-                LastUpdated: Timestamp.now(),
-                LikeCount: 0,
-                Objects: [],
-                PlayCount: 0,
-                RoomDescription: mapData.description,
-                RoomId: '', // 생성 후 업데이트
-                RoomPrefabUrl: '',
-                RoomTitle: mapData.name,
-                Theme: mapData.theme,
-                Thumbnail: mapData.thumbnail || '',
-                Version: 1
-            }
-
-            const docRef = await addDoc(collection(db, COLLECTIONS.ROOMS), roomData)
-
-            // RoomId를 문서 ID로 업데이트
-            await updateDoc(doc(db, COLLECTIONS.ROOMS, docRef.id), {
-                RoomId: docRef.id
-            })
-
-            return docRef.id
-        } catch (error) {
-            console.error('Error creating room:', error)
-            throw error
-        }
-    }
-
-    /**
-     * 맵(룸) 업데이트
-     */
-    static async updateMap(mapId: string, data: Partial<{
-        name?: string
-        description?: string
-        difficulty?: string
-        theme?: string
-        tags?: string[]
-        thumbnail?: string
-    }>): Promise<void> {
-        try {
-            const updateData: any = {}
-
-            if (data.name) updateData.RoomTitle = data.name
-            if (data.description) updateData.RoomDescription = data.description
-            if (data.difficulty) updateData.Difficulty = data.difficulty.charAt(0).toUpperCase() + data.difficulty.slice(1)
-            if (data.theme) updateData.Theme = data.theme
-            if (data.tags) updateData.Keywords = data.tags
-            if (data.thumbnail) updateData.Thumbnail = data.thumbnail
-
-            updateData.LastUpdated = Timestamp.now()
-
-            await updateDoc(doc(db, COLLECTIONS.ROOMS, mapId), updateData)
-        } catch (error) {
-            console.error('Error updating room:', error)
-            throw error
-        }
-    }
-
-    /**
-     * 맵(룸) 삭제
-     */
-    static async deleteMap(mapId: string): Promise<void> {
-        try {
-            await deleteDoc(doc(db, COLLECTIONS.ROOMS, mapId))
-        } catch (error) {
-            console.error('Error deleting room:', error)
-            throw error
-        }
-    }
-
     /**
      * 단일 맵(룸) 가져오기
      */
@@ -226,32 +131,6 @@ export class MapService extends BaseService {
     }
 
     /**
-     * 플레이 횟수 증가
-     */
-    static async incrementPlayCount(mapId: string): Promise<void> {
-        try {
-            await updateDoc(doc(db, COLLECTIONS.ROOMS, mapId), {
-                PlayCount: increment(1)
-            })
-        } catch (error) {
-            console.error('Error incrementing play count:', error)
-        }
-    }
-
-    /**
-     * 좋아요 토글
-     */
-    static async toggleLike(mapId: string, userId: string, isLiked: boolean): Promise<void> {
-        try {
-            await updateDoc(doc(db, COLLECTIONS.ROOMS, mapId), {
-                LikeCount: increment(isLiked ? 1 : -1)
-            })
-        } catch (error) {
-            console.error('Error toggling like:', error)
-        }
-    }
-
-    /**
      * 난이도별 맵 가져오기
      */
     static async getMapsByDifficulty(difficulty: string, limit: number = 12): Promise<GameMapCard[]> {
@@ -352,5 +231,33 @@ export class MapService extends BaseService {
         )
 
         return rooms.map(room => roomToGameMapCard(room))
+    }
+
+    /**
+     * 전체 맵 개수 가져오기
+     */
+    static async getTotalMapCount(): Promise<number> {
+        try {
+            const snapshot = await getDocs(collection(db, COLLECTIONS.ROOMS))
+            return snapshot.size
+        } catch (error) {
+            console.error('Error getting total map count:', error)
+            return 0
+        }
+    }
+
+    /**
+     * 특정 테마의 맵 개수 가져오기
+     */
+    static async getMapCountByTheme(theme: string): Promise<number> {
+        try {
+            const q = await getDocs(
+                collection(db, COLLECTIONS.ROOMS)
+            )
+            return q.docs.filter(doc => doc.data().Theme === theme).length
+        } catch (error) {
+            console.error('Error getting map count by theme:', error)
+            return 0
+        }
     }
 }

@@ -23,11 +23,17 @@ export default function CommunityMapsPage() {
     const [filter, setFilter] = useState<'featured' | 'popular' | 'new'>('featured')
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
     const [selectedTheme, setSelectedTheme] = useState<string>('')
+    const [currentLimit, setCurrentLimit] = useState(24)
+
+    // 필터 변경 시 limit 초기화
+    useEffect(() => {
+        setCurrentLimit(24)
+    }, [filter, selectedDifficulty, selectedTheme])
 
     // 초기 데이터 로드
     useEffect(() => {
         loadMaps()
-    }, [filter, selectedDifficulty, selectedTheme])
+    }, [filter, selectedDifficulty, selectedTheme, currentLimit])
 
     // 검색어 변경 시 필터링
     useEffect(() => {
@@ -55,19 +61,19 @@ export default function CommunityMapsPage() {
                     difficulty: selectedDifficulty,
                     theme: selectedTheme,
                     sortBy: filter === 'popular' ? 'popular' : filter === 'new' ? 'recent' : 'popular',
-                    limit: 24
+                    limit: currentLimit
                 })
             } else {
                 // 기본 필터만 사용
                 switch (filter) {
                     case 'featured':
-                        loadedMaps = await MapService.getFeaturedMaps(24)
+                        loadedMaps = await MapService.getFeaturedMaps(currentLimit)
                         break
                     case 'popular':
-                        loadedMaps = await MapService.getPopularMaps(24)
+                        loadedMaps = await MapService.getPopularMaps(currentLimit)
                         break
                     case 'new':
-                        loadedMaps = await MapService.getRecentMaps(24)
+                        loadedMaps = await MapService.getRecentMaps(currentLimit)
                         break
                 }
             }
@@ -81,17 +87,19 @@ export default function CommunityMapsPage() {
         }
     }
 
-    const handlePlayMap = async (map: GameMapCard) => {
-        // 플레이 횟수 증가
-        await MapService.incrementPlayCount(map.id)
+    const loadMoreMaps = () => {
+        setCurrentLimit(prev => prev + 24)
+    }
 
-        // 게임 페이지로 이동
+    const handleMapClick = (map: GameMapCard) => {
+        // 맵 상세 페이지로 이동 (또는 다운로드 페이지)
         router.push(`/games/eroom?mapId=${map.id}`)
     }
 
     const handleSearch = async () => {
         if (searchTerm.trim()) {
             setLoading(true)
+            setCurrentLimit(24) // 검색 시 limit 초기화
             try {
                 const searchResults = await MapService.searchMaps(searchTerm)
                 setMaps(searchResults)
@@ -232,7 +240,7 @@ export default function CommunityMapsPage() {
                             <MapCard
                                 key={map.id}
                                 map={map}
-                                onClick={() => handlePlayMap(map)}
+                                onClick={() => handleMapClick(map)}
                             />
                         ))}
                     </div>
@@ -262,9 +270,9 @@ export default function CommunityMapsPage() {
                 )}
 
                 {/* 더 보기 버튼 */}
-                {!loading && maps.length >= 24 && filteredMaps.length === maps.length && (
+                {!loading && maps.length >= currentLimit && filteredMaps.length === maps.length && (
                     <div className="text-center mt-8">
-                        <Button variant="outline">
+                        <Button variant="outline" onClick={loadMoreMaps}>
                             더 많은 맵 보기
                         </Button>
                     </div>
