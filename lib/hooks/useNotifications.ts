@@ -39,7 +39,7 @@ export function useNotifications() {
     }
 
     // 브라우저 푸시 알림 표시
-    const showBrowserNotification = (notification: Notification) => {
+    const showBrowserNotification = async (notification: Notification) => {
         console.log('🔔 showBrowserNotification called:', {
             notification,
             user: user?.uid,
@@ -47,12 +47,23 @@ export function useNotifications() {
             permission: 'Notification' in window ? Notification.permission : 'not supported'
         })
 
-        if (!user || !('Notification' in window) || Notification.permission !== 'granted') {
-            console.log('❌ Notification blocked:', {
-                noUser: !user,
-                noAPI: !('Notification' in window),
-                permission: 'Notification' in window ? Notification.permission : 'not supported'
-            })
+        if (!user || !('Notification' in window)) {
+            console.log('❌ No user or notification API not supported')
+            return
+        }
+
+        // 권한이 없거나 default면 권한 요청
+        if (Notification.permission === 'default') {
+            console.log('📋 Requesting notification permission...')
+            const permission = await Notification.requestPermission()
+            console.log('📋 Permission result:', permission)
+
+            if (permission !== 'granted') {
+                console.log('❌ Permission denied by user')
+                return
+            }
+        } else if (Notification.permission === 'denied') {
+            console.log('❌ Notification permission denied')
             return
         }
 
