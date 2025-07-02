@@ -173,31 +173,33 @@ export default function RankingsPage() {
             />
 
             <Container className="py-12">
-                {/* 탭 메뉴 */}
-                <Tabs<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>
-                    value={activeTab}
-                    onValueChange={(val) => setActiveTab(val)}
-                    defaultValue="playCount"
-                >
-                    <TabsList>
-                        <TabsTrigger value="playCount">
-                            <Trophy className="w-4 h-4"/>
-                            플레이 횟수
-                        </TabsTrigger>
-                        <TabsTrigger value="mapsCreated">
-                            <MapPin className="w-4 h-4"/>
-                            맵 제작
-                        </TabsTrigger>
-                        <TabsTrigger value="totalPlays">
-                            <Users className="w-4 h-4"/>
-                            총 플레이 수
-                        </TabsTrigger>
-                        <TabsTrigger value="avgRating">
-                            <Star className="w-4 h-4"/>
-                            평균 평점
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                {/* 탭 메뉴 - 여백 추가 */}
+                <div className="mb-12">
+                    <Tabs<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>
+                        value={activeTab}
+                        onValueChange={(val) => setActiveTab(val)}
+                        defaultValue="playCount"
+                    >
+                        <TabsList>
+                            <TabsTrigger value="playCount">
+                                <Trophy className="w-4 h-4"/>
+                                플레이 횟수
+                            </TabsTrigger>
+                            <TabsTrigger value="mapsCreated">
+                                <MapPin className="w-4 h-4"/>
+                                맵 제작
+                            </TabsTrigger>
+                            <TabsTrigger value="totalPlays">
+                                <Users className="w-4 h-4"/>
+                                총 플레이 수
+                            </TabsTrigger>
+                            <TabsTrigger value="avgRating">
+                                <Star className="w-4 h-4"/>
+                                평균 평점
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
 
                 {/* 로딩 상태 */}
                 {loading && (

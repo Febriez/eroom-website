@@ -28,7 +28,12 @@ export default function ProfilePage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const {user: currentUser, updateUserProfile} = useAuth()
-    const {notifications} = useNotifications()
+    const {
+        notifications,
+        browserNotificationPermission,
+        requestBrowserNotificationPermission,
+        markAsRead
+    } = useNotifications()
     const {conversations, createConversation} = useConversations()
 
     const [profileUser, setProfileUser] = useState<any>(null)
@@ -62,7 +67,8 @@ export default function ProfilePage() {
             gameInvites: true,
             achievements: true,
             updates: true,
-            marketing: false
+            marketing: false,
+            browserNotifications: true
         },
         preferences: {
             soundEnabled: true
@@ -90,13 +96,17 @@ export default function ProfilePage() {
                             allowMessages: true,
                             allowFriendRequests: true
                         },
-                        notifications: user.settings.notifications ?? {
+                        notifications: user.settings.notifications ? {
+                            ...user.settings.notifications,
+                            browserNotifications: user.settings.notifications.browserNotifications ?? true
+                        } : {
                             friendRequests: true,
                             messages: true,
                             gameInvites: true,
                             achievements: true,
                             updates: true,
-                            marketing: false
+                            marketing: false,
+                            browserNotifications: true
                         },
                         preferences: {
                             soundEnabled: user.settings.preferences?.soundEnabled ?? true
@@ -214,6 +224,25 @@ export default function ProfilePage() {
         } finally {
             setSavingSettings(false)
         }
+    }
+
+    const handleBrowserNotificationToggle = async (enabled: boolean) => {
+        if (enabled && browserNotificationPermission !== 'granted') {
+            const granted = await requestBrowserNotificationPermission()
+            if (!granted) {
+                // 권한이 거부되면 설정을 다시 false로
+                setTempSettings({
+                    ...tempSettings,
+                    notifications: {...tempSettings.notifications, browserNotifications: false}
+                })
+                return
+            }
+        }
+
+        setTempSettings({
+            ...tempSettings,
+            notifications: {...tempSettings.notifications, browserNotifications: enabled}
+        })
     }
 
     const handleMessageClick = async () => {
@@ -492,16 +521,34 @@ export default function ProfilePage() {
                                 알림
                             </h2>
                             <div className="relative z-10 flex gap-2">
-                                <Button onClick={() => setNotificationFilter('all')}
-                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'all' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                                <button
+                                    onClick={() => setNotificationFilter('all')}
+                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                                        notificationFilter === 'all'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-800 text-gray-400 hover:text-white'
+                                    }`}
+                                >
                                     전체
-                                </Button>
-                                <button onClick={() => setNotificationFilter('unread')}
-                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'unread' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                                </button>
+                                <button
+                                    onClick={() => setNotificationFilter('unread')}
+                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                                        notificationFilter === 'unread'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-800 text-gray-400 hover:text-white'
+                                    }`}
+                                >
                                     읽지 않음
                                 </button>
-                                <button onClick={() => setNotificationFilter('read')}
-                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'read' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                                <button
+                                    onClick={() => setNotificationFilter('read')}
+                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                                        notificationFilter === 'read'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-800 text-gray-400 hover:text-white'
+                                    }`}
+                                >
                                     읽음
                                 </button>
                             </div>
@@ -509,15 +556,29 @@ export default function ProfilePage() {
                         <div className="relative z-0 space-y-3">
                             {filteredNotifications.length > 0 ? (
                                 filteredNotifications.map(notif => (
-                                    <div key={notif.id}
-                                         className={`p-4 rounded-lg border ${notif.read ? 'bg-gray-800 border-gray-700' : 'bg-gray-800/50 border-green-600/50'}`}>
+                                    <div
+                                        key={notif.id}
+                                        className={`p-4 rounded-lg border transition-colors cursor-pointer ${
+                                            notif.read ? 'bg-gray-800 border-gray-700' : 'bg-gray-800/50 border-green-600/50 hover:bg-gray-800'
+                                        }`}
+                                        onClick={async () => {
+                                            if (!notif.read) {
+                                                await markAsRead(notif.id)
+                                            }
+                                            // 메시지 알림인 경우 해당 대화로 이동
+                                            if (notif.type === 'message' && notif.data?.conversationId) {
+                                                router.push(`/profile/${currentUser!.username}?openChat=${notif.data.conversationId}`)
+                                            }
+                                        }}
+                                    >
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <h3 className="font-medium mb-1">{notif.title}</h3>
                                                 <p className="text-sm text-gray-400">{notif.body}</p>
                                                 <p className="text-xs text-gray-500 mt-2">{formatRelativeTime(notif.createdAt)}</p>
                                             </div>
-                                            {!notif.read && <span className="w-2 h-2 bg-green-500 rounded-full"/>}
+                                            {!notif.read &&
+                                                <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"/>}
                                         </div>
                                     </div>
                                 ))
@@ -559,161 +620,249 @@ export default function ProfilePage() {
                         if (profileUser?.settings) {
                             setTempSettings({
                                 privacy: profileUser.settings.privacy,
-                                notifications: profileUser.settings.notifications,
+                                notifications: {
+                                    ...profileUser.settings.notifications,
+                                    browserNotifications: profileUser.settings.notifications?.browserNotifications ?? true
+                                },
                                 preferences: {soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true}
                             })
                         }
                     }
-                }} title="환경설정" size="lg">
-                    <div className="space-y-6">
+                }} title="환경설정" size="xl">
+                    <div className="max-h-[70vh] overflow-y-auto">
                         {settingsSaved && (
                             <div
-                                className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3">
+                                className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3 mb-6">
                                 <CheckCircle className="w-5 h-5 text-green-400"/>
                                 <p className="text-green-400 text-sm">설정이 저장되었습니다!</p>
                             </div>
                         )}
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 text-white">개인정보 설정</h3>
-                            <div className="space-y-3">
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">내 프로필 공개</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.showProfile}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, showProfile: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">통계 공개</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.showStats}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, showStats: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">친구 목록 공개</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.showFriends}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, showFriends: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">활동 상태 표시</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.showActivity}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, showActivity: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">메시지 받기 허용</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.allowMessages}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, allowMessages: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">친구 요청 받기 허용</span>
-                                    <input type="checkbox" checked={tempSettings.privacy.allowFriendRequests}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               privacy: {...tempSettings.privacy, allowFriendRequests: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* 왼쪽 컬럼 */}
+                            <div className="space-y-6">
+                                {/* 개인정보 설정 */}
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-4 text-white">개인정보 설정</h3>
+                                    <div className="space-y-3">
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">내 프로필 공개</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.showProfile}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {...tempSettings.privacy, showProfile: e.target.checked}
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">통계 공개</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.showStats}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {...tempSettings.privacy, showStats: e.target.checked}
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">친구 목록 공개</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.showFriends}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {...tempSettings.privacy, showFriends: e.target.checked}
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">활동 상태 표시</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.showActivity}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {
+                                                           ...tempSettings.privacy,
+                                                           showActivity: e.target.checked
+                                                       }
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">메시지 받기 허용</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.allowMessages}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {
+                                                           ...tempSettings.privacy,
+                                                           allowMessages: e.target.checked
+                                                       }
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">친구 요청 받기 허용</span>
+                                            <input type="checkbox" checked={tempSettings.privacy.allowFriendRequests}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       privacy: {
+                                                           ...tempSettings.privacy,
+                                                           allowFriendRequests: e.target.checked
+                                                       }
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* 게임 설정 */}
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-4 text-white">게임 설정</h3>
+                                    <div className="space-y-3">
+                                        <label
+                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                            <span className="text-gray-300">사운드 활성화</span>
+                                            <input type="checkbox" checked={tempSettings.preferences.soundEnabled}
+                                                   onChange={e => setTempSettings({
+                                                       ...tempSettings,
+                                                       preferences: {
+                                                           ...tempSettings.preferences,
+                                                           soundEnabled: e.target.checked
+                                                       }
+                                                   })}
+                                                   className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 오른쪽 컬럼 - 알림 설정 */}
+                            <div className="lg:border-l lg:border-gray-800 lg:pl-8">
+                                <h3 className="text-lg font-semibold mb-4 text-white">알림 설정</h3>
+                                <div className="space-y-3">
+                                    {/* 브라우저 알림 마스터 토글 */}
+                                    <div className="p-3 bg-gray-800/50 rounded-lg mb-4">
+                                        <label
+                                            className="flex items-center justify-between cursor-pointer">
+                                            <div>
+                                                <span className="text-gray-300 font-medium">브라우저 알림</span>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {browserNotificationPermission === 'denied'
+                                                        ? '브라우저 설정에서 알림을 허용해주세요'
+                                                        : '백그라운드에서도 알림을 받습니다'}
+                                                </p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={tempSettings.notifications.browserNotifications}
+                                                onChange={e => handleBrowserNotificationToggle(e.target.checked)}
+                                                disabled={browserNotificationPermission === 'denied'}
+                                                className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded disabled:opacity-50"
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">친구 요청 알림</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.friendRequests}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       friendRequests: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">메시지 알림</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.messages}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       messages: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">게임 초대 알림</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.gameInvites}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       gameInvites: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">업적 달성 알림</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.achievements}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       achievements: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">업데이트 알림</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.updates}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       updates: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
+                                        <span className="text-gray-300">마케팅 정보 수신</span>
+                                        <input type="checkbox" checked={tempSettings.notifications.marketing}
+                                               onChange={e => setTempSettings({
+                                                   ...tempSettings,
+                                                   notifications: {
+                                                       ...tempSettings.notifications,
+                                                       marketing: e.target.checked
+                                                   }
+                                               })}
+                                               className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 text-white">알림 설정</h3>
-                            <div className="space-y-3">
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">친구 요청 알림</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.friendRequests}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {
-                                                   ...tempSettings.notifications,
-                                                   friendRequests: e.target.checked
-                                               }
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">메시지 알림</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.messages}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {
-                                                   ...tempSettings.notifications,
-                                                   messages: e.target.checked
-                                               }
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">게임 초대 알림</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.gameInvites}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {
-                                                   ...tempSettings.notifications,
-                                                   gameInvites: e.target.checked
-                                               }
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">업적 달성 알림</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.achievements}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {
-                                                   ...tempSettings.notifications,
-                                                   achievements: e.target.checked
-                                               }
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">업데이트 알림</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.updates}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {...tempSettings.notifications, updates: e.target.checked}
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
-                                    <span className="text-gray-300">마케팅 정보 수신</span>
-                                    <input type="checkbox" checked={tempSettings.notifications.marketing}
-                                           onChange={e => setTempSettings({
-                                               ...tempSettings,
-                                               notifications: {
-                                                   ...tempSettings.notifications,
-                                                   marketing: e.target.checked
-                                               }
-                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
-                                </label>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 justify-end pt-4 border-t border-gray-800">
+                        <div className="flex gap-3 justify-end pt-6 mt-6 border-t border-gray-800">
                             <Button variant="outline" onClick={() => {
                                 if (!savingSettings) {
                                     setShowSettingsModal(false);
                                     setSettingsSaved(false);
                                     setTempSettings({
                                         privacy: profileUser.settings.privacy,
-                                        notifications: profileUser.settings.notifications,
+                                        notifications: profileUser.settings.notifications ? {
+                                            ...profileUser.settings.notifications,
+                                            browserNotifications: profileUser.settings.notifications.browserNotifications ?? true
+                                        } : {
+                                            friendRequests: true,
+                                            messages: true,
+                                            gameInvites: true,
+                                            achievements: true,
+                                            updates: true,
+                                            marketing: false,
+                                            browserNotifications: true
+                                        },
                                         preferences: {soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true}
                                     })
                                 }

@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type {Metadata, Viewport} from 'next'
 import {Inter} from 'next/font/google'
 import '../styles/globals.css'
@@ -62,20 +63,35 @@ export const metadata: Metadata = {
         },
     },
     manifest: '/manifest.json',
+    // 브라우저 알림을 위한 아이콘 설정 추가
     icons: {
         icon: [
             {url: '/icon.ico'},
+            {url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png'},
+            {url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png'},
+        ],
+        shortcut: [
+            {url: '/icons/icon-96x96.png'}
         ],
         apple: [
             {url: '/apple-touch-icon.png'},
+            {url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png'},
         ],
-    }
+    },
+    // PWA 관련 메타데이터 추가
+    applicationName: 'EROOM',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: 'EROOM',
+    },
 }
 
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
+    viewportFit: 'cover',
 }
 
 export default function RootLayout({

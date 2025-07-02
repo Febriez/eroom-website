@@ -1,11 +1,13 @@
+// app/(main)/store/season-pass/page.tsx
 'use client'
 
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Button} from '@/components/ui/Button'
 import {CheckCircle, Clock, Crown, Gift, Lock, Sparkles, Star, Trophy, Zap} from 'lucide-react'
+import {useAuth} from '@/contexts/AuthContext'
 
 interface SeasonReward {
     level: number
@@ -24,52 +26,82 @@ interface SeasonReward {
 }
 
 export default function SeasonPassPage() {
+    const {user} = useAuth()
     const [hasPremium, setHasPremium] = useState(false)
-    const currentLevel = 15
+    const currentLevel = user?.level || 1
     const seasonDaysLeft = 45
 
+    // 레벨별 보상 설정 - 실제 유저 레벨과 연동
     const rewards: SeasonReward[] = [
         {
             level: 1,
             freeReward: {name: '100 크레딧', icon: <Star className="w-6 h-6"/>, rarity: 'common'},
             premiumReward: {name: '500 크레딧', icon: <Star className="w-6 h-6"/>, rarity: 'rare'},
-            claimed: true,
-            locked: false
+            claimed: currentLevel >= 1,
+            locked: currentLevel < 1
         },
         {
             level: 5,
             freeReward: {name: '힌트 부스터 x3', icon: <Zap className="w-6 h-6"/>, rarity: 'common'},
             premiumReward: {name: '우주 테마', icon: <Sparkles className="w-6 h-6"/>, rarity: 'epic'},
-            claimed: true,
-            locked: false
+            claimed: currentLevel >= 5,
+            locked: currentLevel < 5
         },
         {
             level: 10,
             freeReward: {name: '200 크레딧', icon: <Star className="w-6 h-6"/>, rarity: 'common'},
             premiumReward: {name: '네온 사무라이 스킨', icon: <Crown className="w-6 h-6"/>, rarity: 'epic'},
-            claimed: true,
-            locked: false
+            claimed: currentLevel >= 10,
+            locked: currentLevel < 10
         },
         {
             level: 15,
             premiumReward: {name: '황금 마스터키', icon: <Trophy className="w-6 h-6"/>, rarity: 'legendary'},
-            claimed: false,
-            locked: false
+            claimed: currentLevel >= 15,
+            locked: currentLevel < 15
         },
         {
             level: 20,
             freeReward: {name: '기본 스킨 팩', icon: <Gift className="w-6 h-6"/>, rarity: 'common'},
             premiumReward: {name: '1000 크레딧', icon: <Star className="w-6 h-6"/>, rarity: 'rare'},
-            claimed: false,
-            locked: true
+            claimed: currentLevel >= 20,
+            locked: currentLevel < 20
         },
         {
             level: 25,
             premiumReward: {name: '드래곤 테마', icon: <Sparkles className="w-6 h-6"/>, rarity: 'legendary'},
-            claimed: false,
-            locked: true
+            claimed: currentLevel >= 25,
+            locked: currentLevel < 25
+        },
+        {
+            level: 30,
+            freeReward: {name: '힌트 부스터 x5', icon: <Zap className="w-6 h-6"/>, rarity: 'rare'},
+            premiumReward: {name: '사이버펑크 스킨', icon: <Crown className="w-6 h-6"/>, rarity: 'legendary'},
+            claimed: currentLevel >= 30,
+            locked: currentLevel < 30
+        },
+        {
+            level: 40,
+            freeReward: {name: '500 크레딧', icon: <Star className="w-6 h-6"/>, rarity: 'rare'},
+            premiumReward: {name: '홀로그램 테마', icon: <Sparkles className="w-6 h-6"/>, rarity: 'legendary'},
+            claimed: currentLevel >= 40,
+            locked: currentLevel < 40
+        },
+        {
+            level: 50,
+            premiumReward: {name: '전설의 탈출 아티스트 칭호', icon: <Trophy className="w-6 h-6"/>, rarity: 'legendary'},
+            claimed: currentLevel >= 50,
+            locked: currentLevel < 50
         }
     ]
+
+    // 사용자의 프리미엄 상태 확인 (실제로는 DB에서 가져와야 함)
+    useEffect(() => {
+        if (user) {
+            // TODO: 실제 프리미엄 상태 확인 로직
+            // setHasPremium(user.hasPremiumPass || false)
+        }
+    }, [user])
 
     const getRarityColor = (rarity: string) => {
         switch (rarity) {
@@ -87,6 +119,11 @@ export default function SeasonPassPage() {
     }
 
     const progressPercentage = (currentLevel / 50) * 100
+
+    const handleClaimReward = (level: number, isPremium: boolean) => {
+        // TODO: 실제 보상 수령 로직 구현
+        console.log(`Claiming ${isPremium ? 'premium' : 'free'} reward for level ${level}`)
+    }
 
     return (
         <>
@@ -216,7 +253,7 @@ export default function SeasonPassPage() {
                                             <div>
                                                 <p className="font-medium">{reward.freeReward.name}</p>
                                             </div>
-                                            {reward.claimed && reward.level <= currentLevel && (
+                                            {reward.claimed && (
                                                 <CheckCircle className="w-5 h-5 text-green-400 ml-auto"/>
                                             )}
                                         </div>
@@ -231,9 +268,9 @@ export default function SeasonPassPage() {
                                     <div className="flex items-center gap-3">
                                         <div
                                             className={`w-12 h-12 bg-gradient-to-br ${getRarityColor(reward.premiumReward.rarity)} rounded-lg flex items-center justify-center ${
-                                                !hasPremium && reward.level > currentLevel ? 'opacity-50' : ''
+                                                !hasPremium && reward.locked ? 'opacity-50' : ''
                                             }`}>
-                                            {!hasPremium && reward.level > currentLevel ? (
+                                            {!hasPremium && reward.locked ? (
                                                 <Lock className="w-6 h-6"/>
                                             ) : (
                                                 reward.premiumReward.icon
@@ -244,21 +281,44 @@ export default function SeasonPassPage() {
                                                 {reward.premiumReward.name}
                                             </p>
                                         </div>
-                                        {hasPremium && reward.claimed && reward.level <= currentLevel && (
+                                        {hasPremium && reward.claimed && (
                                             <CheckCircle className="w-5 h-5 text-green-400 ml-auto"/>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* 보상 받기 버튼 */}
-                                {reward.level <= currentLevel && !reward.claimed && (
-                                    <Button variant="primary" size="sm">
-                                        보상 받기
-                                    </Button>
+                                {!reward.locked && !reward.claimed && (
+                                    <div className="flex flex-col gap-2">
+                                        {reward.freeReward && (
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => handleClaimReward(reward.level, false)}
+                                            >
+                                                무료 보상
+                                            </Button>
+                                        )}
+                                        {hasPremium && (
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => handleClaimReward(reward.level, true)}
+                                            >
+                                                프리미엄 보상
+                                            </Button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </Card>
                     ))}
+                </div>
+
+                {/* 더 많은 레벨 안내 */}
+                <div className="text-center mt-8 text-gray-400">
+                    <p>더 많은 보상은 레벨업을 통해 잠금 해제됩니다!</p>
+                    <p className="text-sm mt-1">게임을 플레이하고 경험치를 획득하세요.</p>
                 </div>
             </Container>
         </>

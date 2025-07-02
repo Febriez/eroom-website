@@ -1,10 +1,11 @@
+// lib/firebase/types/index.ts
 import {Timestamp} from 'firebase/firestore'
 
 // ==================== 기본 타입 ====================
 
 export type UserRole = 'user' | 'admin' | 'moderator'
 export type GameDifficulty = 'easy' | 'normal' | 'hard' | 'extreme'
-export type MapStatus = 'draft' | 'published' | 'archived'
+export type RoomStatus = 'draft' | 'published' | 'archived'
 export type NotificationType = 'friend_request' | 'message' | 'game_invite' | 'system' | 'achievement'
 
 // ==================== 사용자 관련 ====================
@@ -92,11 +93,12 @@ export interface NotificationSettings {
     achievements: boolean
     updates: boolean
     marketing: boolean
+    browserNotifications?: boolean  // 브라우저 푸시 알림
 }
 
 // ==================== 게임 관련 ====================
 
-export interface GameMap {
+export interface GameRoom {
     id: string
     name: string
     description: string
@@ -113,16 +115,16 @@ export interface GameMap {
     }
 
     // 통계
-    stats: MapStats
+    stats: RoomStats
 
     // 메타데이터
-    metadata: MapMetadata
+    metadata: RoomMetadata
 
     createdAt: Timestamp
     updatedAt: Timestamp
 }
 
-export interface MapStats {
+export interface RoomStats {
     playCount: number
     likeCount: number
     dislikeCount: number
@@ -132,11 +134,11 @@ export interface MapStats {
     comments: number
 }
 
-export interface MapMetadata {
+export interface RoomMetadata {
     isAIGenerated: boolean
     isFeatured: boolean
     isOfficial: boolean
-    status: MapStatus
+    status: RoomStatus
     version: string
 }
 
@@ -144,8 +146,8 @@ export interface PlayRecord {
     id: string
     playerId: string
     playerName: string
-    mapId: string
-    mapName: string
+    roomId: string              // mapId → roomId로 변경
+    roomName: string            // mapName → roomName으로 변경
 
     startTime: Timestamp
     endTime?: Timestamp
@@ -258,7 +260,7 @@ export interface Notification {
         senderAvatar?: string
         requestId?: string
         gameId?: string
-        mapId?: string
+        roomId?: string         // mapId → roomId로 변경
         achievementId?: string
         conversationId?: string
     }
@@ -279,8 +281,8 @@ export interface LeaderboardEntry {
         avatarUrl?: string
     }
 
-    type: 'global' | 'map' | 'weekly' | 'monthly'
-    mapId?: string              // 맵별 리더보드인 경우
+    type: 'global' | 'room' | 'weekly' | 'monthly'  // map → room으로 변경
+    roomId?: string              // mapId → roomId로 변경
 
     score: number
     clearTime?: number          // 초 단위
@@ -301,7 +303,7 @@ export interface Report {
     }
 
     target: {
-        type: 'user' | 'map' | 'comment'
+        type: 'user' | 'room' | 'comment'  // map → room으로 변경
         id: string
         name?: string
     }
@@ -331,8 +333,8 @@ export interface SystemSettings {
         messaging: boolean
         friendSystem: boolean
         leaderboard: boolean
-        aiMaps: boolean
-        userMaps: boolean
+        aiRooms: boolean        // aiMaps → aiRooms로 변경
+        userRooms: boolean      // userMaps → userRooms로 변경
     }
 
     announcement?: {
@@ -404,7 +406,7 @@ export interface Purchase {
 
 export type CollectionName =
     | 'users'
-    | 'maps'
+    | 'rooms'              // maps → rooms로 변경
     | 'conversations'
     | 'messages'
     | 'notifications'
@@ -453,7 +455,7 @@ export interface ValidationRules {
         maxLength: 200
     }
 
-    mapName: {
+    roomName: {              // mapName → roomName으로 변경
         minLength: 3
         maxLength: 50
     }
@@ -482,7 +484,7 @@ export const VALIDATION_RULES: ValidationRules = {
     bio: {
         maxLength: 200
     },
-    mapName: {
+    roomName: {              // mapName → roomName으로 변경
         minLength: 3,
         maxLength: 50
     },
