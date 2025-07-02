@@ -5,6 +5,7 @@ import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {AlertTriangle, Ban, FileText, Info, MessageSquare, Scale, Shield, Users} from 'lucide-react'
 import {CONSTANTS} from '@/lib/utils/constants'
+import React from "react";
 
 // 섹션 타입 정의
 interface BaseSection {
@@ -67,7 +68,6 @@ export default function TermsPage() {
                 {
                     title: '이용 자격',
                     items: [
-                        '만 13세 이상이어야 합니다',
                         '정확한 정보를 제공해야 합니다',
                         '계정 보안을 유지해야 합니다',
                         '불법적인 목적으로 사용할 수 없습니다'

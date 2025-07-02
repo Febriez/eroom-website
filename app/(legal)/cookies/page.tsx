@@ -37,8 +37,8 @@ export default function CookiesPage() {
                     title: '선호 설정 쿠키',
                     badge: 'preference',
                     items: [
-                        '언어 설정',
-                        '테마 설정 (다크/라이트 모드)',
+                        '언어 설정 *지원예정',
+                        '테마 설정 (다크/라이트 모드) *지원예정',
                         '알림 환경설정'
                     ]
                 },
@@ -69,7 +69,6 @@ export default function CookiesPage() {
             providers: [
                 {name: 'Google Analytics', purpose: '웹사이트 트래픽 및 사용자 행동 분석'},
                 {name: 'Google 광고', purpose: '맞춤형 광고 제공'},
-                {name: 'Facebook', purpose: '소셜 공유 기능 및 타겟 광고'},
                 {name: 'Firebase', purpose: '사용자 인증 및 분석'}
             ]
         },
@@ -91,7 +90,7 @@ export default function CookiesPage() {
             <PageHeader
                 title="쿠키 정책"
                 description="당사가 쿠키를 사용하는 방법과 관리 방법에 대해 알아보세요"
-                badge="최종 업데이트: 2025년 6월 15일"
+                badge="최종 업데이트: 2025년 7월 2일"
                 icon={<Cookie className="w-5 h-5"/>}
             />
 

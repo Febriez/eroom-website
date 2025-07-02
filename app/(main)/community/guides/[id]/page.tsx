@@ -92,8 +92,7 @@ export default function GuideDetailPage() {
             })
         } else {
             // 클립보드에 복사
-            navigator.clipboard.writeText(window.location.href)
-            alert('링크가 클립보드에 복사되었습니다!')
+            navigator.clipboard.writeText(window.location.href).then(_ => alert('링크가 클립보드에 복사되었습니다!'))
         }
     }
 

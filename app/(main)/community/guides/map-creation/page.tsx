@@ -81,8 +81,8 @@ export default function MapCreationGuidePage() {
                     description: '플레이어가 즐거워하는 맵을 만드는 핵심 요소들',
                     icon: <Target className="w-6 h-6 text-green-400"/>,
                     details: [
-                        '명확한 목표와 진행 방향',
-                        '적절한 난이도 곡선',
+                        '너무 눈에 띄는 위치에 있는 오브젝트는 지양',
+                        '적절한 난이도',
                         '직관적인 퍼즐 디자인',
                         '몰입감 있는 스토리텔링'
                     ]
@@ -92,10 +92,8 @@ export default function MapCreationGuidePage() {
                     description: '효과적인 공간 배치와 동선 설계',
                     icon: <Map className="w-6 h-6 text-green-400"/>,
                     details: [
-                        '시작점과 종료점 설정',
-                        '메인 경로와 서브 경로',
-                        '숨겨진 공간과 보상',
-                        '백트래킹 최소화'
+                        '시작점과 종료점(ExitDoor) 설정',
+                        '메인 경로와 서브 경로 *지원예정'
                     ]
                 },
                 {
@@ -103,10 +101,8 @@ export default function MapCreationGuidePage() {
                     description: '일관성 있는 분위기와 세계관 구축',
                     icon: <Brush className="w-6 h-6 text-green-400"/>,
                     details: [
-                        '인기 테마: 공포, SF, 판타지, 현실',
-                        '테마에 맞는 오브젝트 선택',
-                        '색상과 조명으로 분위기 연출',
-                        '사운드 효과의 중요성'
+                        '인기 테마: 정신병동, 빅토리아',
+                        '테마에 맞는 키워드 선택'
                     ]
                 }
             ]
@@ -119,18 +115,17 @@ export default function MapCreationGuidePage() {
                     description: '에디터의 모든 기능을 효율적으로 사용하는 방법',
                     icon: <Layers className="w-6 h-6 text-blue-400"/>,
                     details: [
-                        '도구 패널과 단축키',
+                        '설정 패널과 단축키',
                         '오브젝트 라이브러리',
-                        '속성 편집기',
-                        '미리보기와 테스트 모드'
+                        '미리보기와 테스트 모드 *지원예정'
                     ]
                 },
                 {
-                    title: '고급 편집 기능',
+                    title: '고급 편집 기능 *지원예정',
                     description: '전문가처럼 맵을 제작하는 고급 테크닉',
                     icon: <Code className="w-6 h-6 text-blue-400"/>,
                     details: [
-                        '스크립트 시스템 활용',
+                        'AI Assist 활용',
                         '커스텀 이벤트 생성',
                         '변수와 조건문 사용',
                         '복잡한 메커니즘 구현'
@@ -142,8 +137,6 @@ export default function MapCreationGuidePage() {
                     icon: <Zap className="w-6 h-6 text-blue-400"/>,
                     details: [
                         '오브젝트 수 관리',
-                        'LOD 설정 활용',
-                        '조명 최적화',
                         '충돌 박스 간소화'
                     ]
                 }
@@ -157,8 +150,6 @@ export default function MapCreationGuidePage() {
                     description: '플레이어의 시선을 이끄는 비주얼 디자인',
                     icon: <Eye className="w-6 h-6 text-purple-400"/>,
                     details: [
-                        '조명으로 경로 암시',
-                        '색상 대비 활용',
                         '랜드마크 배치',
                         '시각적 계층 구조'
                     ]

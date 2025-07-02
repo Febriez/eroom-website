@@ -28,7 +28,7 @@ export default function CareersPage() {
             title: 'AI 개발자',
             department: 'AI 기술팀',
             type: 'tech',
-            level: '경력',
+            level: '신입 & 경력',
             description: 'AI 기술을 활용한 게임 콘텐츠 생성 시스템을 개발하고 개선하는 역할을 담당합니다.',
             requirements: [
                 'Python 및 주요 머신러닝 프레임워크(PyTorch, TensorFlow 등) 사용 경험',
@@ -49,7 +49,7 @@ export default function CareersPage() {
             title: '백엔드 개발자 (플랫폼)',
             department: '플랫폼팀',
             type: 'tech',
-            level: '경력',
+            level: '신입 & 경력',
             description: 'EROOM 플랫폼의 서버 시스템을 개발하고 확장 가능한 인프라를 구축합니다.',
             requirements: [
                 'Java/Kotlin, Go, Python, Node.js 중 하나 이상의 언어에 능숙하신 분',
@@ -70,7 +70,7 @@ export default function CareersPage() {
             title: '게임 UI/UX 디자이너',
             department: '프로덕트팀',
             type: 'creative',
-            level: '경력',
+            level: '신입 & 경력',
             description: '플레이어에게 최적의 게임 경험을 제공하는 UI/UX를 설계하고 구현합니다.',
             requirements: [
                 'Figma, Sketch, Adobe XD 등 프로토타이핑 툴 활용 능력',

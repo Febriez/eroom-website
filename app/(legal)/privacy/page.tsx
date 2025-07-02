@@ -22,15 +22,15 @@ export default function PrivacyPage() {
             categories: [
                 {
                     title: '계정 정보',
-                    items: ['이름', '이메일 주소', '비밀번호', '사용자명']
+                    items: ['이름', '이메일 주소', '비밀번호(암호화 상태)', '사용자명']
                 },
                 {
                     title: '프로필 정보',
-                    items: ['프로필 사진', '자기소개', '위치']
+                    items: ['프로필 사진', '자기소개']
                 },
                 {
                     title: '기기 정보',
-                    items: ['IP 주소', '브라우저 유형', '운영 체제', '기기 식별자']
+                    items: ['IP 주소(법적 문제에서만 사용합니다)', '브라우저 유형', '운영 체제']
                 },
                 {
                     title: '사용 정보',
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
             <PageHeader
                 title="개인정보처리방침"
                 description="고객님의 소중한 개인정보를 안전하게 보호합니다"
-                badge="최종 업데이트: 2025년 6월 15일"
+                badge="최종 업데이트: 2025년 7월 2일"
                 icon={<Shield className="w-5 h-5"/>}
             />
 

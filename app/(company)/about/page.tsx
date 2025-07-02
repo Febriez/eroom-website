@@ -183,21 +183,6 @@ export default function AboutPage() {
                                 <div className="flex items-start gap-6">
                                     <div
                                         className="flex-shrink-0 w-16 h-16 bg-green-600/20 rounded-lg flex items-center justify-center">
-                                        <Shield className="w-8 h-8 text-green-400"/>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-2xl font-bold mb-3">신뢰</h4>
-                                        <p className="text-gray-300 leading-relaxed">
-                                            플레이어와의 약속을 지키고, 투명한 소통을 통해
-                                            신뢰받는 게임 스튜디오가 되고자 합니다. 공정한 게임 환경과
-                                            안전한 커뮤니티를 만들어갑니다.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-6">
-                                    <div
-                                        className="flex-shrink-0 w-16 h-16 bg-green-600/20 rounded-lg flex items-center justify-center">
                                         <Sparkles className="w-8 h-8 text-green-400"/>
                                     </div>
                                     <div>
@@ -206,6 +191,21 @@ export default function AboutPage() {
                                             게임의 본질은 재미입니다. 기술에만 매몰되지 않고,
                                             플레이어가 진정으로 즐길 수 있는 게임을 만듭니다.
                                             매 순간이 특별한 경험이 되도록 노력합니다.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-6">
+                                    <div
+                                        className="flex-shrink-0 w-16 h-16 bg-green-600/20 rounded-lg flex items-center justify-center">
+                                        <Shield className="w-8 h-8 text-green-400"/>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-2xl font-bold mb-3">신뢰</h4>
+                                        <p className="text-gray-300 leading-relaxed">
+                                            플레이어와의 약속을 지키고, 투명한 소통을 통해
+                                            신뢰받는 게임 스튜디오가 되고자 합니다. 공정한 게임 환경과
+                                            안전한 커뮤니티를 만들어갑니다.
                                         </p>
                                     </div>
                                 </div>
