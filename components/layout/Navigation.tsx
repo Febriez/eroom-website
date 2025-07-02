@@ -5,8 +5,10 @@ import React, {useEffect, useState} from 'react'
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
 import {
+    ArrowRight,
     Bell,
     Brain,
+    CheckCheck,
     ChevronDown,
     CreditCard,
     Download,
@@ -25,7 +27,6 @@ import {
 } from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
-// @ts-ignore - useConversations를 아직 생성 중
 import {useConversations} from '@/lib/hooks/useConversations'
 import {Avatar} from '../ui/Avatar'
 import {Button} from '../ui/Button'
@@ -48,9 +49,12 @@ export default function Navigation() {
     const [showMessages, setShowMessages] = useState(false)
     const [showProfileMenu, setShowProfileMenu] = useState(false)
     const {user, loading: authLoading, logout} = useAuth()
-    const {notifications, unreadCount} = useNotifications()
-    const {conversations, totalUnreadCount} = useConversations()
+    const {notifications, unreadCount, markAllAsRead: markAllNotificationsAsRead} = useNotifications()
+    const {conversations, totalUnreadCount, markAllConversationsAsRead} = useConversations()
     const router = useRouter()
+
+    // 표시할 최대 알림/메시지 수
+    const MAX_PREVIEW_ITEMS = 5
 
     // user 상태 변경 감지
     useEffect(() => {
@@ -168,6 +172,17 @@ export default function Navigation() {
         }
     }
 
+    // 알림 클릭 핸들러
+    const handleNotificationClick = async (notif: any) => {
+        // 메시지 알림인 경우 해당 대화로 이동
+        if (notif.type === 'message' && notif.data?.conversationId) {
+            router.push(`/profile/${user!.username}?openChat=${notif.data.conversationId}`)
+        } else {
+            // 다른 알림은 프로필 페이지로 이동
+            router.push(`/profile/${user!.username}`)
+        }
+    }
+
     return (
         <>
             <nav className={`fixed w-full z-40 transition-all duration-300 safe-top ${
@@ -277,57 +292,74 @@ export default function Navigation() {
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
                                                     메시지
-                                                    <button
-                                                        onClick={() => router.push(`/profile/${user.username}`)}
-                                                        className="text-xs text-gray-500 hover:text-green-400 transition-colors"
-                                                    >
-                                                        모두 보기
-                                                    </button>
+                                                    {totalUnreadCount > 0 && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                markAllConversationsAsRead()
+                                                            }}
+                                                            className="text-xs text-gray-500 hover:text-green-400 transition-colors flex items-center gap-1"
+                                                        >
+                                                            <CheckCheck className="w-3 h-3"/>
+                                                            모두 읽음
+                                                        </button>
+                                                    )}
                                                 </h3>
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
                                                 {conversations.length > 0 ? (
-                                                    conversations.slice(0, 3).map((conversation) => {
-                                                        const unreadCount = conversation.unreadCount?.[user.uid] || 0
-                                                        const hasUnread = unreadCount > 0
+                                                    <>
+                                                        {conversations.slice(0, MAX_PREVIEW_ITEMS).map((conversation) => {
+                                                            const unreadCount = conversation.unreadCount?.[user.uid] || 0
+                                                            const hasUnread = unreadCount > 0
 
-                                                        return (
-                                                            <div
-                                                                key={conversation.id}
-                                                                className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
-                                                                    hasUnread ? 'bg-gray-900' : ''
-                                                                }`}
-                                                                onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
-                                                            >
-                                                                <div className="flex items-start gap-3">
-                                                                    <Avatar
-                                                                        src={conversation.otherParticipant?.avatarUrl}
-                                                                        size="sm"
-                                                                    />
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div
-                                                                            className="flex items-center justify-between">
-                                                                            <p className="font-medium text-sm">
-                                                                                {conversation.otherParticipant?.displayName || 'Unknown'}
+                                                            return (
+                                                                <div
+                                                                    key={conversation.id}
+                                                                    className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
+                                                                        hasUnread ? 'bg-gray-900' : ''
+                                                                    }`}
+                                                                    onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <Avatar
+                                                                            src={conversation.otherParticipant?.avatarUrl}
+                                                                            size="sm"
+                                                                        />
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div
+                                                                                className="flex items-center justify-between">
+                                                                                <p className="font-medium text-sm">
+                                                                                    {conversation.otherParticipant?.displayName || 'Unknown'}
+                                                                                </p>
+                                                                                <span className="text-xs text-gray-500">
+                                                                                    {conversation.lastMessage && formatTime(conversation.lastMessage.timestamp)}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-sm text-gray-400 truncate mt-1">
+                                                                                {conversation.lastMessage?.content || '대화를 시작하세요'}
                                                                             </p>
-                                                                            <span className="text-xs text-gray-500">
-                                                                                {conversation.lastMessage && formatTime(conversation.lastMessage.timestamp)}
-                                                                            </span>
                                                                         </div>
-                                                                        <p className="text-sm text-gray-400 truncate mt-1">
-                                                                            {conversation.lastMessage?.content || '대화를 시작하세요'}
-                                                                        </p>
+                                                                        {hasUnread && (
+                                                                            <span
+                                                                                className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
+                                                                                {unreadCount}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
-                                                                    {hasUnread && (
-                                                                        <span
-                                                                            className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
-                                                                            {unreadCount}
-                                                                        </span>
-                                                                    )}
                                                                 </div>
-                                                            </div>
-                                                        )
-                                                    })
+                                                            )
+                                                        })}
+                                                        {conversations.length > MAX_PREVIEW_ITEMS && (
+                                                            <button
+                                                                onClick={() => router.push(`/profile/${user.username}`)}
+                                                                className="w-full p-3 text-center text-sm text-gray-400 hover:text-green-400 hover:bg-gray-900 transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                더보기
+                                                                <ArrowRight className="w-4 h-4"/>
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 ) : (
                                                     <div className="p-8 text-center text-gray-500">
                                                         <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50"/>
@@ -366,42 +398,59 @@ export default function Navigation() {
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
                                                     알림
-                                                    <button
-                                                        onClick={() => router.push(`/profile/${user.username}`)}
-                                                        className="text-xs text-gray-500 hover:text-green-400 transition-colors"
-                                                    >
-                                                        모두 보기
-                                                    </button>
+                                                    {unreadCount > 0 && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                markAllNotificationsAsRead()
+                                                            }}
+                                                            className="text-xs text-gray-500 hover:text-green-400 transition-colors flex items-center gap-1"
+                                                        >
+                                                            <CheckCheck className="w-3 h-3"/>
+                                                            모두 읽음
+                                                        </button>
+                                                    )}
                                                 </h3>
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
                                                 {notifications.length > 0 ? (
-                                                    notifications.slice(0, 3).map((notif) => {
-                                                        const icon = getNotificationIcon(notif.type)
-                                                        return (
-                                                            <div
-                                                                key={notif.id}
-                                                                className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
-                                                                    !notif.read ? 'bg-gray-900' : ''
-                                                                }`}
-                                                                onClick={() => router.push(`/profile/${user.username}`)}
-                                                            >
-                                                                <div className="flex items-start gap-3">
-                                                                    <div className={`p-2 ${icon.bg} rounded-lg`}>
-                                                                        {icon.icon}
-                                                                    </div>
-                                                                    <div className="flex-1">
-                                                                        <p className="font-medium text-sm">{notif.title}</p>
-                                                                        <p className="text-sm text-gray-400 mt-1">{notif.body}</p>
-                                                                        <span
-                                                                            className="text-xs text-gray-500 mt-2 block">
-                                                                            {formatTime(notif.createdAt)}
-                                                                        </span>
+                                                    <>
+                                                        {notifications.slice(0, MAX_PREVIEW_ITEMS).map((notif) => {
+                                                            const icon = getNotificationIcon(notif.type)
+                                                            return (
+                                                                <div
+                                                                    key={notif.id}
+                                                                    className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
+                                                                        !notif.read ? 'bg-gray-900' : ''
+                                                                    }`}
+                                                                    onClick={() => handleNotificationClick(notif)}
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`p-2 ${icon.bg} rounded-lg`}>
+                                                                            {icon.icon}
+                                                                        </div>
+                                                                        <div className="flex-1">
+                                                                            <p className="font-medium text-sm">{notif.title}</p>
+                                                                            <p className="text-sm text-gray-400 mt-1">{notif.body}</p>
+                                                                            <span
+                                                                                className="text-xs text-gray-500 mt-2 block">
+                                                                                {formatTime(notif.createdAt)}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        )
-                                                    })
+                                                            )
+                                                        })}
+                                                        {notifications.length > MAX_PREVIEW_ITEMS && (
+                                                            <button
+                                                                onClick={() => router.push(`/profile/${user.username}`)}
+                                                                className="w-full p-3 text-center text-sm text-gray-400 hover:text-green-400 hover:bg-gray-900 transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                더보기
+                                                                <ArrowRight className="w-4 h-4"/>
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 ) : (
                                                     <div className="p-8 text-center text-gray-500">
                                                         <Bell className="w-8 h-8 mx-auto mb-2 opacity-50"/>

@@ -4,6 +4,9 @@ import {useAuth} from '@/contexts/AuthContext'
 import {MessageService} from '@/lib/firebase/services/message.service'
 import {UserService} from '@/lib/firebase/services/user.service'
 import type {Conversation} from '@/lib/firebase/types'
+import {doc, writeBatch} from 'firebase/firestore'
+import {db} from '@/lib/firebase/config'
+import {COLLECTIONS} from '@/lib/firebase/collections'
 
 interface ParticipantInfo {
     uid?: string
@@ -105,10 +108,35 @@ export function useConversations() {
         )
     }
 
+    const markAllConversationsAsRead = async () => {
+        if (!user || conversations.length === 0) return
+
+        try {
+            const batch = writeBatch(db)
+
+            // 현재 읽지 않은 메시지가 있는 대화들만 처리
+            const unreadConversations = conversations.filter(
+                conv => (conv.unreadCount?.[user.uid] || 0) > 0
+            )
+
+            unreadConversations.forEach((conv) => {
+                const convRef = doc(db, COLLECTIONS.CONVERSATIONS, conv.id)
+                batch.update(convRef, {
+                    [`unreadCount.${user.uid}`]: 0
+                })
+            })
+
+            await batch.commit()
+        } catch (error) {
+            console.error('Error marking all conversations as read:', error)
+        }
+    }
+
     return {
         conversations,
         loading,
         totalUnreadCount,
-        createConversation
+        createConversation,
+        markAllConversationsAsRead
     }
 }

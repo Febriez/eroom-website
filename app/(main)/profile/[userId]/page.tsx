@@ -1,3 +1,4 @@
+// app/(main)/profile/[userId]/page.tsx
 'use client'
 
 import {useEffect, useState} from 'react'
@@ -18,10 +19,9 @@ import {Bell, Check, CheckCircle, Clock, Edit, MapPin, MessageSquare, Settings, 
 import {doc, serverTimestamp, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
-import {formatRelativeTime} from "@/lib/utils";
+import {formatRelativeTime} from '@/lib/utils'
 
 type NotificationFilter = 'all' | 'read' | 'unread'
-
 
 export default function ProfilePage() {
     const params = useParams()
@@ -38,12 +38,10 @@ export default function ProfilePage() {
     const [showMessagesModal, setShowMessagesModal] = useState(false)
     const [showChatModal, setShowChatModal] = useState(false)
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+    const {messages, sendMessage} = useMessages(selectedConversationId)
     const [isEditingDisplayName, setIsEditingDisplayName] = useState(false)
     const [isEditingBio, setIsEditingBio] = useState(false)
-    const [editForm, setEditForm] = useState({
-        displayName: '',
-        bio: ''
-    })
+    const [editForm, setEditForm] = useState({displayName: '', bio: ''})
     const [newUsername, setNewUsername] = useState('')
     const [usernameError, setUsernameError] = useState('')
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
@@ -71,34 +69,49 @@ export default function ProfilePage() {
         }
     })
 
-    const {messages, sendMessage} = useMessages(selectedConversationId)
-
-    // URL에서 username 가져오기
     const username = params.userId as string
-
-    // 쿼리 파라미터에서 openChat 확인
     const openChatId = searchParams.get('openChat')
 
-    // username으로 사용자 찾기
     useEffect(() => {
         const fetchUser = async () => {
+            setLoading(true)
             try {
-                setLoading(true)
                 const user = await UserService.getUserByUsername(username)
                 setProfileUser(user)
-            } catch (error) {
-                console.error('Error fetching user:', error)
+                setEditForm({displayName: user!.displayName || '', bio: user!.bio || ''})
+                setNewUsername(user!.username || '')
+                if (user?.settings) {
+                    setTempSettings({
+                        privacy: user.settings.privacy ?? {
+                            showProfile: true,
+                            showStats: true,
+                            showFriends: true,
+                            showActivity: true,
+                            allowMessages: true,
+                            allowFriendRequests: true
+                        },
+                        notifications: user.settings.notifications ?? {
+                            friendRequests: true,
+                            messages: true,
+                            gameInvites: true,
+                            achievements: true,
+                            updates: true,
+                            marketing: false
+                        },
+                        preferences: {
+                            soundEnabled: user.settings.preferences?.soundEnabled ?? true
+                        }
+                    })
+                }
+            } catch (e) {
+                console.error(e)
             } finally {
                 setLoading(false)
             }
         }
-
-        if (username) {
-            fetchUser()
-        }
+        if (username) fetchUser()
     }, [username])
 
-    // openChat 파라미터가 있으면 채팅 모달 열기
     useEffect(() => {
         if (openChatId && profileUser && currentUser) {
             setSelectedConversationId(openChatId)
@@ -110,144 +123,76 @@ export default function ProfilePage() {
     const isGoogleUser = currentUser?.email?.includes('@gmail.com')
     const canChangeUsername = isGoogleUser && profileUser?.canChangeUsername
 
-    useEffect(() => {
-        if (profileUser) {
-            setEditForm({
-                displayName: profileUser.displayName || '',
-                bio: profileUser.bio || ''
-            })
-            setNewUsername(profileUser.username || '')
-            // 환경설정 초기화
-            if (profileUser.settings) {
-                setTempSettings({
-                    privacy: profileUser.settings.privacy || tempSettings.privacy,
-                    notifications: profileUser.settings.notifications || tempSettings.notifications,
-                    preferences: {
-                        soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
-                    }
-                })
-            }
-        }
-    }, [profileUser])
-
-
     const handleSaveDisplayName = async () => {
         if (!profileUser || !currentUser) return
-
         try {
-            await UserService.updateUser(profileUser.id, {
-                displayName: editForm.displayName
-            })
-
-            // 프로필 유저 정보 즉시 업데이트
+            await UserService.updateUser(profileUser.id, {displayName: editForm.displayName})
             setProfileUser({...profileUser, displayName: editForm.displayName})
-
-            // 로그인한 유저의 정보도 업데이트
-            if (isOwnProfile) {
-                await updateUserProfile({displayName: editForm.displayName})
-            }
-
+            if (isOwnProfile) await updateUserProfile({displayName: editForm.displayName})
             setIsEditingDisplayName(false)
-        } catch (error) {
-            console.error('Error updating display name:', error)
+        } catch (e) {
+            console.error(e)
         }
     }
 
     const handleSaveBio = async () => {
         if (!profileUser || !currentUser) return
-
         try {
-            await UserService.updateUser(profileUser.id, {
-                bio: editForm.bio
-            })
-
-            // 프로필 유저 정보 즉시 업데이트
+            await UserService.updateUser(profileUser.id, {bio: editForm.bio})
             setProfileUser({...profileUser, bio: editForm.bio})
-
-            // 로그인한 유저의 정보도 업데이트
-            if (isOwnProfile) {
-                await updateUserProfile({bio: editForm.bio})
-            }
-
+            if (isOwnProfile) await updateUserProfile({bio: editForm.bio})
             setIsEditingBio(false)
-        } catch (error) {
-            console.error('Error updating bio:', error)
+        } catch (e) {
+            console.error(e)
         }
     }
 
-
-    // 간단한 마크다운 렌더링 함수
     const renderMarkdown = (text: string) => {
         if (!text) return ''
-
         let html = text
-
-        // HTML 이스케이프
-        html = html.replace(/&/g, '&amp;')
+            .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-
-        // 인라인 코드 `code` (먼저 처리하여 다른 마크다운 처리에서 제외)
-        html = html.replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-green-400">$1</code>')
-
-        // 굵은 글씨 **text** 또는 __text__
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        html = html.replace(/__(.*?)__/g, '<strong>$1</strong>')
-
-        // 기울임 *text* 또는 _text_ (굵은 글씨 처리 후)
-        html = html.replace(/(?<!\*)\*(?!\*)([^\*]+)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-        html = html.replace(/(?<!_)_(?!_)([^_]+)(?<!_)_(?!_)/g, '<em>$1</em>')
-
-        // 취소선 ~~text~~
-        html = html.replace(/~~(.*?)~~/g, '<del>$1</del>')
-
-        // 줄바꿈 처리
-        html = html.replace(/\n/g, '<br/>')
-
+            .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-green-400">$1</code>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/__(.*?)__/g, '<strong>$1</strong>')
+            .replace(/(?<!\*)\*(?!\*)([^\*]+)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+            .replace(/(?<!_)_(?!_)([^_]+)(?<!_)_(?!_)/g, '<em>$1</em>')
+            .replace(/~~(.*?)~~/g, '<del>$1</del>')
+            .replace(/\n/g, '<br/>')
         return html
     }
 
     const handleUsernameChange = async () => {
         if (!profileUser || !currentUser || !canChangeUsername) return
-
-        // 유저네임 검증
-        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-        if (!usernameRegex.test(newUsername)) {
+        const regex = /^[a-zA-Z0-9_]{3,20}$/
+        if (!regex.test(newUsername)) {
             setUsernameError('3-20자의 영문, 숫자, 언더스코어만 사용 가능합니다')
             return
         }
-
-        // 중복 체크
-        const existingUser = await UserService.getUserByUsername(newUsername)
-        if (existingUser && existingUser.id !== profileUser.id) {
+        const existing = await UserService.getUserByUsername(newUsername)
+        if (existing && existing.id !== profileUser.id) {
             setUsernameError('이미 사용중인 사용자명입니다')
             return
         }
-
         try {
             await updateDoc(doc(db, COLLECTIONS.USERS, profileUser.id), {
                 username: newUsername,
                 canChangeUsername: false,
                 usernameChangedAt: serverTimestamp()
             })
-
-            // URL 변경
             router.replace(`/profile/${newUsername}`)
-
             setShowUsernameModal(false)
-        } catch (error) {
-            console.error('Error updating username:', error)
+        } catch (e) {
+            console.error(e)
         }
     }
 
     const handleSaveSettings = async () => {
         if (!profileUser || !currentUser) return
-
         setSavingSettings(true)
-        setSettingsSaved(false)
-
         try {
-            const updatedSettings = {
+            const updated = {
                 ...profileUser.settings,
                 privacy: tempSettings.privacy,
                 notifications: tempSettings.notifications,
@@ -256,29 +201,16 @@ export default function ProfilePage() {
                     soundEnabled: tempSettings.preferences.soundEnabled
                 }
             }
-
-            await UserService.updateUser(profileUser.id, {
-                settings: updatedSettings
-            })
-
-            // 프로필 유저 정보 즉시 업데이트
-            setProfileUser({...profileUser, settings: updatedSettings})
-
-            // 로그인한 유저의 정보도 업데이트
-            if (isOwnProfile) {
-                await updateUserProfile({settings: updatedSettings})
-            }
-
+            await UserService.updateUser(profileUser.id, {settings: updated})
+            setProfileUser({...profileUser, settings: updated})
+            if (isOwnProfile) await updateUserProfile({settings: updated})
             setSettingsSaved(true)
-
-            // 2초 후 모달 닫기
             setTimeout(() => {
                 setShowSettingsModal(false)
                 setSettingsSaved(false)
             }, 1500)
-
-        } catch (error) {
-            console.error('Error updating settings:', error)
+        } catch (e) {
+            console.error(e)
         } finally {
             setSavingSettings(false)
         }
@@ -286,82 +218,67 @@ export default function ProfilePage() {
 
     const handleMessageClick = async () => {
         if (!currentUser || !profileUser) return
-
         if (isOwnProfile) {
-            // 자신의 프로필이면 메시지 목록 모달 표시
             setShowMessagesModal(true)
         } else {
-            // 다른 사람의 프로필이면 대화 생성/이동
             try {
-                const conversationId = await createConversation(
-                    profileUser.uid,
-                    {
-                        username: profileUser.username,
-                        displayName: profileUser.displayName,
-                        avatarUrl: profileUser.avatarUrl
-                    }
-                )
-                setSelectedConversationId(conversationId)
+                const id = await createConversation(profileUser.uid, {
+                    username: profileUser.username,
+                    displayName: profileUser.displayName,
+                    avatarUrl: profileUser.avatarUrl
+                })
+                setSelectedConversationId(id)
                 setShowChatModal(true)
-
-                // URL에 대화 ID 추가 (선택사항)
-                const newUrl = new URL(window.location.href)
-                newUrl.searchParams.set('openChat', conversationId)
-                window.history.replaceState({}, '', newUrl)
-            } catch (error) {
-                console.error('Error creating conversation:', error)
+                const u = new URL(window.location.href)
+                u.searchParams.set('openChat', id)
+                window.history.replaceState({}, '', u)
+            } catch (e) {
+                console.error(e)
             }
         }
     }
 
-    const handleConversationSelect = (conversationId: string) => {
-        setSelectedConversationId(conversationId)
+    const handleConversationSelect = (id: string) => {
+        setSelectedConversationId(id)
         setShowMessagesModal(false)
         setShowChatModal(true)
     }
 
     const formattedConversations = conversations.map(conv => {
-        // 마지막 메시지 시간 포맷
-        const lastMessageTime = conv.lastMessage?.timestamp ?
-            formatRelativeTime(conv.lastMessage.timestamp) : ''
-
-        // 상대방 정보 가져오기
-        const otherParticipant = conv.otherParticipant;
-
+        const time = conv.lastMessage?.timestamp ? formatRelativeTime(conv.lastMessage.timestamp) : ''
+        const other = conv.otherParticipant
         return {
             id: conv.id,
-            participants: [{
-                id: conv.otherParticipantId || '',
-                username: otherParticipant?.username || '',
-                displayName: otherParticipant?.displayName || '',
-                avatar: otherParticipant?.avatarUrl,
-                level: otherParticipant?.level || 1
-            }],
+            participants: [
+                {
+                    id: conv.otherParticipantId || '',
+                    username: other?.username || '',
+                    displayName: other?.displayName || '',
+                    avatar: other?.avatarUrl,
+                    level: other?.level || 1
+                }
+            ],
             lastMessage: {
                 text: conv.lastMessage?.content || '대화를 시작하세요',
-                timestamp: lastMessageTime,
+                timestamp: time,
                 read: (conv.unreadCount?.[currentUser?.uid || ''] || 0) === 0
             },
             unreadCount: conv.unreadCount?.[currentUser?.uid || ''] || 0
         }
     })
 
-    // 선택된 대화의 참가자 정보
-    const selectedConversation = conversations.find(c => c.id === selectedConversationId)
-    const participants = selectedConversation && currentUser ? [
-        {
-            id: currentUser.uid,
-            username: currentUser.username || '',
-            avatar: currentUser.avatarUrl
-        },
-        {
-            id: selectedConversation.otherParticipantId || '',
-            username: selectedConversation.otherParticipant?.username || '',
-            avatar: selectedConversation.otherParticipant?.avatarUrl
-        }
-    ] : []
+    const selectedConv = conversations.find(c => c.id === selectedConversationId)
+    const participants = selectedConv && currentUser
+        ? [
+            {id: currentUser.uid, username: currentUser.username || '', avatar: currentUser.avatarUrl},
+            {
+                id: selectedConv.otherParticipantId || '',
+                username: selectedConv.otherParticipant?.username || '',
+                avatar: selectedConv.otherParticipant?.avatarUrl
+            }
+        ]
+        : []
 
-    // Message 형식 변환
     const formattedMessages = messages.map(msg => ({
         id: msg.id,
         text: msg.content,
@@ -370,16 +287,16 @@ export default function ProfilePage() {
         read: msg.readBy?.includes(currentUser?.uid || '') || false
     }))
 
-    const filteredNotifications = notifications.filter(notif => {
-        if (notificationFilter === 'read') return notif.read
-        if (notificationFilter === 'unread') return !notif.read
+    const filteredNotifications = notifications.filter(n => {
+        if (notificationFilter === 'read') return n.read
+        if (notificationFilter === 'unread') return !n.read
         return true
     })
 
     if (loading) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-green-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-green-500"/>
             </div>
         )
     }
@@ -395,7 +312,6 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-black pt-20">
             <Container className="py-8">
-                {/* 프로필 헤더 */}
                 <div className="bg-gray-900 rounded-xl p-8 mb-8">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-6">
@@ -407,17 +323,13 @@ export default function ProfilePage() {
                                             <input
                                                 type="text"
                                                 value={editForm.displayName}
-                                                onChange={(e) => setEditForm({
-                                                    ...editForm,
-                                                    displayName: e.target.value
-                                                })}
-                                                className="text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500 break-keep-all"
+                                                onChange={e => setEditForm({...editForm, displayName: e.target.value})}
+                                                className="text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500"
                                                 autoFocus
                                             />
                                             <button
                                                 onClick={handleSaveDisplayName}
                                                 className="p-1.5 bg-green-600 hover:bg-green-700 rounded transition-colors"
-                                                title="저장"
                                             >
                                                 <Check className="w-4 h-4"/>
                                             </button>
@@ -427,22 +339,20 @@ export default function ProfilePage() {
                                                     setEditForm({...editForm, displayName: profileUser.displayName})
                                                 }}
                                                 className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-                                                title="취소"
                                             >
                                                 <X className="w-4 h-4"/>
                                             </button>
                                         </div>
                                     ) : (
                                         <>
-                                            <h1 className="text-3xl font-bold break-keep-all">{profileUser.displayName}</h1>
+                                            <h1 className="text-3xl font-bold">{profileUser.displayName}</h1>
                                             {isOwnProfile && (
                                                 <button
                                                     onClick={() => setIsEditingDisplayName(true)}
-                                                    className="p-1.5 hover:bg-gray-800 rounded transition-all duration-200 group"
-                                                    title="닉네임 수정"
+                                                    className="p-1.5 hover:bg-gray-800 rounded transition-all duration-200"
                                                 >
                                                     <Edit
-                                                        className="w-4 h-4 text-white opacity-70 group-hover:opacity-100 transition-opacity"/>
+                                                        className="w-4 h-4 text-white opacity-70 group-hover:opacity-100"/>
                                                 </button>
                                             )}
                                         </>
@@ -453,11 +363,10 @@ export default function ProfilePage() {
                                     {isOwnProfile && canChangeUsername && (
                                         <button
                                             onClick={() => setShowUsernameModal(true)}
-                                            className="p-1 hover:bg-gray-800 rounded transition-all duration-200 group"
-                                            title="사용자명 수정 (1회만 가능)"
+                                            className="p-1 hover:bg-gray-800 rounded transition-all duration-200"
                                         >
                                             <Edit
-                                                className="w-3.5 h-3.5 text-white opacity-70 group-hover:opacity-100 transition-opacity"/>
+                                                className="w-3.5 h-3.5 text-white opacity-70 group-hover:opacity-100"/>
                                         </button>
                                     )}
                                     {isGoogleUser && (
@@ -476,7 +385,6 @@ export default function ProfilePage() {
                                         </div>
                                     )}
                                 </div>
-                                {/* 자기소개 */}
                                 <div className="mb-4">
                                     {isEditingBio && isOwnProfile ? (
                                         <div className="space-y-2">
@@ -485,8 +393,8 @@ export default function ProfilePage() {
                                             </div>
                                             <textarea
                                                 value={editForm.bio}
-                                                onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
-                                                onKeyDown={(e) => {
+                                                onChange={e => setEditForm({...editForm, bio: e.target.value})}
+                                                onKeyDown={e => {
                                                     if (e.key === 'Escape') {
                                                         setIsEditingBio(false)
                                                         setEditForm({...editForm, bio: profileUser.bio || ''})
@@ -494,16 +402,12 @@ export default function ProfilePage() {
                                                         handleSaveBio()
                                                     }
                                                 }}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none break-keep-all"
+                                                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none"
                                                 rows={3}
-                                                placeholder="자기소개를 입력하세요... (Ctrl+Enter로 저장, Esc로 취소)"
-                                                autoFocus
                                             />
                                             <div className="flex gap-2">
-                                                <button
-                                                    onClick={handleSaveBio}
-                                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm transition-colors"
-                                                >
+                                                <button onClick={handleSaveBio}
+                                                        className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
                                                     저장
                                                 </button>
                                                 <button
@@ -511,7 +415,7 @@ export default function ProfilePage() {
                                                         setIsEditingBio(false)
                                                         setEditForm({...editForm, bio: profileUser.bio || ''})
                                                     }}
-                                                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+                                                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
                                                 >
                                                     취소
                                                 </button>
@@ -521,20 +425,16 @@ export default function ProfilePage() {
                                         <div className="flex items-start gap-2">
                                             {profileUser.bio ? (
                                                 <p
-                                                    className="text-gray-300 break-keep-all"
+                                                    className="text-gray-300"
                                                     dangerouslySetInnerHTML={{__html: renderMarkdown(profileUser.bio)}}
                                                 />
                                             ) : (
                                                 <p className="text-gray-500 italic">자기소개가 없습니다</p>
                                             )}
                                             {isOwnProfile && (
-                                                <button
-                                                    onClick={() => setIsEditingBio(true)}
-                                                    className="p-1 hover:bg-gray-800 rounded transition-all duration-200 group flex-shrink-0"
-                                                    title="자기소개 수정"
-                                                >
-                                                    <Edit
-                                                        className="w-3.5 h-3.5 text-white opacity-70 group-hover:opacity-100 transition-opacity"/>
+                                                <button onClick={() => setIsEditingBio(true)}
+                                                        className="p-1 hover:bg-gray-800 rounded">
+                                                    <Edit className="w-3.5 h-3.5 text-white opacity-70"/>
                                                 </button>
                                             )}
                                         </div>
@@ -549,28 +449,19 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex gap-3">
                             {isOwnProfile && (
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => setShowSettingsModal(true)}
-                                    className="flex items-center gap-2"
-                                >
+                                <Button variant="secondary" onClick={() => setShowSettingsModal(true)}
+                                        className="flex items-center gap-2">
                                     <Settings className="w-4 h-4"/>
                                     환경설정
                                 </Button>
                             )}
-                            <Button
-                                variant="primary"
-                                onClick={handleMessageClick}
-                                className="flex items-center gap-2"
-                            >
+                            <Button variant="primary" onClick={handleMessageClick} className="flex items-center gap-2">
                                 <MessageSquare className="w-4 h-4"/>
                                 {isOwnProfile ? '메시지함 열기' : '메시지 보내기'}
                             </Button>
                         </div>
                     </div>
                 </div>
-
-                {/* 통계 */}
                 <div className="grid grid-cols-4 gap-4 mb-8">
                     <div className="bg-gray-900 rounded-lg p-6 text-center">
                         <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2"/>
@@ -593,71 +484,40 @@ export default function ProfilePage() {
                         <p className="text-sm text-gray-400">승률</p>
                     </div>
                 </div>
-
-                {/* 알림 목록 (자신의 프로필일 때만) */}
                 {isOwnProfile && (
-                    <div className="bg-gray-900 rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-6">
+                    <div className="relative bg-gray-900 rounded-xl p-6">
+                        <div className="relative z-10 flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Bell className="w-5 h-5"/>
                                 알림
                             </h2>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setNotificationFilter('all')}
-                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                                        notificationFilter === 'all'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-800 text-gray-400 hover:text-white'
-                                    }`}
-                                >
+                            <div className="relative z-10 flex gap-2">
+                                <Button onClick={() => setNotificationFilter('all')}
+                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'all' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                                     전체
-                                </button>
-                                <button
-                                    onClick={() => setNotificationFilter('unread')}
-                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                                        notificationFilter === 'unread'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-800 text-gray-400 hover:text-white'
-                                    }`}
-                                >
+                                </Button>
+                                <button onClick={() => setNotificationFilter('unread')}
+                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'unread' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                                     읽지 않음
                                 </button>
-                                <button
-                                    onClick={() => setNotificationFilter('read')}
-                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                                        notificationFilter === 'read'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-800 text-gray-400 hover:text-white'
-                                    }`}
-                                >
+                                <button onClick={() => setNotificationFilter('read')}
+                                        className={`px-3 py-1 rounded-lg text-sm ${notificationFilter === 'read' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                                     읽음
                                 </button>
                             </div>
                         </div>
-
-                        <div className="space-y-3">
+                        <div className="relative z-0 space-y-3">
                             {filteredNotifications.length > 0 ? (
-                                filteredNotifications.map((notif) => (
-                                    <div
-                                        key={notif.id}
-                                        className={`p-4 rounded-lg border transition-colors ${
-                                            notif.read
-                                                ? 'bg-gray-800 border-gray-700'
-                                                : 'bg-gray-800/50 border-green-600/50'
-                                        }`}
-                                    >
+                                filteredNotifications.map(notif => (
+                                    <div key={notif.id}
+                                         className={`p-4 rounded-lg border ${notif.read ? 'bg-gray-800 border-gray-700' : 'bg-gray-800/50 border-green-600/50'}`}>
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <h3 className="font-medium mb-1 break-keep-all">{notif.title}</h3>
-                                                <p className="text-sm text-gray-400 break-keep-all">{notif.body}</p>
-                                                <p className="text-xs text-gray-500 mt-2">
-                                                    {formatRelativeTime(notif.createdAt)}
-                                                </p>
+                                                <h3 className="font-medium mb-1">{notif.title}</h3>
+                                                <p className="text-sm text-gray-400">{notif.body}</p>
+                                                <p className="text-xs text-gray-500 mt-2">{formatRelativeTime(notif.createdAt)}</p>
                                             </div>
-                                            {!notif.read && (
-                                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                            )}
+                                            {!notif.read && <span className="w-2 h-2 bg-green-500 rounded-full"/>}
                                         </div>
                                     </div>
                                 ))
@@ -667,357 +527,225 @@ export default function ProfilePage() {
                                         ? '새로운 알림이 없습니다'
                                         : notificationFilter === 'read'
                                             ? '읽은 알림이 없습니다'
-                                            : '알림이 없습니다'
-                                    }
+                                            : '알림이 없습니다'}
                                 </p>
                             )}
                         </div>
                     </div>
                 )}
-
-                {/* 사용자명 수정 모달 */}
-                <Modal
-                    isOpen={showUsernameModal}
-                    onClose={() => setShowUsernameModal(false)}
-                    title="사용자명 수정"
-                >
+                <Modal isOpen={showUsernameModal} onClose={() => setShowUsernameModal(false)} title="사용자명 수정">
                     <div className="space-y-4">
                         <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4">
-                            <p className="text-yellow-400 text-sm">
-                                ⚠️ 사용자명은 단 한 번만 변경할 수 있습니다!
-                            </p>
+                            <p className="text-yellow-400 text-sm">⚠️ 사용자명은 단 한 번만 변경할 수 있습니다!</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-2">새 사용자명</label>
-                            <Input
-                                value={newUsername}
-                                onChange={(e) => {
-                                    setNewUsername(e.target.value)
-                                    setUsernameError('')
-                                }}
-                                placeholder="새 사용자명을 입력하세요"
-                                error={usernameError}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">
-                                3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능
-                            </p>
+                            <Input value={newUsername} onChange={e => {
+                                setNewUsername(e.target.value);
+                                setUsernameError('')
+                            }} placeholder="새 사용자명을 입력하세요" error={usernameError}/>
+                            <p className="text-xs text-gray-400 mt-1">3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능</p>
                         </div>
                         <div className="flex gap-3 justify-end">
-                            <Button variant="outline" onClick={() => setShowUsernameModal(false)}>
-                                취소
-                            </Button>
-                            <Button variant="primary" onClick={handleUsernameChange}>
-                                변경하기
-                            </Button>
+                            <Button variant="outline" onClick={() => setShowUsernameModal(false)}>취소</Button>
+                            <Button variant="primary" onClick={handleUsernameChange}>변경하기</Button>
                         </div>
                     </div>
                 </Modal>
-
-                {/* 환경설정 모달 */}
-                <Modal
-                    isOpen={showSettingsModal}
-                    onClose={() => {
-                        if (!savingSettings) {
-                            setShowSettingsModal(false)
-                            setSettingsSaved(false)
-                            // 변경사항 취소 - 원래 값으로 복원
-                            if (profileUser?.settings) {
-                                setTempSettings({
-                                    privacy: profileUser.settings.privacy || tempSettings.privacy,
-                                    notifications: profileUser.settings.notifications || tempSettings.notifications,
-                                    preferences: {
-                                        soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
-                                    }
-                                })
-                            }
+                <Modal isOpen={showSettingsModal} onClose={() => {
+                    if (!savingSettings) {
+                        setShowSettingsModal(false);
+                        setSettingsSaved(false);
+                        if (profileUser?.settings) {
+                            setTempSettings({
+                                privacy: profileUser.settings.privacy,
+                                notifications: profileUser.settings.notifications,
+                                preferences: {soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true}
+                            })
                         }
-                    }}
-                    title="환경설정"
-                    size="lg"
-                >
+                    }
+                }} title="환경설정" size="lg">
                     <div className="space-y-6">
-                        {/* 저장 완료 메시지 */}
                         {settingsSaved && (
                             <div
-                                className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
-                                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0"/>
+                                className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-400"/>
                                 <p className="text-green-400 text-sm">설정이 저장되었습니다!</p>
                             </div>
                         )}
-
-                        {/* 개인정보 설정 */}
                         <div>
                             <h3 className="text-lg font-semibold mb-4 text-white">개인정보 설정</h3>
                             <div className="space-y-3">
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">내 프로필 공개</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.showProfile}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, showProfile: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.showProfile}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, showProfile: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">통계 공개</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.showStats}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, showStats: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.showStats}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, showStats: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">친구 목록 공개</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.showFriends}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, showFriends: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.showFriends}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, showFriends: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">활동 상태 표시</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.showActivity}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, showActivity: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.showActivity}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, showActivity: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">메시지 받기 허용</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.allowMessages}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, allowMessages: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.allowMessages}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, allowMessages: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">친구 요청 받기 허용</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.privacy.allowFriendRequests}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            privacy: {...tempSettings.privacy, allowFriendRequests: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.privacy.allowFriendRequests}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               privacy: {...tempSettings.privacy, allowFriendRequests: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                             </div>
                         </div>
-
-                        {/* 알림 설정 */}
                         <div>
                             <h3 className="text-lg font-semibold mb-4 text-white">알림 설정</h3>
                             <div className="space-y-3">
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">친구 요청 알림</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.friendRequests}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {
-                                                ...tempSettings.notifications,
-                                                friendRequests: e.target.checked
-                                            }
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.friendRequests}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {
+                                                   ...tempSettings.notifications,
+                                                   friendRequests: e.target.checked
+                                               }
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">메시지 알림</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.messages}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {...tempSettings.notifications, messages: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.messages}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {
+                                                   ...tempSettings.notifications,
+                                                   messages: e.target.checked
+                                               }
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">게임 초대 알림</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.gameInvites}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {
-                                                ...tempSettings.notifications,
-                                                gameInvites: e.target.checked
-                                            }
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.gameInvites}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {
+                                                   ...tempSettings.notifications,
+                                                   gameInvites: e.target.checked
+                                               }
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">업적 달성 알림</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.achievements}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {
-                                                ...tempSettings.notifications,
-                                                achievements: e.target.checked
-                                            }
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.achievements}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {
+                                                   ...tempSettings.notifications,
+                                                   achievements: e.target.checked
+                                               }
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">업데이트 알림</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.updates}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {...tempSettings.notifications, updates: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.updates}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {...tempSettings.notifications, updates: e.target.checked}
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                                 <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">마케팅 정보 수신</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.notifications.marketing}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            notifications: {...tempSettings.notifications, marketing: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
+                                    <input type="checkbox" checked={tempSettings.notifications.marketing}
+                                           onChange={e => setTempSettings({
+                                               ...tempSettings,
+                                               notifications: {
+                                                   ...tempSettings.notifications,
+                                                   marketing: e.target.checked
+                                               }
+                                           })} className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded"/>
                                 </label>
                             </div>
                         </div>
-
-                        {/* 게임 설정 */}
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 text-white">게임 설정</h3>
-                            <div className="space-y-3">
-                                <label
-                                    className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
-                                    <span className="text-gray-300">사운드 활성화</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={tempSettings.preferences.soundEnabled}
-                                        onChange={(e) => setTempSettings({
-                                            ...tempSettings,
-                                            preferences: {...tempSettings.preferences, soundEnabled: e.target.checked}
-                                        })}
-                                        className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    />
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* 버튼 */}
                         <div className="flex gap-3 justify-end pt-4 border-t border-gray-800">
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    if (!savingSettings) {
-                                        setShowSettingsModal(false)
-                                        setSettingsSaved(false)
-                                        // 변경사항 취소
-                                        if (profileUser?.settings) {
-                                            setTempSettings({
-                                                privacy: profileUser.settings.privacy || tempSettings.privacy,
-                                                notifications: profileUser.settings.notifications || tempSettings.notifications,
-                                                preferences: {
-                                                    soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true
-                                                }
-                                            })
-                                        }
-                                    }
-                                }}
-                                disabled={savingSettings}
-                            >
+                            <Button variant="outline" onClick={() => {
+                                if (!savingSettings) {
+                                    setShowSettingsModal(false);
+                                    setSettingsSaved(false);
+                                    setTempSettings({
+                                        privacy: profileUser.settings.privacy,
+                                        notifications: profileUser.settings.notifications,
+                                        preferences: {soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true}
+                                    })
+                                }
+                            }} disabled={savingSettings}>
                                 취소
                             </Button>
-                            <Button
-                                variant="primary"
-                                onClick={handleSaveSettings}
-                                disabled={savingSettings || settingsSaved}
-                            >
+                            <Button variant="primary" onClick={handleSaveSettings}
+                                    disabled={savingSettings || settingsSaved}>
                                 {savingSettings ? '저장 중...' : settingsSaved ? '저장됨' : '적용'}
                             </Button>
                         </div>
                     </div>
                 </Modal>
-
-                {/* 메시지 목록 모달 */}
-                <Modal
-                    isOpen={showMessagesModal}
-                    onClose={() => setShowMessagesModal(false)}
-                    title="메시지"
-                    size="lg"
-                >
+                <Modal isOpen={showMessagesModal} onClose={() => setShowMessagesModal(false)} title="메시지" size="lg">
                     <div className="h-[500px]">
-                        <ConversationList
-                            conversations={formattedConversations}
-                            activeConversationId={selectedConversationId || undefined}
-                            onSelectConversation={handleConversationSelect}
-                        />
+                        <ConversationList conversations={formattedConversations}
+                                          activeConversationId={selectedConversationId || undefined}
+                                          onSelectConversation={handleConversationSelect}/>
                     </div>
                 </Modal>
-
-                {/* 채팅 모달 */}
-                <Modal
-                    isOpen={showChatModal}
-                    onClose={() => {
-                        setShowChatModal(false)
-                        setSelectedConversationId(null)
-                        // URL에서 openChat 파라미터 제거
-                        const newUrl = new URL(window.location.href)
-                        newUrl.searchParams.delete('openChat')
-                        window.history.replaceState({}, '', newUrl)
-                    }}
-                    title={selectedConversation?.otherParticipant?.displayName || '메시지'}
-                    size="xl"
-                >
+                <Modal isOpen={showChatModal} onClose={() => {
+                    setShowChatModal(false);
+                    setSelectedConversationId(null);
+                    const u = new URL(window.location.href);
+                    u.searchParams.delete('openChat');
+                    window.history.replaceState({}, '', u)
+                }} title={selectedConv?.otherParticipant?.displayName || '메시지'} size="xl">
                     <div className="h-[600px]">
                         {selectedConversationId && currentUser && (
-                            <MessageThread
-                                conversationId={selectedConversationId}
-                                messages={messages}
-                                participants={participants}
-                                currentUserId={currentUser.uid}
-                                onSendMessage={sendMessage}
-                            />
+                            <MessageThread conversationId={selectedConversationId} messages={messages}
+                                           participants={participants} currentUserId={currentUser.uid}
+                                           onSendMessage={sendMessage}/>
                         )}
                     </div>
                 </Modal>

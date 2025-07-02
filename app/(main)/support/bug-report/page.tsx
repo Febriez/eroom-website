@@ -1,6 +1,7 @@
+// app/(main)/support/bug-report/page.tsx
 'use client'
 
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
@@ -70,12 +71,21 @@ export default function BugReportPage() {
             await new Promise(resolve => setTimeout(resolve, 1500)) // API 호출 시뮬레이션
             console.log('Submitting bug report:', formData)
             setSubmitted(true)
+            // 제출 완료 후 최상단으로 스크롤
+            window.scrollTo({top: 0, behavior: 'smooth'})
         } catch (error) {
             console.error('Error submitting bug report:', error)
         } finally {
             setSubmitting(false)
         }
     }
+
+    // 제출 완료 상태로 변경 시 스크롤 (추가 보장)
+    useEffect(() => {
+        if (submitted) {
+            window.scrollTo({top: 0, behavior: 'smooth'})
+        }
+    }, [submitted])
 
     // 로그인하지 않은 경우
     if (!user) {
@@ -146,6 +156,7 @@ export default function BugReportPage() {
                                         system: '',
                                         attachments: []
                                     })
+                                    window.scrollTo({top: 0, behavior: 'smooth'})
                                 }}
                             >
                                 새 리포트 작성
@@ -159,6 +170,9 @@ export default function BugReportPage() {
                             </Button>
                         </div>
                     </Card>
+
+                    {/* 페이지 최소 높이 보장 */}
+                    <div className="min-h-[50vh]"></div>
                 </Container>
             </>
         )
