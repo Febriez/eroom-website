@@ -20,6 +20,7 @@ import {doc, serverTimestamp, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {formatRelativeTime} from '@/lib/utils'
+import SocialListModal from "@/components/social/SocialListModal";
 
 type NotificationFilter = 'all' | 'read' | 'unread'
 
@@ -51,6 +52,8 @@ export default function ProfilePage() {
     const [usernameError, setUsernameError] = useState('')
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
     const [savingSettings, setSavingSettings] = useState(false)
+    const [showFollowersModal, setShowFollowersModal] = useState(false)
+    const [showFollowingModal, setShowFollowingModal] = useState(false)
     const [settingsSaved, setSettingsSaved] = useState(false)
     const [isFriend, setIsFriend] = useState(false)
     const [isFollowing, setIsFollowing] = useState(false)
@@ -582,6 +585,27 @@ export default function ProfilePage() {
                                 <div className="flex gap-4 text-sm text-gray-400">
                                     <span>레벨 {profileUser.level}</span>
                                     <span>{profileUser.points.toLocaleString()} 포인트</span>
+                                    {isOwnProfile ? (
+                                        <>
+                                            <button
+                                                onClick={() => setShowFollowersModal(true)}
+                                                className="hover:text-white transition-colors cursor-pointer"
+                                            >
+                                                {profileUser.social.followers.length} 팔로워
+                                            </button>
+                                            <button
+                                                onClick={() => setShowFollowingModal(true)}
+                                                className="hover:text-white transition-colors cursor-pointer"
+                                            >
+                                                {profileUser.social.following.length} 팔로잉
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>{profileUser.social.followers.length} 팔로워</span>
+                                            <span>{profileUser.social.following.length} 팔로잉</span>
+                                        </>
+                                    )}
                                     <span>{profileUser.social.friendCount} 친구</span>
                                 </div>
                             </div>
@@ -635,10 +659,10 @@ export default function ProfilePage() {
 
                                     {/* 차단/차단해제 버튼 */}
                                     <Button
-                                        variant={isBlocked ? "danger" : "outline"}
+                                        variant={isBlocked ? "secondary" : "outline"}
                                         onClick={handleBlockToggle}
                                         disabled={socialLoading}
-                                        className="flex items-center gap-2"
+                                        className={`flex items-center gap-2 ${isBlocked ? 'text-red-500 hover:text-red-400' : ''}`}
                                     >
                                         <Shield className="w-4 h-4"/>
                                         {isBlocked ? '차단해제' : '차단'}
@@ -1070,6 +1094,22 @@ export default function ProfilePage() {
                     </div>
                 </Modal>
             </Container>
+
+            <SocialListModal
+                isOpen={showFollowersModal}
+                onClose={() => setShowFollowersModal(false)}
+                type="followers"
+                userIds={profileUser?.social.followers || []}
+                currentUserId={currentUser?.uid || ''}
+            />
+
+            <SocialListModal
+                isOpen={showFollowingModal}
+                onClose={() => setShowFollowingModal(false)}
+                type="following"
+                userIds={profileUser?.social.following || []}
+                currentUserId={currentUser?.uid || ''}
+            />
         </div>
     )
 }
