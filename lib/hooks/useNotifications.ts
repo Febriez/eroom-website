@@ -40,7 +40,19 @@ export function useNotifications() {
 
     // 브라우저 푸시 알림 표시
     const showBrowserNotification = (notification: Notification) => {
+        console.log('🔔 showBrowserNotification called:', {
+            notification,
+            user: user?.uid,
+            hasNotificationAPI: 'Notification' in window,
+            permission: 'Notification' in window ? Notification.permission : 'not supported'
+        })
+
         if (!user || !('Notification' in window) || Notification.permission !== 'granted') {
+            console.log('❌ Notification blocked:', {
+                noUser: !user,
+                noAPI: !('Notification' in window),
+                permission: 'Notification' in window ? Notification.permission : 'not supported'
+            })
             return
         }
 
@@ -48,7 +60,13 @@ export function useNotifications() {
         const userSettings = (user as User).settings
         const shouldShowBrowserNotification = userSettings?.notifications?.browserNotifications ?? true
 
+        console.log('📋 User settings:', {
+            browserNotifications: shouldShowBrowserNotification,
+            fullSettings: userSettings?.notifications
+        })
+
         if (!shouldShowBrowserNotification) {
+            console.log('❌ Browser notifications disabled by user')
             return
         }
 
@@ -74,14 +92,24 @@ export function useNotifications() {
                 break
         }
 
+        console.log('🎯 Notification type check:', {
+            type: notification.type,
+            shouldShow,
+            notificationSettings
+        })
+
         if (!shouldShow) {
+            console.log('❌ Notification type disabled')
             return
         }
 
         // 브라우저 포커스 상태 확인 (포커스가 있으면 알림 표시 안 함)
         if (document.hasFocus()) {
+            console.log('❌ Document has focus, not showing notification')
             return
         }
+
+        console.log('✅ All checks passed, showing notification')
 
         try {
             const browserNotification = new Notification(notification.title, {
@@ -93,6 +121,8 @@ export function useNotifications() {
                 silent: false,
                 data: notification
             })
+
+            console.log('✅ Notification created successfully')
 
             // 알림 클릭 시 처리
             browserNotification.onclick = () => {
@@ -114,7 +144,7 @@ export function useNotifications() {
                 browserNotification.close()
             }, 5000)
         } catch (error) {
-            console.error('Error showing browser notification:', error)
+            console.error('❌ Error showing browser notification:', error)
         }
     }
 
@@ -141,6 +171,7 @@ export function useNotifications() {
 
                 // 새로운 알림이 있으면 브라우저 알림 표시
                 if (newNotifications.length > 0 && previousNotificationIds.size > 0) {
+                    console.log('🆕 New notifications detected:', newNotifications)
                     // 가장 최근 알림만 표시
                     showBrowserNotification(newNotifications[0])
                 }
