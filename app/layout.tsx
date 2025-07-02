@@ -3,6 +3,7 @@ import {Inter} from 'next/font/google'
 import '../styles/globals.css'
 import {Providers} from "@/app/Providers"
 import React from "react";
+import {ScrollButtons} from "@/components/shared/ScrollButtons";
 
 const inter = Inter({
     subsets: ['latin'],
@@ -87,6 +88,7 @@ export default function RootLayout({
         <body className="font-sans">
         <Providers>
             {children}
+            <ScrollButtons/>
         </Providers>
         </body>
         </html>
