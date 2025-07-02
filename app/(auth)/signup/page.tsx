@@ -221,7 +221,7 @@ export default function SignupPage() {
                 formData.username,
                 formData.displayName,
                 avatarUrl,
-                100, // 신규 가입 보너스
+                0,
                 false // 일반 회원가입은 변경 불가
             )
 
@@ -296,7 +296,7 @@ export default function SignupPage() {
                     username,
                     displayName,
                     avatarUrl,
-                    150, // 구글 가입 보너스
+                    0, // 구글 가입 보너스
                     true // 구글 사용자는 1회 변경 가능
                 )
 
@@ -375,7 +375,7 @@ export default function SignupPage() {
                         </div>
                     </Link>
                     <h1 className="text-3xl font-bold mb-2">회원가입</h1>
-                    <p className="text-gray-400">방탈보이밴드와 함께 모험을 시작하세요</p>
+                    <p className="text-gray-400">방탈소년단과 함께 모험을 시작하세요</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -461,7 +461,7 @@ export default function SignupPage() {
                         <Input
                             value={formData.username}
                             onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase()})}
-                            placeholder="@username (영문, 숫자, _ 만 가능)"
+                            placeholder="username (영문, 숫자, _ 만 가능)"
                             icon={<span className="text-gray-400">@</span>}
                             error={errors.username}
                             disabled={loading || googleLoading}
@@ -497,7 +497,7 @@ export default function SignupPage() {
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
                                     <a
-                                        href="/legal/terms"
+                                        href="/terms"
                                         target="_blank"
                                         className="text-green-400 hover:underline"
                                         onClick={(e) => e.stopPropagation()}
@@ -519,7 +519,7 @@ export default function SignupPage() {
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
                                     <a
-                                        href="/legal/privacy"
+                                        href="/privacy"
                                         target="_blank"
                                         className="text-green-400 hover:underline"
                                         onClick={(e) => e.stopPropagation()}
@@ -564,7 +564,7 @@ export default function SignupPage() {
 
                     <p className="text-center text-sm text-gray-400">
                         이미 계정이 있으신가요?{' '}
-                        <Link href="/(auth)/login" className="text-green-400 hover:text-green-300">
+                        <Link href="/login" className="text-green-400 hover:text-green-300">
                             로그인
                         </Link>
                     </p>
