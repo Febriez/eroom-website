@@ -159,28 +159,6 @@ export const validateBio = (bio: string): { isValid: boolean; error?: string } =
 
     return {isValid: true};
 };
-
-/**
- * 맵 이름 유효성 검증
- */
-export const validateMapName = (name: string): { isValid: boolean; error?: string } => {
-    const {minLength, maxLength} = VALIDATION_RULES.mapName
-
-    if (!name || name.trim().length === 0) {
-        return {isValid: false, error: '맵 이름을 입력해주세요.'};
-    }
-
-    if (name.length < minLength) {
-        return {isValid: false, error: `맵 이름은 최소 ${minLength}자 이상이어야 합니다.`};
-    }
-
-    if (name.length > maxLength) {
-        return {isValid: false, error: `맵 이름은 ${maxLength}자를 초과할 수 없습니다.`};
-    }
-
-    return {isValid: true};
-};
-
 /**
  * 태그 유효성 검증
  */
