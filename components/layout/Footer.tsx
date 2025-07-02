@@ -2,32 +2,33 @@
 
 import {Key, Mail, MapPin, Phone} from 'lucide-react'
 import Link from 'next/link'
+import {CONSTANTS} from '@/lib/utils/constants'
 
 export default function Footer() {
     const currentYear = new Date().getFullYear()
 
     const footerLinks = {
         games: [
-            {name: 'EROOM', href: '/games/eroom'},
-            {name: '업데이트 노트', href: '/games/updates'},
-            {name: '로드맵', href: '/roadmap'},
-            {name: '출시 예정', href: '/games/upcoming'}
+            {name: 'EROOM', href: '/main/games/eroom'},
+            {name: '업데이트 노트', href: '/main/games/updates'},
+            {name: '로드맵', href: '/company/roadmap'},
+            {name: '출시 예정', href: '/main/games/upcoming'}
         ],
         community: [
-            {name: 'Discord', href: 'https://discord.gg/bangtalboyband'},
-            {name: 'Reddit', href: 'https://reddit.com/r/eroom'},
-            {name: 'YouTube', href: 'https://youtube.com/@bangtalboyband'},
-            {name: 'Twitch', href: 'https://twitch.tv/bangtalboyband'}
+            {name: 'Discord', href: CONSTANTS.COMMUNITY_LINKS.DISCORD},
+            {name: 'Reddit', href: CONSTANTS.COMMUNITY_LINKS.REDDIT},
+            {name: 'YouTube', href: CONSTANTS.COMMUNITY_LINKS.YOUTUBE},
+            {name: 'Twitch', href: CONSTANTS.COMMUNITY_LINKS.TWITCH}
         ],
         support: [
-            {name: '고객센터', href: '/support'},
-            {name: 'FAQ', href: '/support/faq'},
-            {name: '시스템 요구사항', href: '/support/requirements'},
-            {name: '버그 리포트', href: '/support/bug-report'}
+            {name: '고객센터', href: '/main/support'},
+            {name: 'FAQ', href: '/main/support/faq'},
+            {name: '시스템 요구사항', href: '/main/support/requirements'},
+            {name: '버그 리포트', href: '/main/support/bug-report'}
         ],
         company: [
-            {name: '회사 소개', href: '/about'},
-            {name: '채용 정보', href: '/careers'},
+            {name: '회사 소개', href: '/company/about'},
+            {name: '채용 정보', href: '/company/careers'},
             {name: '언론 보도', href: '/press'},
             {name: '파트너십', href: '/partners'}
         ]
@@ -51,8 +52,8 @@ export default function Footer() {
                                     className="absolute inset-0 bg-green-500/30 rounded-xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             </div>
                             <div>
-                                <h3 className="text-2xl sm:text-3xl font-black">BangtalBoyBand</h3>
-                                <p className="text-sm text-gray-500">AI Gaming Studio</p>
+                                <h3 className="text-2xl sm:text-3xl font-black">{CONSTANTS.COMPANY.NAME_EN}</h3>
+                                <p className="text-sm text-gray-500">{CONSTANTS.COMPANY.SLOGAN}</p>
                             </div>
                         </Link>
 
@@ -63,13 +64,13 @@ export default function Footer() {
 
                         <div className="flex flex-wrap gap-4">
                             <Link
-                                href="/about"
+                                href="/company/about"
                                 className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
                             >
                                 회사 소개
                             </Link>
                             <Link
-                                href="/careers"
+                                href="/company/careers"
                                 className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg transition-all font-medium"
                             >
                                 채용 정보
@@ -141,7 +142,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <p className="text-gray-500 text-sm">이메일</p>
-                            <p className="text-gray-300">pickpictest@gmail.com</p>
+                            <p className="text-gray-300">{CONSTANTS.COMPANY.MAIN_EMAIL}</p>
                         </div>
                     </div>
 
@@ -151,7 +152,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <p className="text-gray-500 text-sm">고객센터</p>
-                            <p className="text-gray-300">02-1234-5678</p>
+                            <p className="text-gray-300">{CONSTANTS.COMPANY.CUSTOMER_SUPPORT_PHONE}</p>
                         </div>
                     </div>
 
@@ -161,7 +162,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <p className="text-gray-500 text-sm">주소</p>
-                            <p className="text-gray-300">서울특별시 강남구</p>
+                            <p className="text-gray-300">{CONSTANTS.COMPANY.ADDRESS}</p>
                         </div>
                     </div>
                 </div>
@@ -170,16 +171,16 @@ export default function Footer() {
                 <div
                     className="border-t border-gray-800 pt-8 sm:pt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <p className="text-gray-500 text-sm sm:text-base text-center sm:text-left">
-                        © {currentYear} BangtalBoyBand. All rights reserved.
+                        © {currentYear} {CONSTANTS.COMPANY.NAME}. All rights reserved.
                     </p>
                     <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-gray-500 text-sm sm:text-base">
-                        <Link href="/terms" className="hover:text-green-400 transition-colors">
+                        <Link href="/legal/terms" className="hover:text-green-400 transition-colors">
                             이용약관
                         </Link>
-                        <Link href="/privacy" className="hover:text-green-400 transition-colors">
+                        <Link href="/legal/privacy" className="hover:text-green-400 transition-colors">
                             개인정보처리방침
                         </Link>
-                        <Link href="/cookies" className="hover:text-green-400 transition-colors">
+                        <Link href="/legal/cookies" className="hover:text-green-400 transition-colors">
                             쿠키 정책
                         </Link>
                     </div>

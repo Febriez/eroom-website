@@ -1,4 +1,3 @@
-// app/(main)/guides/map-creation/page.tsx
 'use client'
 
 import {useState} from 'react'
@@ -6,7 +5,6 @@ import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Button} from '@/components/ui/Button'
-// AlertCircle, TrendingUp import 추가
 import {
     AlertCircle,
     Blocks,

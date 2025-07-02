@@ -1,4 +1,3 @@
-// app/(main)/guides/complete/page.tsx
 'use client'
 
 import {useEffect, useState} from 'react'

@@ -1,4 +1,3 @@
-// app/(legal)/cookies/page.tsx
 'use client'
 
 import {PageHeader} from '@/components/layout/PageHeader'
@@ -6,6 +5,7 @@ import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Cookie, Eye, Info, Settings, Shield} from 'lucide-react'
+import {CONSTANTS} from '@/lib/utils/constants'
 
 export default function CookiesPage() {
     const sections = [
@@ -103,7 +103,7 @@ export default function CookiesPage() {
                         <div>
                             <h2 className="text-xl font-bold mb-3">쿠키 사용에 대한 약속</h2>
                             <p className="text-gray-300 mb-4">
-                                당사는 사용자의 개인정보를 존중하며, 투명한 쿠키 사용을 약속합니다.
+                                {CONSTANTS.COMPANY.NAME}는 사용자의 개인정보를 존중하며, 투명한 쿠키 사용을 약속합니다.
                                 필수적이지 않은 쿠키는 사용자의 동의를 받아 사용하며,
                                 언제든지 쿠키 설정을 변경할 수 있습니다.
                             </p>
@@ -251,14 +251,14 @@ export default function CookiesPage() {
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
                                     <span className="text-gray-400">이메일:</span>
-                                    <a href="mailto:privacy@example.com"
+                                    <a href={`mailto:${CONSTANTS.LEGAL.COOKIES_CONTACT.EMAIL}`}
                                        className="text-green-400 hover:text-green-300">
-                                        privacy@example.com
+                                        {CONSTANTS.LEGAL.COOKIES_CONTACT.EMAIL}
                                     </a>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="text-gray-400">전화:</span>
-                                    <span>02-123-4567</span>
+                                    <span>{CONSTANTS.LEGAL.COOKIES_CONTACT.PHONE}</span>
                                 </div>
                             </div>
                         </Card>

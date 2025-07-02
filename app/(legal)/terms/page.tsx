@@ -1,11 +1,10 @@
-// app/(legal)/terms/page.tsx
 'use client'
 
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
-import {Badge} from '@/components/ui/Badge'
 import {AlertTriangle, Ban, FileText, Info, MessageSquare, Scale, Shield, Users} from 'lucide-react'
+import {CONSTANTS} from '@/lib/utils/constants'
 
 // 섹션 타입 정의
 interface BaseSection {
@@ -57,7 +56,7 @@ export default function TermsPage() {
             title: '서비스 소개',
             icon: <Info className="w-5 h-5"/>,
             type: 'content',
-            content: '본 이용약관("약관")은 BangtalBoyBand(이하 "당사")가 제공하는 EROOM 게임 서비스(이하 "서비스") 이용에 관한 조건과 규정을 설명합니다.'
+            content: `본 이용약관("약관")은 ${CONSTANTS.COMPANY.NAME}(이하 "당사")가 제공하는 ${CONSTANTS.GAME_INFO.NAME} 게임 서비스(이하 "서비스") 이용에 관한 조건과 규정을 설명합니다.`
         },
         {
             id: 'use',
@@ -166,10 +165,17 @@ export default function TermsPage() {
 
     // 섹션 렌더링 함수
     const renderSection = (section: Section) => {
+        // 모든 케이스에서 공통으로 사용할 wrapper div
+        const sectionWrapper = (content: React.ReactNode) => (
+            <div key={section.id} id={section.id}>
+                {content}
+            </div>
+        )
+
         switch (section.type) {
             case 'content':
-                return (
-                    <Card key={section.id} id={section.id} className="p-8">
+                return sectionWrapper(
+                    <Card className="p-8">
                         <SectionHeader section={section}/>
                         <p className="text-gray-300 leading-relaxed">
                             {section.content}
@@ -185,8 +191,8 @@ export default function TermsPage() {
                 )
 
             case 'list':
-                return (
-                    <Card key={section.id} id={section.id} className="p-8">
+                return sectionWrapper(
+                    <Card className="p-8">
                         <SectionHeader section={section}/>
                         <div className="bg-gray-800 rounded-lg p-6">
                             <ul className="space-y-3">
@@ -212,8 +218,8 @@ export default function TermsPage() {
                 )
 
             case 'conditions':
-                return (
-                    <Card key={section.id} id={section.id} className="p-8">
+                return sectionWrapper(
+                    <Card className="p-8">
                         <SectionHeader section={section}/>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {section.conditions.map((condition, index) => (
@@ -234,8 +240,8 @@ export default function TermsPage() {
                 )
 
             case 'policies':
-                return (
-                    <Card key={section.id} id={section.id} className="p-8">
+                return sectionWrapper(
+                    <Card className="p-8">
                         <SectionHeader section={section}/>
                         <div className="space-y-4">
                             {section.policies.map((policy, index) => (
@@ -249,8 +255,8 @@ export default function TermsPage() {
                 )
 
             case 'termination':
-                return (
-                    <Card key={section.id} id={section.id} className="p-8">
+                return sectionWrapper(
+                    <Card className="p-8">
                         <SectionHeader section={section}/>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {section.conditions.map((condition, index) => (
@@ -274,7 +280,7 @@ export default function TermsPage() {
         <>
             <PageHeader
                 title="이용약관"
-                description="EROOM 서비스 이용에 관한 약관입니다"
+                description={`${CONSTANTS.GAME_INFO.NAME} 서비스 이용에 관한 약관입니다`}
                 badge="최종 업데이트: 2025년 6월 15일"
                 icon={<FileText className="w-5 h-5"/>}
             />
@@ -287,22 +293,34 @@ export default function TermsPage() {
                             <h3 className="font-bold mb-4">목차</h3>
                             <nav className="space-y-2">
                                 {sections.map((section) => (
-                                    <a
+                                    <button
                                         key={section.id}
-                                        href={`#${section.id}`}
-                                        className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                                        type="button"
+                                        className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                                        onClick={() => {
+                                            const element = document.getElementById(section.id)
+                                            if (element) {
+                                                element.scrollIntoView({behavior: 'smooth'})
+                                            }
+                                        }}
                                     >
                                         {section.title}
-                                    </a>
+                                    </button>
                                 ))}
                                 <hr className="border-gray-800 my-4"/>
-                                <a
-                                    href="#contact"
-                                    className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                                <button
+                                    type="button"
+                                    className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                                    onClick={() => {
+                                        const element = document.getElementById('contact')
+                                        if (element) {
+                                            element.scrollIntoView({behavior: 'smooth'})
+                                        }
+                                    }}
                                 >
                                     <MessageSquare className="w-4 h-4 inline mr-2"/>
                                     문의하기
-                                </a>
+                                </button>
                             </nav>
                         </Card>
                     </div>
@@ -312,31 +330,33 @@ export default function TermsPage() {
                         {sections.map(renderSection)}
 
                         {/* 문의하기 */}
-                        <Card id="contact" className="p-8 bg-gradient-to-br from-gray-900 to-gray-800">
-                            <h2 className="text-xl font-bold mb-4">약관에 대한 문의</h2>
-                            <p className="text-gray-300 mb-6">
-                                본 약관에 관한 질문이나 의견이 있으시면 다음 연락처로 문의해 주십시오.
-                            </p>
-                            <div className="space-y-3">
-                                <div>
-                                    <span className="text-gray-400">이메일:</span>
-                                    <a
-                                        href="mailto:pickpictest@gmail.com"
-                                        className="ml-2 text-green-400 hover:text-green-300"
-                                    >
-                                        legal@example.com
-                                    </a>
+                        <div id="contact">
+                            <Card className="p-8 bg-gradient-to-br from-gray-900 to-gray-800">
+                                <h2 className="text-xl font-bold mb-4">약관에 대한 문의</h2>
+                                <p className="text-gray-300 mb-6">
+                                    본 약관에 관한 질문이나 의견이 있으시면 다음 연락처로 문의해 주십시오.
+                                </p>
+                                <div className="space-y-3">
+                                    <div>
+                                        <span className="text-gray-400">이메일:</span>
+                                        <a
+                                            href={`mailto:${CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}`}
+                                            className="ml-2 text-green-400 hover:text-green-300"
+                                        >
+                                            {CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400">주소:</span>
+                                        <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.ADDRESS}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400">전화:</span>
+                                        <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.PHONE}</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="text-gray-400">주소:</span>
-                                    <span className="ml-2">서울특별시 강남구 테헤란로 123, 456빌딩 7층</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400">전화:</span>
-                                    <span className="ml-2">02-123-4567</span>
-                                </div>
-                            </div>
-                        </Card>
+                            </Card>
+                        </div>
                     </div>
                 </div>
             </Container>

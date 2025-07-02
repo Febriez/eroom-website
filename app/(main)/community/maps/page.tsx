@@ -1,6 +1,6 @@
 'use client'
 
-import {useEffect, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
@@ -93,7 +93,7 @@ export default function CommunityMapsPage() {
 
     const handleMapClick = (map: GameMapCard) => {
         // 맵 상세 페이지로 이동 (또는 다운로드 페이지)
-        router.push(`/games/eroom?mapId=${map.id}`)
+        router.push(`/main/games/eroom?mapId=${map.id}`)
     }
 
     const handleSearch = async () => {
@@ -109,6 +109,12 @@ export default function CommunityMapsPage() {
             } finally {
                 setLoading(false)
             }
+        }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSearch()
         }
     }
 
@@ -149,7 +155,7 @@ export default function CommunityMapsPage() {
                             icon={<Search className="w-5 h-5"/>}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            onKeyDown={handleKeyDown}
                             className="flex-1"
                         />
                         <Button onClick={handleSearch} variant="primary">
@@ -261,7 +267,7 @@ export default function CommunityMapsPage() {
                             <Button
                                 variant="primary"
                                 className="mt-4"
-                                onClick={() => router.push('/games/eroom/create')}
+                                onClick={() => router.push('/main/games/eroom/create')}
                             >
                                 첫 번째 맵 만들기
                             </Button>

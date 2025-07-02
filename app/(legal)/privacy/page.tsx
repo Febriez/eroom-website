@@ -1,4 +1,3 @@
-// app/(legal)/privacy/page.tsx
 'use client'
 
 import {PageHeader} from '@/components/layout/PageHeader'
@@ -6,6 +5,7 @@ import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {AlertCircle, Clock, Database, Lock, Shield, UserCheck, Users} from 'lucide-react'
+import {CONSTANTS} from '@/lib/utils/constants'
 
 export default function PrivacyPage() {
     const sections = [
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
             id: 'overview',
             title: '개요',
             icon: <Shield className="w-5 h-5"/>,
-            content: '본 개인정보 처리방침은 당사가 귀하의 개인정보를 수집, 사용, 보호하는 방법에 대해 설명합니다. 당사는 귀하의 개인정보 보호를 중요하게 생각하며, 관련 법률 및 규정을 준수하고 있습니다.'
+            content: `본 개인정보 처리방침은 ${CONSTANTS.COMPANY.NAME}(이하 "당사")가 귀하의 개인정보를 수집, 사용, 보호하는 방법에 대해 설명합니다. 당사는 귀하의 개인정보 보호를 중요하게 생각하며, 관련 법률 및 규정을 준수하고 있습니다.`
         },
         {
             id: 'collect',
@@ -119,10 +119,10 @@ export default function PrivacyPage() {
 
     const contactInfo = {
         title: '개인정보 보호책임자',
-        name: '홍길동',
-        position: '개인정보보호팀장',
-        email: 'privacy@example.com',
-        phone: '02-123-4567'
+        name: CONSTANTS.LEGAL.PRIVACY_OFFICER.NAME,
+        position: CONSTANTS.LEGAL.PRIVACY_OFFICER.POSITION,
+        email: CONSTANTS.LEGAL.PRIVACY_OFFICER.EMAIL,
+        phone: CONSTANTS.LEGAL.PRIVACY_OFFICER.PHONE
     }
 
     return (
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
                         <div>
                             <h2 className="text-xl font-bold mb-3">개인정보 보호 약속</h2>
                             <p className="text-gray-300 mb-4">
-                                BangtalBoyBand는 고객님의 개인정보를 소중히 여기며,
+                                {CONSTANTS.COMPANY.NAME}는 고객님의 개인정보를 소중히 여기며,
                                 개인정보보호법 등 관련 법령을 준수하고 있습니다.
                                 본 처리방침은 당사 서비스 이용 시 수집되는 개인정보와
                                 그 처리 방법에 대해 안내합니다.

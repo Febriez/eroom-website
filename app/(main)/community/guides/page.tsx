@@ -1,4 +1,3 @@
-// app/(main)/community/guides/page.tsx
 'use client'
 
 import {useEffect, useState} from 'react'
@@ -303,7 +302,7 @@ export default function GuidesPage() {
                                             초보자부터 고수까지, 모든 레벨의 플레이어를 위한 종합 가이드
                                         </p>
                                         <Link
-                                            href="/guides/complete"
+                                            href="complete"
                                             className="text-green-400 hover:text-green-300 font-medium inline-flex items-center gap-1"
                                         >
                                             지금 읽기 <ChevronRight className="w-4 h-4"/>
@@ -325,7 +324,7 @@ export default function GuidesPage() {
                                             나만의 창의적인 방탈출 맵을 만드는 방법을 배워보세요
                                         </p>
                                         <Link
-                                            href="/guides/map-creation"
+                                            href="map-creation"
                                             className="text-purple-400 hover:text-purple-300 font-medium inline-flex items-center gap-1"
                                         >
                                             지금 읽기 <ChevronRight className="w-4 h-4"/>

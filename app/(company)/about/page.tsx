@@ -4,66 +4,52 @@ import {useState} from 'react'
 import {Brain, Key, Rocket, Shield, Sparkles, Users} from 'lucide-react'
 import {Container} from '@/components/ui/Container'
 import {PageHeader} from '@/components/layout/PageHeader'
+import {CONSTANTS} from '@/lib/utils/constants'
 
 const teamMembers = [
     {
-        name: '김도형 (방탈소년단 리더)',
-        role: 'CEO & Unity Engineer',
-        description: 'AI와 게임의 만남을 꿈꾸는 기획자',
-        avatar: '👨‍💼'
+        name: '김도형',
+        role: '프론트엔드 개발자',
+        description: 'EROOM의 첫인상을 책임지는 프론트엔드 개발자입니다. 최신 웹 기술을 활용하여 사용자가 EROOM의 세계를 쉽고 즐겁게 탐색할 수 있는 인터페이스를 구축합니다. 직관적이고 빠른 웹 경험을 제공하기 위해 항상 고민합니다',
+        avatar: '👨‍💻'
     },
     {
-        name: '옥병준 (개발 총괄)',
-        role: 'CTO & Lead Developer',
-        description: '혁신적인 기술로 게임의 미래를 만드는 개발자',
+        name: '우혜주',
+        role: '프론트엔드 개발자',
+        description: '플레이어의 상상력과 EROOM의 기술을 잇는 가장 중요한 관문을 만드는 개발자입니다. 코드를 통해 EROOM의 비전을 현실로 구현하고, 모든 사용자가 웹사이트에서부터 게임의 생동감을 느낄 수 있도록 하는 데 열정을 쏟고 있습니다.',
         avatar: '👩‍💻'
     },
     {
-        name: '우혜주 (디자인 총괄)',
-        role: 'Art Director',
-        description: '독특한 비주얼로 몰입감을 선사하는 아티스트',
+        name: '한준희',
+        role: '프론트엔드 개발자',
+        description: 'EROOM의 두뇌 역할을 하는 백엔드 시스템과 플레이어가 직접 마주하는 프론트엔드 사이의 견고한 다리를 놓는 개발자입니다. 복잡한 데이터를 안정적으로 전달하고, 양방향 통신을 완벽하게 구현하여 EROOM의 모든 기능이 유기적으로 작동하도록 만듭니다.',
+        avatar: '🧑‍💻'
+    },
+    {
+        name: '권채영',
+        role: '3D 모델러',
+        description: '플레이어가 탐험할 EROOM의 세계를 시각적으로 구현하는 아티스트입니다. 캐릭터, 소품, 배경 등 게임에 등장하는 모든 요소를 3D 모델링하여 가상 세계에 생동감과 현실감을 불어넣습니다. 상상 속의 공간을 눈앞의 현실로 만드는 일을 합니다.',
         avatar: '🎨'
     },
     {
-        name: '권채영 (페르소나 그 자체)',
-        role: 'Model Engineer',
-        description: '보는 사람을 놀랍게 만드는 shap-e 모델 엔지니어',
+        name: '옥병준',
+        role: '백엔드 엔지니어',
+        description: '보이지 않는 곳에서 EROOM의 모든 것을 움직이는 핵심 엔진을 만들고 관리합니다. 서버는 게임의 규칙을 실행하고, 모든 유저의 데이터를 안전하게 저장하며, 프론트엔드(웹사이트, 게임 클라이언트)에 필요한 정보를 빠르고 정확하게 전달하는 역할을 합니다. 플레이어들이 끊김 없이 안정적으로 EROOM의 세계에 몰입할 수 있도록, 서비스의 성능, 안정성, 보안을 책임지는 가장 중요한 기반을 구축합니다.',
         avatar: '🤖'
     },
     {
-        name: '한준희 (행복조)',
-        role: 'Happy Engineer',
-        description: '레크레이션 강사',
-        avatar: '👻'
-    },
-    {
-        name: '황혜원 (춘식이)',
-        role: 'Microservices Developer',
-        description: '춘식이.',
+        name: '황혜원',
+        role: '백엔드 엔지니어',
+        description: 'EROOM의 상점과 결제 시스템을 설계하고 개발하여, 플레이어들이 안전하고 편리하게 상품을 구매할 수 있는 환경을 구축합니다. 민감한 금융 정보를 최고의 보안 수준으로 다루며, 단 하나의 오류도 없는 데이터 처리를 통해 사용자의 신뢰를 지킵니다. 원활한 구매 경험을 제공하여 플레이어들이 EROOM의 콘텐츠를 마음껏 즐길 수 있도록 돕습니다.',
         avatar: '👾'
     }
 ]
 
 const milestones = [
     {
-        year: '2023',
-        title: '방탈소년단 설립',
-        description: 'AI 게임 스튜디오의 시작'
-    },
-    {
-        year: '2024',
-        title: 'EROOM 알파 버전 출시',
-        description: '첫 번째 AI 방탈출 게임 공개'
-    },
-    {
         year: '2025',
-        title: 'EROOM 정식 출시',
-        description: '글로벌 유저들과 함께하는 AI 게임'
-    },
-    {
-        year: '미래',
-        title: '더 많은 AI 게임',
-        description: '새로운 장르의 AI 게임들 준비 중'
+        title: '회사 설립',
+        description: 'AI 기술과 인간의 창의력을 결합하여 세상에 없던 새로운 엔터테인먼트를 제공하겠다는 꿈을 안고, 주식회사 이룸(EROOM)이 공식 출범했습니다. 플레이할 때마다 살아 움직이는 듯한 새로운 방탈출, \'EROOM\'의 위대한 여정이 시작됩니다'
     }
 ]
 
@@ -75,7 +61,7 @@ export default function AboutPage() {
             <PageHeader
                 title="About Us"
                 description="AI가 만드는 새로운 게임의 미래"
-                badge="BANGTALBOYBAND"
+                badge={CONSTANTS.COMPANY.NAME}
                 icon={<Key className="w-5 h-5"/>}
             />
 
@@ -86,8 +72,9 @@ export default function AboutPage() {
                         className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl mb-6 transform rotate-12">
                         <Key className="w-12 h-12 text-white transform -rotate-12"/>
                     </div>
-                    <h2 className="text-4xl font-bold mb-4">방탈소년단</h2>
-                    <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+                    <h2 className="text-4xl font-bold mb-4">{CONSTANTS.COMPANY.NAME}</h2>
+                    <p className="text-xl text-gray-400 mb-4">{CONSTANTS.COMPANY.SLOGAN}</p>
+                    <p className="text-xl text-gray-300 max-w-3xl mx-auto">
                         우리는 AI 기술과 창의적인 게임 디자인을 결합하여
                         플레이어에게 매번 새로운 경험을 선사하는 게임을 만듭니다.
                     </p>
@@ -136,7 +123,7 @@ export default function AboutPage() {
                             <div className="text-center">
                                 <h3 className="text-3xl font-bold mb-6">우리의 미션</h3>
                                 <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto">
-                                    방탈소년단은 AI 기술을 활용하여 무한한 가능성의 게임을 만듭니다.
+                                    {CONSTANTS.COMPANY.NAME}은 AI 기술을 활용하여 무한한 가능성의 게임을 만듭니다.
                                     매번 플레이할 때마다 새로운 도전과 경험을 제공하며,
                                     플레이어의 창의성과 문제 해결 능력을 자극하는 게임을 개발합니다.
                                 </p>
@@ -231,7 +218,7 @@ export default function AboutPage() {
                             <div className="text-center mb-12">
                                 <h3 className="text-3xl font-bold mb-6">우리 팀</h3>
                                 <p className="text-lg text-gray-300">
-                                    열정과 재능으로 가득한 방탈소년단 멤버들
+                                    열정과 재능으로 가득한 {CONSTANTS.COMPANY.NAME} 멤버들
                                 </p>
                             </div>
 
@@ -279,10 +266,10 @@ export default function AboutPage() {
                 <div className="text-center mt-24 py-16 bg-gradient-to-r from-green-600/20 to-green-700/20 rounded-2xl">
                     <h3 className="text-3xl font-bold mb-6">함께 미래를 만들어갈 당신을 기다립니다</h3>
                     <p className="text-lg text-gray-300 mb-8">
-                        방탈소년단와 함께 AI 게임의 새로운 역사를 써내려갈 인재를 찾고 있습니다
+                        {CONSTANTS.COMPANY.NAME}과 함께 AI 게임의 새로운 역사를 써내려갈 인재를 찾고 있습니다
                     </p>
                     <button
-                        onClick={() => window.location.href = '/careers'}
+                        onClick={() => window.location.href = '/company/careers'}
                         className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
                     >
                         채용 정보 보기
