@@ -88,7 +88,7 @@ export default function ProfilePage() {
                 setNewUsername(user!.username || '')
                 if (user?.settings) {
                     setTempSettings({
-                        privacy: user.settings.privacy ?? {
+                        privacy: user.settings.privacy || {
                             showProfile: true,
                             showStats: true,
                             showFriends: true,
@@ -235,6 +235,7 @@ export default function ProfilePage() {
                     ...tempSettings,
                     notifications: {...tempSettings.notifications, browserNotifications: false}
                 })
+                alert('브라우저 알림을 사용하려면 권한을 허용해주세요.')
                 return
             }
         }
@@ -620,9 +621,17 @@ export default function ProfilePage() {
                         if (profileUser?.settings) {
                             setTempSettings({
                                 privacy: profileUser.settings.privacy,
-                                notifications: {
+                                notifications: profileUser.settings.notifications ? {
                                     ...profileUser.settings.notifications,
-                                    browserNotifications: profileUser.settings.notifications?.browserNotifications ?? true
+                                    browserNotifications: profileUser.settings.notifications.browserNotifications ?? true
+                                } : {
+                                    friendRequests: true,
+                                    messages: true,
+                                    gameInvites: true,
+                                    achievements: true,
+                                    updates: true,
+                                    marketing: false,
+                                    browserNotifications: true
                                 },
                                 preferences: {soundEnabled: profileUser.settings.preferences?.soundEnabled ?? true}
                             })
@@ -750,7 +759,9 @@ export default function ProfilePage() {
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     {browserNotificationPermission === 'denied'
                                                         ? '브라우저 설정에서 알림을 허용해주세요'
-                                                        : '백그라운드에서도 알림을 받습니다'}
+                                                        : browserNotificationPermission === 'default'
+                                                            ? '클릭하여 알림 권한을 요청합니다'
+                                                            : '백그라운드에서도 알림을 받습니다'}
                                                 </p>
                                             </div>
                                             <input
