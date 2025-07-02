@@ -5,13 +5,16 @@ import {MessageService} from '@/lib/firebase/services/message.service'
 import {UserService} from '@/lib/firebase/services/user.service'
 import type {Conversation} from '@/lib/firebase/types'
 
+interface ParticipantInfo {
+    uid?: string
+    username: string
+    displayName: string
+    avatarUrl?: string
+    level?: number
+}
+
 interface ConversationWithParticipant extends Conversation {
-    otherParticipant?: {
-        uid: string
-        username: string
-        displayName: string
-        avatarUrl?: string
-    }
+    otherParticipant?: ParticipantInfo
     otherParticipantId?: string
 }
 
@@ -32,29 +35,43 @@ export function useConversations() {
         const unsubscribe = MessageService.subscribeToConversations(
             user.uid,
             async (convs) => {
-                // 각 대화의 상대방 정보 가져오기
+                // 각 대화의 상대방 정보 추출
                 const conversationsWithParticipants = await Promise.all(
                     convs.map(async (conv) => {
                         const otherParticipantId = conv.participants.find(p => p !== user.uid)
 
                         if (otherParticipantId) {
-                            const otherUser = await UserService.getUserById(otherParticipantId)
+                            // participantInfo에 level이 없을 수도 있으므로, 필요시 사용자 정보 다시 가져오기
+                            let participantData = conv.participantInfo?.[otherParticipantId] as ParticipantInfo | undefined;
+
+                            // level 정보가 없으면 UserService에서 가져오기
+                            if (participantData && !participantData.level) {
+                                try {
+                                    const fullUserData = await UserService.getUserById(otherParticipantId);
+                                    if (fullUserData) {
+                                        participantData = {
+                                            ...participantData,
+                                            level: fullUserData.level
+                                        };
+                                    }
+                                } catch (error) {
+                                    console.error('Error fetching user level:', error);
+                                }
+                            }
 
                             return {
                                 ...conv,
                                 otherParticipantId,
-                                otherParticipant: otherUser ? {
-                                    uid: otherUser.uid,
-                                    username: otherUser.username,
-                                    displayName: otherUser.displayName,
-                                    avatarUrl: otherUser.avatarUrl
-                                } : undefined
-                            }
+                                otherParticipant: participantData
+                            } as ConversationWithParticipant
                         }
 
-                        return conv
+                        return {
+                            ...conv,
+                            otherParticipantId
+                        } as ConversationWithParticipant
                     })
-                )
+                );
 
                 setConversations(conversationsWithParticipants)
 
@@ -81,10 +98,7 @@ export function useConversations() {
     ): Promise<string> => {
         if (!user) throw new Error('User not authenticated')
 
-        // 대화에 참가자 정보 업데이트
-        // 실제로는 MessageService에서 처리하는 것이 좋지만,
-        // 일단 여기서는 conversationId만 반환
-
+        // MessageService가 이제 participantInfo를 자동으로 처리합니다
         return await MessageService.createOrGetConversation(
             user.uid,
             targetUserId

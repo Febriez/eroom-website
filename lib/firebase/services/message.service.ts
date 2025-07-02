@@ -4,6 +4,7 @@ import {
     collection,
     doc,
     getDoc,
+    getDocs,
     onSnapshot,
     orderBy,
     query,
@@ -15,6 +16,7 @@ import {
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import {db} from '../config'
+import {UserService} from './user.service'
 import type {Conversation, Message} from '@/lib/firebase/types'
 
 export class MessageService extends BaseService {
@@ -23,25 +25,48 @@ export class MessageService extends BaseService {
      */
     static async createOrGetConversation(participant1Id: string, participant2Id: string): Promise<string> {
         // 이미 존재하는 대화 찾기
-        const existingConversations = await this.queryDocuments<Conversation>(
-            COLLECTIONS.CONVERSATIONS,
-            [
-                where('participants', 'array-contains', participant1Id)
-            ]
+        const q = query(
+            collection(db, COLLECTIONS.CONVERSATIONS),
+            where('participants', 'array-contains', participant1Id)
         )
 
-        const existingConversation = existingConversations.find(conv =>
-            conv.participants.includes(participant2Id)
-        )
+        const querySnapshot = await getDocs(q)
 
-        if (existingConversation) {
-            return existingConversation.id
+        // 기존 대화 찾기
+        for (const docSnapshot of querySnapshot.docs) {
+            const data = docSnapshot.data()
+            if (data.participants && data.participants.includes(participant2Id)) {
+                return docSnapshot.id
+            }
+        }
+
+        // 참가자 정보 가져오기
+        const [user1, user2] = await Promise.all([
+            UserService.getUserById(participant1Id),
+            UserService.getUserById(participant2Id)
+        ])
+
+        if (!user1 || !user2) {
+            throw new Error('One or both users not found')
         }
 
         // 새 대화 생성
         const conversationRef = await addDoc(collection(db, COLLECTIONS.CONVERSATIONS), {
             participants: [participant1Id, participant2Id],
-            participantInfo: {}, // 실제로는 유저 정보를 가져와서 채워야 함
+            participantInfo: {
+                [participant1Id]: {
+                    username: user1.username,
+                    displayName: user1.displayName,
+                    avatarUrl: user1.avatarUrl,
+                    level: user1.level || 1
+                },
+                [participant2Id]: {
+                    username: user2.username,
+                    displayName: user2.displayName,
+                    avatarUrl: user2.avatarUrl,
+                    level: user2.level || 1
+                }
+            },
             unreadCount: {
                 [participant1Id]: 0,
                 [participant2Id]: 0
@@ -89,19 +114,38 @@ export class MessageService extends BaseService {
         const conversationSnap = await getDoc(conversationRef)
 
         if (conversationSnap.exists()) {
-            const conversationData = conversationSnap.data()
+            const conversationData = conversationSnap.data() as Conversation
             const otherParticipantId = conversationData.participants.find((p: string) => p !== sender.uid)
 
-            batch.update(conversationRef, {
-                lastMessage: {
-                    content,
-                    senderId: sender.uid,
-                    timestamp: serverTimestamp(),
-                    type
-                },
-                [`unreadCount.${otherParticipantId}`]: (conversationData.unreadCount?.[otherParticipantId] || 0) + 1,
-                updatedAt: serverTimestamp()
-            })
+            if (otherParticipantId) {
+                // 대화 정보 업데이트
+                batch.update(conversationRef, {
+                    lastMessage: {
+                        content,
+                        senderId: sender.uid,
+                        timestamp: serverTimestamp(),
+                        type
+                    },
+                    [`unreadCount.${otherParticipantId}`]: (conversationData.unreadCount?.[otherParticipantId] || 0) + 1,
+                    updatedAt: serverTimestamp()
+                })
+
+                // 알림 생성
+                const notificationRef = doc(collection(db, COLLECTIONS.NOTIFICATIONS))
+                batch.set(notificationRef, {
+                    recipientId: otherParticipantId,
+                    type: 'message' as const,
+                    title: `${sender.displayName}님의 메시지`,
+                    body: content.length > 50 ? content.substring(0, 50) + '...' : content,
+                    data: {
+                        senderId: sender.uid,
+                        senderName: sender.displayName,
+                        conversationId: conversationId
+                    },
+                    read: false,
+                    createdAt: serverTimestamp()
+                })
+            }
         }
 
         await batch.commit()
@@ -112,14 +156,23 @@ export class MessageService extends BaseService {
      * 대화의 메시지 가져오기
      */
     static async getMessages(conversationId: string, limit: number = 50): Promise<Message[]> {
-        return this.queryDocuments<Message>(
-            COLLECTIONS.MESSAGES,
-            [
-                where('conversationId', '==', conversationId),
-                orderBy('createdAt', 'desc')
-            ],
-            {limit}
+        const q = query(
+            collection(db, COLLECTIONS.MESSAGES),
+            where('conversationId', '==', conversationId),
+            orderBy('createdAt', 'desc')
         )
+
+        const querySnapshot = await getDocs(q)
+        const messages: Message[] = []
+
+        querySnapshot.forEach((doc) => {
+            messages.push({
+                id: doc.id,
+                ...doc.data()
+            } as Message)
+        })
+
+        return messages.slice(0, limit)
     }
 
     /**
@@ -129,20 +182,21 @@ export class MessageService extends BaseService {
         const batch = writeBatch(db)
 
         // 읽지 않은 메시지들 찾기
-        const unreadMessages = await this.queryDocuments<Message>(
-            COLLECTIONS.MESSAGES,
-            [
-                where('conversationId', '==', conversationId),
-                where('readBy', 'not-in', [[userId]])
-            ]
+        const q = query(
+            collection(db, COLLECTIONS.MESSAGES),
+            where('conversationId', '==', conversationId),
+            where('sender.uid', '!=', userId)
         )
 
-        // 각 메시지 읽음 처리
-        unreadMessages.forEach(message => {
-            const messageRef = doc(db, COLLECTIONS.MESSAGES, message.id)
-            batch.update(messageRef, {
-                readBy: [...(message.readBy || []), userId]
-            })
+        const querySnapshot = await getDocs(q)
+
+        querySnapshot.forEach((docSnapshot) => {
+            const message = docSnapshot.data()
+            if (!message.readBy?.includes(userId)) {
+                batch.update(doc(db, COLLECTIONS.MESSAGES, docSnapshot.id), {
+                    readBy: [...(message.readBy || []), userId]
+                })
+            }
         })
 
         // 대화의 unreadCount 초기화
@@ -158,13 +212,23 @@ export class MessageService extends BaseService {
      * 사용자의 모든 대화 가져오기
      */
     static async getUserConversations(userId: string): Promise<Conversation[]> {
-        return this.queryDocuments<Conversation>(
-            COLLECTIONS.CONVERSATIONS,
-            [
-                where('participants', 'array-contains', userId),
-                orderBy('updatedAt', 'desc')
-            ]
+        const q = query(
+            collection(db, COLLECTIONS.CONVERSATIONS),
+            where('participants', 'array-contains', userId),
+            orderBy('updatedAt', 'desc')
         )
+
+        const querySnapshot = await getDocs(q)
+        const conversations: Conversation[] = []
+
+        querySnapshot.forEach((doc) => {
+            conversations.push({
+                id: doc.id,
+                ...doc.data()
+            } as Conversation)
+        })
+
+        return conversations
     }
 
     /**

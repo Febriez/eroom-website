@@ -1,6 +1,6 @@
 'use client'
 
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {useAuth} from '@/contexts/AuthContext'
@@ -17,8 +17,24 @@ export default function LoginPage() {
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
+    const [googleCountdown, setGoogleCountdown] = useState(0)
     const [loginStatus, setLoginStatus] = useState<'idle' | 'success' | 'error'>('idle')
     const [successMessage, setSuccessMessage] = useState('')
+
+    // 구글 로그인 카운트다운 효과
+    useEffect(() => {
+        if (googleCountdown > 0) {
+            const timer = setTimeout(() => {
+                setGoogleCountdown(googleCountdown - 1)
+            }, 1000)
+            return () => clearTimeout(timer)
+        } else if (googleCountdown === 0 && googleLoading) {
+            // 카운트다운 종료 시 자동으로 로딩 상태 해제
+            setGoogleLoading(false)
+            setErrors({general: '로그인 시간이 초과되었습니다. 다시 시도해주세요.'})
+        }
+    }, [googleCountdown, googleLoading])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -86,13 +102,29 @@ export default function LoginPage() {
     }
 
     const handleGoogleLogin = async () => {
-        setLoading(true)
+        setGoogleLoading(true)
+        setGoogleCountdown(30) // 30초 타임아웃
         setLoginStatus('idle')
         setErrors({})
 
+        // 팝업 감지를 위한 타이머
+        let popupCheckInterval: NodeJS.Timeout | null = null
+
         try {
+            // 팝업 창 참조를 얻기 위한 Promise
+            const signInPromise = signInWithGoogle()
+
+            // 팝업 창이 닫혔는지 주기적으로 확인하는 대신
+            // 카운트다운만 처리 (실제 팝업 참조를 얻을 수 없으므로)
+            popupCheckInterval = setInterval(() => {
+                // 카운트다운 처리는 useEffect에서 수행
+            }, 500)
+
             // AuthContext의 signInWithGoogle 사용
-            await signInWithGoogle()
+            await signInPromise
+
+            // 성공 시 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
 
             setLoginStatus('success')
             setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
@@ -105,17 +137,33 @@ export default function LoginPage() {
 
         } catch (error: any) {
             console.error('Google login error:', error)
-            setLoginStatus('error')
 
-            if (error.message) {
+            // 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
+
+            setLoginStatus('error')
+            setGoogleCountdown(0)
+
+            if (error.message === '로그인이 취소되었습니다.') {
+                setErrors({general: '로그인이 취소되었습니다.'})
+            } else if (error.message && error.message.includes('팝업')) {
                 setErrors({general: error.message})
             } else {
                 setErrors({general: '구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.'})
             }
         } finally {
-            setLoading(false)
+            setGoogleLoading(false)
+            setGoogleCountdown(0)
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
         }
     }
+
+    // 컴포넌트 언마운트 시 정리
+    useEffect(() => {
+        return () => {
+            setGoogleCountdown(0)
+        }
+    }, [])
 
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -149,6 +197,18 @@ export default function LoginPage() {
                         </div>
                     )}
 
+                    {/* 구글 로그인 카운트다운 메시지 */}
+                    {googleLoading && googleCountdown > 0 && (
+                        <div className="bg-blue-900/20 border border-blue-600/50 rounded-lg p-4 animate-fade-in">
+                            <p className="text-blue-400 text-sm text-center">
+                                구글 로그인 중... ({googleCountdown}초 남음)
+                            </p>
+                            <p className="text-xs text-gray-400 text-center mt-1">
+                                팝업 창에서 계정을 선택해주세요
+                            </p>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-medium mb-2">이메일</label>
                         <Input
@@ -162,7 +222,7 @@ export default function LoginPage() {
                             placeholder="your@email.com"
                             icon={<Mail className="w-5 h-5"/>}
                             error={errors.email}
-                            disabled={loading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -179,7 +239,7 @@ export default function LoginPage() {
                             placeholder="비밀번호 입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.password}
-                            disabled={loading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -197,7 +257,7 @@ export default function LoginPage() {
                         type="submit"
                         variant="primary"
                         fullWidth
-                        disabled={loading || loginStatus === 'success'}
+                        disabled={loading || googleLoading || loginStatus === 'success'}
                     >
                         {loading ? '로그인 중...' : loginStatus === 'success' ? '로그인 완료!' : '로그인'}
                     </Button>
@@ -214,7 +274,7 @@ export default function LoginPage() {
                     <button
                         type="button"
                         onClick={handleGoogleLogin}
-                        disabled={loading || loginStatus === 'success'}
+                        disabled={loading || googleLoading || loginStatus === 'success'}
                         className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -227,7 +287,10 @@ export default function LoginPage() {
                             <path fill="#EA4335"
                                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
-                        구글로 로그인
+                        {googleLoading
+                            ? (googleCountdown > 0 ? `구글로 로그인 중... (${googleCountdown}초)` : '구글로 로그인 중...')
+                            : '구글로 로그인'
+                        }
                     </button>
 
                     <p className="text-center text-sm text-gray-400">

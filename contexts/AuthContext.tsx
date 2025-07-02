@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
-import {validateUsername} from '@/lib/validators'
+import {validateUsername} from '@/lib/utils/validators'
 import {doc, serverTimestamp, setDoc, Timestamp} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'

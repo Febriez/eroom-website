@@ -1,4 +1,4 @@
-// components/sections/FeaturesSection.tsx
+// components/home/FeaturesSection.tsx
 'use client'
 
 import {ArrowRight, Brain, Globe, Shield, Star, Users, Wand2, Zap} from 'lucide-react'

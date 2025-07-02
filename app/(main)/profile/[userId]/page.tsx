@@ -18,8 +18,10 @@ import {Bell, Check, CheckCircle, Clock, Edit, MapPin, MessageSquare, Settings, 
 import {doc, serverTimestamp, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
+import {formatRelativeTime} from "@/lib/utils";
 
 type NotificationFilter = 'all' | 'read' | 'unread'
+
 
 export default function ProfilePage() {
     const params = useParams()
@@ -128,6 +130,7 @@ export default function ProfilePage() {
         }
     }, [profileUser])
 
+
     const handleSaveDisplayName = async () => {
         if (!profileUser || !currentUser) return
 
@@ -171,6 +174,7 @@ export default function ProfilePage() {
             console.error('Error updating bio:', error)
         }
     }
+
 
     // 간단한 마크다운 렌더링 함수
     const renderMarkdown = (text: string) => {
@@ -299,6 +303,11 @@ export default function ProfilePage() {
                 )
                 setSelectedConversationId(conversationId)
                 setShowChatModal(true)
+
+                // URL에 대화 ID 추가 (선택사항)
+                const newUrl = new URL(window.location.href)
+                newUrl.searchParams.set('openChat', conversationId)
+                window.history.replaceState({}, '', newUrl)
             } catch (error) {
                 console.error('Error creating conversation:', error)
             }
@@ -311,21 +320,31 @@ export default function ProfilePage() {
         setShowChatModal(true)
     }
 
-    // ConversationList에 맞는 형식으로 변환
-    const formattedConversations = conversations.map(conv => ({
-        id: conv.id,
-        participants: [{
-            id: conv.otherParticipantId || '',
-            username: conv.otherParticipant?.username || '',
-            avatar: conv.otherParticipant?.avatarUrl
-        }],
-        lastMessage: {
-            text: conv.lastMessage?.content || '대화를 시작하세요',
-            timestamp: conv.lastMessage ? formatTime(conv.lastMessage.timestamp) : '',
-            read: (conv.unreadCount?.[currentUser?.uid || ''] || 0) === 0
-        },
-        unreadCount: conv.unreadCount?.[currentUser?.uid || ''] || 0
-    }))
+    const formattedConversations = conversations.map(conv => {
+        // 마지막 메시지 시간 포맷
+        const lastMessageTime = conv.lastMessage?.timestamp ?
+            formatRelativeTime(conv.lastMessage.timestamp) : ''
+
+        // 상대방 정보 가져오기
+        const otherParticipant = conv.otherParticipant;
+
+        return {
+            id: conv.id,
+            participants: [{
+                id: conv.otherParticipantId || '',
+                username: otherParticipant?.username || '',
+                displayName: otherParticipant?.displayName || '',
+                avatar: otherParticipant?.avatarUrl,
+                level: otherParticipant?.level || 1
+            }],
+            lastMessage: {
+                text: conv.lastMessage?.content || '대화를 시작하세요',
+                timestamp: lastMessageTime,
+                read: (conv.unreadCount?.[currentUser?.uid || ''] || 0) === 0
+            },
+            unreadCount: conv.unreadCount?.[currentUser?.uid || ''] || 0
+        }
+    })
 
     // 선택된 대화의 참가자 정보
     const selectedConversation = conversations.find(c => c.id === selectedConversationId)
@@ -347,7 +366,7 @@ export default function ProfilePage() {
         id: msg.id,
         text: msg.content,
         senderId: msg.sender.uid,
-        timestamp: formatTime(msg.createdAt),
+        timestamp: formatRelativeTime(msg.createdAt),
         read: msg.readBy?.includes(currentUser?.uid || '') || false
     }))
 
@@ -356,16 +375,6 @@ export default function ProfilePage() {
         if (notificationFilter === 'unread') return !notif.read
         return true
     })
-
-    const formatTime = (timestamp: any) => {
-        if (!timestamp) return ''
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-        return new Intl.DateTimeFormat('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }).format(date)
-    }
 
     if (loading) {
         return (
@@ -643,7 +652,7 @@ export default function ProfilePage() {
                                                 <h3 className="font-medium mb-1 break-keep-all">{notif.title}</h3>
                                                 <p className="text-sm text-gray-400 break-keep-all">{notif.body}</p>
                                                 <p className="text-xs text-gray-500 mt-2">
-                                                    {formatTime(notif.createdAt)}
+                                                    {formatRelativeTime(notif.createdAt)}
                                                 </p>
                                             </div>
                                             {!notif.read && (
@@ -977,7 +986,7 @@ export default function ProfilePage() {
                     title="메시지"
                     size="lg"
                 >
-                    <div style={{height: '500px'}}>
+                    <div className="h-[500px]">
                         <ConversationList
                             conversations={formattedConversations}
                             activeConversationId={selectedConversationId || undefined}
@@ -1000,13 +1009,13 @@ export default function ProfilePage() {
                     title={selectedConversation?.otherParticipant?.displayName || '메시지'}
                     size="xl"
                 >
-                    <div style={{height: '600px'}}>
-                        {selectedConversationId && (
+                    <div className="h-[600px]">
+                        {selectedConversationId && currentUser && (
                             <MessageThread
                                 conversationId={selectedConversationId}
-                                messages={formattedMessages}
+                                messages={messages}
                                 participants={participants}
-                                currentUserId={currentUser?.uid || ''}
+                                currentUserId={currentUser.uid}
                                 onSendMessage={sendMessage}
                             />
                         )}

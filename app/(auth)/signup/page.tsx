@@ -1,7 +1,7 @@
 // app/(auth)/signup/page.tsx
 'use client'
 
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {createUserWithEmailAndPassword, signInWithPopup} from 'firebase/auth'
@@ -9,7 +9,7 @@ import {doc, getDoc, serverTimestamp, setDoc} from 'firebase/firestore'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {UserService} from '@/lib/firebase/services'
-import {validateUsername} from '@/lib/validators'
+import {validateUsername} from '@/lib/utils/validators'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
 import {AlertCircle, Key, Lock, Mail, User} from 'lucide-react'
@@ -30,6 +30,22 @@ export default function SignupPage() {
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
+    const [googleCountdown, setGoogleCountdown] = useState(0)
+
+    // 구글 로그인 카운트다운 효과
+    useEffect(() => {
+        if (googleCountdown > 0) {
+            const timer = setTimeout(() => {
+                setGoogleCountdown(googleCountdown - 1)
+            }, 1000)
+            return () => clearTimeout(timer)
+        } else if (googleCountdown === 0 && googleLoading) {
+            // 카운트다운 종료 시 자동으로 로딩 상태 해제
+            setGoogleLoading(false)
+            setErrors({general: '로그인 시간이 초과되었습니다. 다시 시도해주세요.'})
+        }
+    }, [googleCountdown, googleLoading])
 
     const validateForm = async () => {
         const newErrors: Record<string, string> = {}
@@ -186,10 +202,25 @@ export default function SignupPage() {
             return
         }
 
-        setLoading(true)
+        setGoogleLoading(true)
+        setGoogleCountdown(30) // 30초 타임아웃
+        setErrors({})
+
+        // 팝업 감지를 위한 타이머
+        let popupCheckInterval: NodeJS.Timeout | null = null
+
         try {
+            // 팝업 창이 닫혔는지 주기적으로 확인
+            popupCheckInterval = setInterval(() => {
+                // 여기서는 실제 팝업 창에 대한 참조가 없으므로
+                // 시간 초과만 처리합니다
+            }, 500)
+
             const result = await signInWithPopup(auth, googleProvider)
             const user = result.user
+
+            // 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
 
             // 기존 사용자인지 확인
             const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, user.uid))
@@ -284,11 +315,25 @@ export default function SignupPage() {
             }
 
             router.push('/')
-        } catch (error) {
+        } catch (error: any) {
             console.error('Google signup error:', error)
-            setErrors({general: '구글 로그인 중 오류가 발생했습니다'})
+
+            // 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
+
+            setGoogleCountdown(0)
+
+            if (error.code === 'auth/popup-closed-by-user') {
+                setErrors({general: '회원가입이 취소되었습니다.'})
+            } else if (error.code === 'auth/popup-blocked') {
+                setErrors({general: '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.'})
+            } else {
+                setErrors({general: '구글 회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'})
+            }
         } finally {
-            setLoading(false)
+            setGoogleLoading(false)
+            setGoogleCountdown(0)
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
         }
     }
 
@@ -333,6 +378,13 @@ export default function SignupPage() {
         }
     }
 
+    // 컴포넌트 언마운트 시 정리
+    useEffect(() => {
+        return () => {
+            setGoogleCountdown(0)
+        }
+    }, [])
+
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md">
@@ -354,6 +406,18 @@ export default function SignupPage() {
                         </div>
                     )}
 
+                    {/* 구글 로그인 카운트다운 메시지 */}
+                    {googleLoading && googleCountdown > 0 && (
+                        <div className="bg-blue-900/20 border border-blue-600/50 rounded-lg p-4 animate-fade-in">
+                            <p className="text-blue-400 text-sm text-center">
+                                구글 회원가입 중... ({googleCountdown}초 남음)
+                            </p>
+                            <p className="text-xs text-gray-400 text-center mt-1">
+                                팝업 창에서 계정을 선택해주세요
+                            </p>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-medium mb-2">이메일</label>
                         <Input
@@ -363,6 +427,7 @@ export default function SignupPage() {
                             placeholder="your@email.com"
                             icon={<Mail className="w-5 h-5"/>}
                             error={errors.email}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -375,6 +440,7 @@ export default function SignupPage() {
                             placeholder="8자 이상 입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.password}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -387,6 +453,7 @@ export default function SignupPage() {
                             placeholder="비밀번호 재입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.confirmPassword}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -399,6 +466,7 @@ export default function SignupPage() {
                             icon={<User className="w-5 h-5"/>}
                             error={errors.displayName}
                             maxLength={32} // 여유있게 설정 (한글 16자 = 최대 32바이트)
+                            disabled={loading || googleLoading}
                         />
                         <p className="text-xs text-gray-400 mt-1">
                             최대 16자 (한글 8자), 공백 사용 가능, 언제든지 변경 가능
@@ -426,6 +494,7 @@ export default function SignupPage() {
                             placeholder="@username (영문, 숫자, _ 만 가능)"
                             icon={<span className="text-gray-400">@</span>}
                             error={errors.username}
+                            disabled={loading || googleLoading}
                         />
                         <p className="text-xs text-gray-400 mt-1">프로필 URL에 사용됩니다:
                             /profile/{formData.username || 'username'}</p>
@@ -440,6 +509,7 @@ export default function SignupPage() {
                                     checked={agreements.all}
                                     onChange={(e) => handleAllAgreements(e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm font-medium">전체 동의</span>
                             </label>
@@ -452,6 +522,7 @@ export default function SignupPage() {
                                     checked={agreements.terms}
                                     onChange={(e) => handleSingleAgreement('terms', e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
@@ -473,6 +544,7 @@ export default function SignupPage() {
                                     checked={agreements.privacy}
                                     onChange={(e) => handleSingleAgreement('privacy', e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
@@ -498,7 +570,7 @@ export default function SignupPage() {
                         type="submit"
                         variant="primary"
                         fullWidth
-                        disabled={loading}
+                        disabled={loading || googleLoading}
                     >
                         {loading ? '가입 중...' : '회원가입'}
                     </Button>
@@ -515,7 +587,7 @@ export default function SignupPage() {
                     <button
                         type="button"
                         onClick={handleGoogleSignup}
-                        disabled={loading}
+                        disabled={loading || googleLoading}
                         className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -528,7 +600,10 @@ export default function SignupPage() {
                             <path fill="#EA4335"
                                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
-                        구글로 시작하기
+                        {googleLoading
+                            ? (googleCountdown > 0 ? `구글로 시작하기... (${googleCountdown}초)` : '구글로 시작하기...')
+                            : '구글로 시작하기'
+                        }
                     </button>
 
                     <p className="text-center text-sm text-gray-400">

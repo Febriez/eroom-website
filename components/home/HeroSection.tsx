@@ -8,7 +8,9 @@ import {Button} from '../ui/Button'
 
 export default function HeroSection() {
     const [mousePosition, setMousePosition] = useState({x: 50, y: 50})
+    const [smoothMousePosition, setSmoothMousePosition] = useState({x: 50, y: 50})
     const heroRef = useRef<HTMLDivElement>(null)
+    const animationRef = useRef<number>()
     const {isMobile} = useDevice()
     const router = useRouter()
 
@@ -29,11 +31,33 @@ export default function HeroSection() {
         }))
     }, [isMobile])
 
+    // 부드러운 마우스 추적을 위한 애니메이션
+    useEffect(() => {
+        if (isMobile) return
+
+        const smoothing = 0.1 // 부드러움 정도 (0-1, 낮을수록 부드러움)
+
+        const updateSmoothPosition = () => {
+            setSmoothMousePosition(prev => ({
+                x: prev.x + (mousePosition.x - prev.x) * smoothing,
+                y: prev.y + (mousePosition.y - prev.y) * smoothing
+            }))
+            animationRef.current = requestAnimationFrame(updateSmoothPosition)
+        }
+
+        animationRef.current = requestAnimationFrame(updateSmoothPosition)
+
+        return () => {
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current)
+            }
+        }
+    }, [mousePosition, isMobile])
+
     useEffect(() => {
         if (isMobile) return
 
         const handleMouseMove = (e: MouseEvent) => {
-            // 전체 window 기준으로 마우스 위치 계산
             const windowWidth = window.innerWidth
             const windowHeight = window.innerHeight
             setMousePosition({
@@ -42,7 +66,6 @@ export default function HeroSection() {
             })
         }
 
-        // window에 이벤트 리스너 추가
         window.addEventListener('mousemove', handleMouseMove)
         return () => window.removeEventListener('mousemove', handleMouseMove)
     }, [isMobile])
@@ -64,12 +87,12 @@ export default function HeroSection() {
                         className="absolute w-[1000px] h-[1000px] opacity-20 hidden lg:block"
                         style={{
                             background: `radial-gradient(circle at center, #10b981 0%, transparent 70%)`,
-                            left: `${mousePosition.x}%`,
-                            top: `${mousePosition.y}%`,
+                            left: `${smoothMousePosition.x}%`,
+                            top: `${smoothMousePosition.y}%`,
                             transform: 'translate(-50%, -50%)',
                             filter: 'blur(100px)',
-                            transition: 'all 0.3s ease-out',
                             pointerEvents: 'none',
+                            willChange: 'transform',
                         }}
                     />
                 )}
@@ -94,33 +117,35 @@ export default function HeroSection() {
                     />
                 </div>
 
-                {/* Floating particles */}
+                {/* Floating particles - 작은 파티클 */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {particles.map((particle, i) => (
                         <div
                             key={i}
-                            className="absolute w-1 h-1 bg-green-400/50 rounded-full transition-all duration-[3000ms] ease-out"
+                            className="absolute w-1 h-1 bg-green-400/50 rounded-full"
                             style={{
-                                left: `${particle.x + (isMobile ? 0 : (mousePosition.x - 50) * particle.depth * 0.2)}%`,
-                                top: `${particle.y + (isMobile ? 0 : (mousePosition.y - 50) * particle.depth * 0.2)}%`,
+                                left: `${particle.x + (isMobile ? 0 : (smoothMousePosition.x - 50) * particle.depth * 0.2)}%`,
+                                top: `${particle.y + (isMobile ? 0 : (smoothMousePosition.y - 50) * particle.depth * 0.2)}%`,
                                 transform: `scale(${0.5 + particle.depth})`,
                                 opacity: 0.3 + particle.depth * 0.3,
+                                willChange: 'transform',
                             }}
                         />
                     ))}
                 </div>
 
-                {/* Larger floating particles */}
+                {/* Larger floating particles - 큰 파티클 */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {largeParticles.map((particle, i) => (
                         <div
                             key={`large-${i}`}
-                            className="absolute w-2 h-2 bg-green-400/30 rounded-full transition-all duration-[4000ms] ease-out"
+                            className="absolute w-2 h-2 bg-green-400/30 rounded-full"
                             style={{
-                                left: `${particle.x + (isMobile ? 0 : (mousePosition.x - 50) * particle.depth * 0.3)}%`,
-                                top: `${particle.y + (isMobile ? 0 : (mousePosition.y - 50) * particle.depth * 0.3)}%`,
+                                left: `${particle.x + (isMobile ? 0 : (smoothMousePosition.x - 50) * particle.depth * 0.3)}%`,
+                                top: `${particle.y + (isMobile ? 0 : (smoothMousePosition.y - 50) * particle.depth * 0.3)}%`,
                                 transform: `scale(${0.8 + particle.depth})`,
                                 filter: 'blur(1px)',
+                                willChange: 'transform',
                             }}
                         />
                     ))}
