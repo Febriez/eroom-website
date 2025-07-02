@@ -1,4 +1,3 @@
-// components/messaging/MessageThread.tsx
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Send} from 'lucide-react';
 import {Button} from '@/components/ui/Button';

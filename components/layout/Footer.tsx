@@ -64,13 +64,13 @@ export default function Footer() {
 
                         <div className="flex flex-wrap gap-4">
                             <Link
-                                href="/company/about"
+                                href="/(company)/about"
                                 className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
                             >
                                 회사 소개
                             </Link>
                             <Link
-                                href="/company/careers"
+                                href="/(company)/careers"
                                 className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg transition-all font-medium"
                             >
                                 채용 정보
@@ -174,13 +174,13 @@ export default function Footer() {
                         © {currentYear} {CONSTANTS.COMPANY.NAME}. All rights reserved.
                     </p>
                     <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-gray-500 text-sm sm:text-base">
-                        <Link href="/legal/terms" className="hover:text-green-400 transition-colors">
+                        <Link href="/(legal)/terms" className="hover:text-green-400 transition-colors">
                             이용약관
                         </Link>
-                        <Link href="/legal/privacy" className="hover:text-green-400 transition-colors">
+                        <Link href="/(legal)/privacy" className="hover:text-green-400 transition-colors">
                             개인정보처리방침
                         </Link>
-                        <Link href="/legal/cookies" className="hover:text-green-400 transition-colors">
+                        <Link href="/(legal)/cookies" className="hover:text-green-400 transition-colors">
                             쿠키 정책
                         </Link>
                     </div>

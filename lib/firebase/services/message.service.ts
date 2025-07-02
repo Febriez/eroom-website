@@ -1,4 +1,3 @@
-// lib/firebase/services/message.service.ts
 import {
     addDoc,
     collection,
@@ -9,7 +8,6 @@ import {
     orderBy,
     query,
     serverTimestamp,
-    updateDoc,
     where,
     writeBatch
 } from 'firebase/firestore'
@@ -50,7 +48,7 @@ export class MessageService extends BaseService {
             throw new Error('One or both users not found')
         }
 
-        // 새 대화 생성
+        // 새 대화 생성 (typing 필드 제거)
         const conversationRef = await addDoc(collection(db, COLLECTIONS.CONVERSATIONS), {
             participants: [participant1Id, participant2Id],
             participantInfo: {
@@ -70,10 +68,6 @@ export class MessageService extends BaseService {
             unreadCount: {
                 [participant1Id]: 0,
                 [participant2Id]: 0
-            },
-            typing: {
-                [participant1Id]: false,
-                [participant2Id]: false
             },
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -272,20 +266,6 @@ export class MessageService extends BaseService {
                 ...doc.data()
             } as Conversation))
             callback(conversations)
-        })
-    }
-
-    /**
-     * 타이핑 상태 업데이트
-     */
-    static async updateTypingStatus(
-        conversationId: string,
-        userId: string,
-        isTyping: boolean
-    ): Promise<void> {
-        const conversationRef = doc(db, COLLECTIONS.CONVERSATIONS, conversationId)
-        await updateDoc(conversationRef, {
-            [`typing.${userId}`]: isTyping
         })
     }
 }

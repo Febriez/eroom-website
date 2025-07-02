@@ -6,7 +6,7 @@ import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Button} from '@/components/ui/Button'
 import {Bell, BellOff, Calendar, Gamepad2, Rocket, Sparkles, Star, Sword} from 'lucide-react'
-import {useState} from 'react'
+import React, {useState} from 'react'
 
 interface UpcomingGame {
     id: string

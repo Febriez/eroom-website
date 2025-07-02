@@ -130,7 +130,7 @@ export function roomToCardDisplay(room: RoomSchema): RoomCardDisplay {
     }
 }
 
-// 대화
+// 대화 (typing 필드 제거)
 export interface ConversationSchema {
     id: string
     participants: string[]              // uid 배열 (2명)
@@ -146,9 +146,7 @@ export interface ConversationSchema {
         [uid: string]: number
     }
 
-    typing: {
-        [uid: string]: boolean
-    }
+    // typing 필드 제거됨
 
     createdAt: Timestamp
     updatedAt: Timestamp

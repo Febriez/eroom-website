@@ -1,9 +1,10 @@
-// lib/firebase/services/social.service.ts
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import type {FriendRequest, Notification} from '@/lib/firebase/types'
 import {
     addDoc,
+    arrayRemove,
+    arrayUnion,
     collection,
     deleteDoc,
     doc,
@@ -25,6 +26,30 @@ export class SocialService extends BaseService {
         from: { uid: string; username: string; displayName: string },
         to: { uid: string; username: string; displayName: string }
     ): Promise<void> {
+        // 이미 친구인지 확인
+        const fromUser = await UserService.getUserById(from.uid)
+        const toUser = await UserService.getUserById(to.uid)
+
+        if (!fromUser || !toUser) {
+            throw new Error('User not found')
+        }
+
+        if (fromUser.social.friends.includes(to.uid)) {
+            throw new Error('Already friends')
+        }
+
+        // 이미 보낸 요청이 있는지 확인
+        const existingRequest = await getDocs(query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('from.uid', '==', from.uid),
+            where('to.uid', '==', to.uid),
+            where('status', '==', 'pending')
+        ))
+
+        if (!existingRequest.empty) {
+            throw new Error('Friend request already sent')
+        }
+
         // 친구 요청 생성
         const requestRef = await addDoc(collection(db, COLLECTIONS.FRIEND_REQUESTS), {
             from,
@@ -66,19 +91,13 @@ export class SocialService extends BaseService {
         }
 
         await Promise.all([
-            UserService.updateUser(fromUser.id, {
-                social: {
-                    ...fromUser.social,
-                    friends: [...fromUser.social.friends, request.to.uid],
-                    friendCount: fromUser.social.friendCount + 1
-                }
+            updateDoc(doc(db, COLLECTIONS.USERS, fromUser.id), {
+                'social.friends': arrayUnion(request.to.uid),
+                'social.friendCount': fromUser.social.friendCount + 1
             }),
-            UserService.updateUser(toUser.id, {
-                social: {
-                    ...toUser.social,
-                    friends: [...toUser.social.friends, request.from.uid],
-                    friendCount: toUser.social.friendCount + 1
-                }
+            updateDoc(doc(db, COLLECTIONS.USERS, toUser.id), {
+                'social.friends': arrayUnion(request.from.uid),
+                'social.friendCount': toUser.social.friendCount + 1
             }),
             updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
                 status: 'accepted',
@@ -99,6 +118,44 @@ export class SocialService extends BaseService {
         })
     }
 
+    // 친구 요청 거절
+    static async rejectFriendRequest(requestId: string): Promise<void> {
+        const request = await this.getDocument<FriendRequest>(
+            COLLECTIONS.FRIEND_REQUESTS,
+            requestId
+        )
+
+        if (!request || request.status !== 'pending') {
+            throw new Error('Invalid friend request')
+        }
+
+        await updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
+            status: 'rejected',
+            respondedAt: serverTimestamp()
+        })
+    }
+
+    // 친구 제거
+    static async removeFriend(userId: string, friendId: string): Promise<void> {
+        const user = await UserService.getUserById(userId)
+        const friend = await UserService.getUserById(friendId)
+
+        if (!user || !friend) {
+            throw new Error('User not found')
+        }
+
+        await Promise.all([
+            updateDoc(doc(db, COLLECTIONS.USERS, user.id), {
+                'social.friends': arrayRemove(friendId),
+                'social.friendCount': Math.max(0, user.social.friendCount - 1)
+            }),
+            updateDoc(doc(db, COLLECTIONS.USERS, friend.id), {
+                'social.friends': arrayRemove(userId),
+                'social.friendCount': Math.max(0, friend.social.friendCount - 1)
+            })
+        ])
+    }
+
     // 팔로우
     static async followUser(followerId: string, targetId: string): Promise<void> {
         const follower = await UserService.getUserById(followerId)
@@ -109,17 +166,30 @@ export class SocialService extends BaseService {
         }
 
         await Promise.all([
-            UserService.updateUser(follower.id, {
-                social: {
-                    ...follower.social,
-                    following: [...follower.social.following, targetId]
-                }
+            updateDoc(doc(db, COLLECTIONS.USERS, follower.id), {
+                'social.following': arrayUnion(targetId)
             }),
-            UserService.updateUser(target.id, {
-                social: {
-                    ...target.social,
-                    followers: [...target.social.followers, followerId]
-                }
+            updateDoc(doc(db, COLLECTIONS.USERS, target.id), {
+                'social.followers': arrayUnion(followerId)
+            })
+        ])
+    }
+
+    // 언팔로우
+    static async unfollowUser(followerId: string, targetId: string): Promise<void> {
+        const follower = await UserService.getUserById(followerId)
+        const target = await UserService.getUserById(targetId)
+
+        if (!follower || !target) {
+            throw new Error('User not found')
+        }
+
+        await Promise.all([
+            updateDoc(doc(db, COLLECTIONS.USERS, follower.id), {
+                'social.following': arrayRemove(targetId)
+            }),
+            updateDoc(doc(db, COLLECTIONS.USERS, target.id), {
+                'social.followers': arrayRemove(followerId)
             })
         ])
     }

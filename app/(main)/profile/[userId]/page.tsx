@@ -7,7 +7,7 @@ import {useAuth} from '@/contexts/AuthContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
 import {useConversations} from '@/lib/hooks/useConversations'
 import {useMessages} from '@/lib/hooks/useMessages'
-import {UserService} from '@/lib/firebase/services'
+import {SocialService, UserService} from '@/lib/firebase/services'
 import {Container} from '@/components/ui/Container'
 import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
@@ -52,6 +52,10 @@ export default function ProfilePage() {
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
     const [savingSettings, setSavingSettings] = useState(false)
     const [settingsSaved, setSettingsSaved] = useState(false)
+    const [isFriend, setIsFriend] = useState(false)
+    const [isFollowing, setIsFollowing] = useState(false)
+    const [isBlocked, setIsBlocked] = useState(false)
+    const [socialLoading, setSocialLoading] = useState(false)
     const [tempSettings, setTempSettings] = useState({
         privacy: {
             showProfile: true,
@@ -77,6 +81,7 @@ export default function ProfilePage() {
 
     const username = params.userId as string
     const openChatId = searchParams.get('openChat')
+
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -133,6 +138,16 @@ export default function ProfilePage() {
     const isGoogleUser = currentUser?.email?.includes('@gmail.com')
     const canChangeUsername = isGoogleUser && profileUser?.canChangeUsername
 
+    useEffect(() => {
+        if (profileUser && currentUser && !isOwnProfile) {
+            // 친구, 팔로우, 차단 상태 확인
+            setIsFriend(profileUser.social.friends.includes(currentUser.uid))
+            setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
+            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+        }
+    }, [profileUser, currentUser, isOwnProfile])
+
+
     const handleSaveDisplayName = async () => {
         if (!profileUser || !currentUser) return
         try {
@@ -159,18 +174,17 @@ export default function ProfilePage() {
 
     const renderMarkdown = (text: string) => {
         if (!text) return ''
-        let html = text
+        return text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-green-400">$1</code>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/__(.*?)__/g, '<strong>$1</strong>')
-            .replace(/(?<!\*)\*(?!\*)([^\*]+)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+            .replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
             .replace(/(?<!_)_(?!_)([^_]+)(?<!_)_(?!_)/g, '<em>$1</em>')
             .replace(/~~(.*?)~~/g, '<del>$1</del>')
             .replace(/\n/g, '<br/>')
-        return html
     }
 
     const handleUsernameChange = async () => {
@@ -223,6 +237,101 @@ export default function ProfilePage() {
             console.error(e)
         } finally {
             setSavingSettings(false)
+        }
+    }
+
+    const handleFriendToggle = async () => {
+        if (!currentUser || !profileUser || socialLoading) return
+        setSocialLoading(true)
+        try {
+            if (isFriend) {
+                // 친구 제거 로직 (현재는 구현 안됨)
+                alert('친구 제거 기능은 아직 구현되지 않았습니다.')
+            } else {
+                // 친구 요청 보내기
+                await SocialService.sendFriendRequest(
+                    {
+                        uid: currentUser.uid,
+                        username: currentUser.username || '',
+                        displayName: currentUser.displayName || ''
+                    },
+                    {
+                        uid: profileUser.uid,
+                        username: profileUser.username,
+                        displayName: profileUser.displayName
+                    }
+                )
+                alert('친구 요청을 보냈습니다.')
+            }
+        } catch (error) {
+            console.error('Friend toggle error:', error)
+            alert('오류가 발생했습니다.')
+        } finally {
+            setSocialLoading(false)
+        }
+    }
+
+    const handleFollowToggle = async () => {
+        if (!currentUser || !profileUser || socialLoading) return
+        setSocialLoading(true)
+        try {
+            if (isFollowing) {
+                await SocialService.unfollowUser(currentUser.uid, profileUser.uid)
+                setIsFollowing(false)
+                // 로컬 상태 업데이트
+                if (currentUser.social) {
+                    currentUser.social.following = currentUser.social.following.filter(id => id !== profileUser.uid)
+                }
+            } else {
+                await SocialService.followUser(currentUser.uid, profileUser.uid)
+                setIsFollowing(true)
+                // 로컬 상태 업데이트
+                if (currentUser.social) {
+                    currentUser.social.following = [...(currentUser.social.following || []), profileUser.uid]
+                }
+            }
+        } catch (error) {
+            console.error('Follow toggle error:', error)
+            alert('오류가 발생했습니다.')
+        } finally {
+            setSocialLoading(false)
+        }
+    }
+
+    const handleBlockToggle = async () => {
+        if (!currentUser || !profileUser || socialLoading) return
+        const confirmMessage = isBlocked
+            ? '이 사용자를 차단 해제하시겠습니까?'
+            : '이 사용자를 차단하시겠습니까? 차단하면 서로 메시지를 보낼 수 없습니다.'
+
+        if (!confirm(confirmMessage)) return
+
+        setSocialLoading(true)
+        try {
+            if (isBlocked) {
+                // 차단 해제
+                await UserService.updateUser(currentUser.uid, {
+                    social: {
+                        ...currentUser.social,
+                        blocked: currentUser.social.blocked.filter(id => id !== profileUser.uid)
+                    }
+                })
+                setIsBlocked(false)
+            } else {
+                // 차단
+                await UserService.updateUser(currentUser.uid, {
+                    social: {
+                        ...currentUser.social,
+                        blocked: [...(currentUser.social.blocked || []), profileUser.uid]
+                    }
+                })
+                setIsBlocked(true)
+            }
+        } catch (error) {
+            console.error('Block toggle error:', error)
+            alert('오류가 발생했습니다.')
+        } finally {
+            setSocialLoading(false)
         }
     }
 
@@ -478,17 +587,64 @@ export default function ProfilePage() {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            {isOwnProfile && (
-                                <Button variant="secondary" onClick={() => setShowSettingsModal(true)}
-                                        className="flex items-center gap-2">
-                                    <Settings className="w-4 h-4"/>
-                                    환경설정
-                                </Button>
+                            {isOwnProfile ? (
+                                <>
+                                    <Button variant="secondary" onClick={() => setShowSettingsModal(true)}
+                                            className="flex items-center gap-2">
+                                        <Settings className="w-4 h-4"/>
+                                        환경설정
+                                    </Button>
+                                    <Button variant="primary" onClick={handleMessageClick}
+                                            className="flex items-center gap-2">
+                                        <MessageSquare className="w-4 h-4"/>
+                                        메시지함 열기
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    {/* 친구 추가/제거 버튼 */}
+                                    <Button
+                                        variant={isFriend ? "secondary" : "outline"}
+                                        onClick={handleFriendToggle}
+                                        disabled={socialLoading || isBlocked}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {isFriend ? '친구' : '친구 추가'}
+                                    </Button>
+
+                                    {/* 팔로우/언팔로우 버튼 */}
+                                    <Button
+                                        variant={isFollowing ? "secondary" : "outline"}
+                                        onClick={handleFollowToggle}
+                                        disabled={socialLoading || isBlocked}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {isFollowing ? '팔로잉' : '팔로우'}
+                                    </Button>
+
+                                    {/* 메시지 보내기 버튼 */}
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleMessageClick}
+                                        disabled={isBlocked}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <MessageSquare className="w-4 h-4"/>
+                                        메시지 보내기
+                                    </Button>
+
+                                    {/* 차단/차단해제 버튼 */}
+                                    <Button
+                                        variant={isBlocked ? "danger" : "outline"}
+                                        onClick={handleBlockToggle}
+                                        disabled={socialLoading}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Shield className="w-4 h-4"/>
+                                        {isBlocked ? '차단해제' : '차단'}
+                                    </Button>
+                                </>
                             )}
-                            <Button variant="primary" onClick={handleMessageClick} className="flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4"/>
-                                {isOwnProfile ? '메시지함 열기' : '메시지 보내기'}
-                            </Button>
                         </div>
                     </div>
                 </div>
@@ -559,17 +715,21 @@ export default function ProfilePage() {
                                 filteredNotifications.map(notif => (
                                     <div
                                         key={notif.id}
-                                        className={`p-4 rounded-lg border transition-colors cursor-pointer ${
-                                            notif.read ? 'bg-gray-800 border-gray-700' : 'bg-gray-800/50 border-green-600/50 hover:bg-gray-800'
+                                        className={`p-4 rounded-lg border transition-colors ${
+                                            notif.read
+                                                ? 'bg-gray-800 border-gray-700'
+                                                : 'bg-gray-800/50 border-green-600/50 hover:bg-gray-800 cursor-pointer'
                                         }`}
                                         onClick={async () => {
+                                            // 읽지 않은 알림만 클릭 처리
                                             if (!notif.read) {
                                                 await markAsRead(notif.id)
+                                                // 메시지 알림인 경우 해당 대화로 이동
+                                                if (notif.type === 'message' && notif.data?.conversationId) {
+                                                    router.push(`/profile/${currentUser!.username}?openChat=${notif.data.conversationId}`)
+                                                }
                                             }
-                                            // 메시지 알림인 경우 해당 대화로 이동
-                                            if (notif.type === 'message' && notif.data?.conversationId) {
-                                                router.push(`/profile/${currentUser!.username}?openChat=${notif.data.conversationId}`)
-                                            }
+                                            // 읽은 알림은 onClick 이벤트가 발생해도 아무 동작 안함
                                         }}
                                     >
                                         <div className="flex items-start justify-between">

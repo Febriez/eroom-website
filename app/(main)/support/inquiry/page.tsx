@@ -1,4 +1,3 @@
-// app/(main)/inquiry/page.tsx
 'use client'
 
 import React, {useEffect, useState} from 'react'

@@ -1,4 +1,3 @@
-// components/ui/MapCard.tsx
 import {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'

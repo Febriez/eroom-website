@@ -1,4 +1,3 @@
-// components/messaging/ConversationList.tsx
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Calendar, Filter, MessageSquare, Search, Trophy, User} from 'lucide-react';
 import {Input} from '@/components/ui/Input';

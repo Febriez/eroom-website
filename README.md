@@ -4,7 +4,7 @@
 
 ### 최고의 온라인 방탈출 게임 플랫폼
 
-![EROOM 로고](https://via.placeholder.com/300x150?text=EROOM)
+![EROOM 로고](public/icon.png)
 
 </div>
 
