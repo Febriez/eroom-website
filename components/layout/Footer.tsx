@@ -9,7 +9,7 @@ export default function Footer() {
     const footerLinks = {
         games: [
             {name: 'EROOM', href: '/games/eroom'},
-            {name: '업데이트 노트', href: '/news/updates'},
+            {name: '업데이트 노트', href: '/games/updates'},
             {name: '로드맵', href: '/roadmap'},
             {name: '출시 예정', href: '/games/upcoming'}
         ],
