@@ -9,10 +9,10 @@ export default function Footer() {
 
     const footerLinks = {
         games: [
-            {name: 'EROOM', href: '/main/games/eroom'},
-            {name: '업데이트 노트', href: '/main/games/updates'},
-            {name: '로드맵', href: '/company/roadmap'},
-            {name: '출시 예정', href: '/main/games/upcoming'}
+            {name: 'EROOM', href: '/games/eroom'},
+            {name: '업데이트 노트', href: '/games/updates'},
+            {name: '로드맵', href: '/roadmap'},
+            {name: '출시 예정', href: '/games/upcoming'}
         ],
         community: [
             {name: 'Discord', href: CONSTANTS.COMMUNITY_LINKS.DISCORD},
@@ -21,14 +21,14 @@ export default function Footer() {
             {name: 'Twitch', href: CONSTANTS.COMMUNITY_LINKS.TWITCH}
         ],
         support: [
-            {name: '고객센터', href: '/main/support'},
-            {name: 'FAQ', href: '/main/support/faq'},
-            {name: '시스템 요구사항', href: '/main/support/requirements'},
-            {name: '버그 리포트', href: '/main/support/bug-report'}
+            {name: '고객센터', href: '/support'},
+            {name: 'FAQ', href: '/support/faq'},
+            {name: '시스템 요구사항', href: '/support/requirements'},
+            {name: '버그 리포트', href: '/support/bug-report'}
         ],
         company: [
-            {name: '회사 소개', href: '/company/about'},
-            {name: '채용 정보', href: '/company/careers'},
+            {name: '회사 소개', href: '/about'},
+            {name: '채용 정보', href: '/careers'},
             {name: '언론 보도', href: '/press'},
             {name: '파트너십', href: '/partners'}
         ]
@@ -64,13 +64,13 @@ export default function Footer() {
 
                         <div className="flex flex-wrap gap-4">
                             <Link
-                                href="/(company)/about"
+                                href="/about"
                                 className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
                             >
                                 회사 소개
                             </Link>
                             <Link
-                                href="/(company)/careers"
+                                href="/careers"
                                 className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg transition-all font-medium"
                             >
                                 채용 정보
@@ -174,13 +174,13 @@ export default function Footer() {
                         © {currentYear} {CONSTANTS.COMPANY.NAME}. All rights reserved.
                     </p>
                     <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-gray-500 text-sm sm:text-base">
-                        <Link href="/(legal)/terms" className="hover:text-green-400 transition-colors">
+                        <Link href="/terms" className="hover:text-green-400 transition-colors">
                             이용약관
                         </Link>
-                        <Link href="/(legal)/privacy" className="hover:text-green-400 transition-colors">
+                        <Link href="/privacy" className="hover:text-green-400 transition-colors">
                             개인정보처리방침
                         </Link>
-                        <Link href="/(legal)/cookies" className="hover:text-green-400 transition-colors">
+                        <Link href="/cookies" className="hover:text-green-400 transition-colors">
                             쿠키 정책
                         </Link>
                     </div>
