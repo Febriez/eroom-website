@@ -7,7 +7,7 @@ import {ProfileProvider, useProfile} from '@/contexts/ProfileContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
 import {useConversations} from '@/lib/hooks/useConversations'
 import {useMessages} from '@/lib/hooks/useMessages'
-import {UserService} from '@/lib/firebase/services'
+import {SocialService, UserService} from '@/lib/firebase/services'
 import {Container} from '@/components/ui/Container'
 import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
@@ -214,10 +214,24 @@ function ProfilePageContent() {
         return n.category === notificationFilter
     })
 
-    // 친구 요청 개수 계산
-    const friendRequestCount = notifications.filter(n =>
-        n.type === 'friend_request' && !n.read
-    ).length
+    // 친구 요청 상태 관리
+    const [friendRequests, setFriendRequests] = useState<any[]>([])
+    const [friendRequestCount, setFriendRequestCount] = useState(0)
+
+    // 친구 요청 개수 가져오기
+    useEffect(() => {
+        if (!isOwnProfile || !currentUser) return
+
+        const unsubscribe = SocialService.subscribeToReceivedFriendRequests(
+            currentUser.uid,
+            (requests) => {
+                setFriendRequests(requests)
+                setFriendRequestCount(requests.length)
+            }
+        )
+
+        return () => unsubscribe()
+    }, [isOwnProfile, currentUser])
 
     // 로딩 상태
     if (loading) {

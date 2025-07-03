@@ -239,15 +239,17 @@ export default function RankingsPage() {
 
                                             <div className="w-full space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <span
-                                                        className="text-sm text-gray-400">{getRankLabel(activeTab)}</span>
+                                                        <span
+                                                            className="text-sm text-gray-400">{getRankLabel(activeTab)}</span>
                                                     <span
                                                         className="font-bold text-lg">{getRankValue(user, activeTab)}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between text-sm">
-                                                    <span className="text-gray-500">포인트</span>
-                                                    <span>{formatCount(user.points)}</span>
-                                                </div>
+                                                {activeTab === 'level' && (
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-gray-500">포인트</span>
+                                                        <span>{formatCount(user.points)}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </Card>

@@ -55,6 +55,18 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 // 실시간 구독 설정
                 const unsub = UserService.subscribeToUser(firebaseUser.uid, (userData) => {
                     setUser(userData)
+
+                    // 사용자가 로그인하면 알림 권한 요청
+                    if (userData && 'Notification' in window && Notification.permission === 'default') {
+                        // 사용자의 브라우저 알림 설정이 켜져 있는 경우에만 권한 요청
+                        if (userData.settings?.notifications?.browserNotifications !== false) {
+                            setTimeout(() => {
+                                Notification.requestPermission().then(permission => {
+                                    console.log('Notification permission:', permission)
+                                })
+                            }, 2000) // 2초 후에 요청 (사용자가 페이지에 적응할 시간을 줌)
+                        }
+                    }
                 })
                 setUserUnsubscribe(() => unsub)
             } else {

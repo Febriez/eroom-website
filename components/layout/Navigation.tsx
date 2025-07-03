@@ -48,7 +48,7 @@ export default function Navigation() {
     const [showMessages, setShowMessages] = useState(false)
     const [showProfileMenu, setShowProfileMenu] = useState(false)
     const {user, loading: authLoading, logout} = useAuth()
-    const {notifications, unreadCount, markAllAsRead: markAllNotificationsAsRead} = useNotifications()
+    const {notifications, unreadCount, markAllAsRead: markAllNotificationsAsRead, markAsRead} = useNotifications()
     const {conversations, totalUnreadCount, markAllConversationsAsRead} = useConversations()
     const router = useRouter()
 
@@ -173,6 +173,15 @@ export default function Navigation() {
 
     // 알림 클릭 핸들러
     const handleNotificationClick = async (notif: any) => {
+        // 읽지 않은 알림이면 읽음 처리
+        if (!notif.read) {
+            try {
+                await markAsRead(notif.id)
+            } catch (error) {
+                console.error('Error marking notification as read:', error)
+            }
+        }
+
         // 메시지 알림인 경우 해당 대화로 이동
         if (notif.type === 'message' && notif.data?.conversationId) {
             router.push(`/profile/${user!.username}?openChat=${notif.data.conversationId}`)
@@ -180,6 +189,9 @@ export default function Navigation() {
             // 다른 알림은 프로필 페이지로 이동
             router.push(`/profile/${user!.username}`)
         }
+
+        // 알림 프리뷰 닫기
+        setShowNotifications(false)
     }
 
     return (
