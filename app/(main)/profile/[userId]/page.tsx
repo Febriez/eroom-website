@@ -15,6 +15,7 @@ import {Modal} from '@/components/ui/Modal'
 import ConversationList from '@/components/messaging/ConversationList'
 import MessageThread from '@/components/messaging/MessageThread'
 import SocialListModal from '@/components/social/SocialListModal'
+import FriendRequestModal from '@/components/social/FriendRequestModal'
 import ProfileHeader from '@/components/profile/ProfileHeader'
 import ProfileStats from '@/components/profile/ProfileStats'
 import NotificationSection from '@/components/profile/NotificationSection'
@@ -24,7 +25,9 @@ import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {formatRelativeTime} from '@/lib/utils'
 
-type NotificationFilter = 'all' | 'read' | 'unread'
+import type {NotificationCategory} from '@/lib/firebase/types'
+
+type NotificationFilter = NotificationCategory
 
 export default function ProfilePage() {
     // 라우팅 관련
@@ -43,6 +46,8 @@ export default function ProfilePage() {
         isFriend,
         isFollowing,
         isBlocked,
+        hasPendingRequest,
+        receivedRequest,
         socialLoading,
         updateProfileUser,
         handleFollowToggle,
@@ -65,6 +70,7 @@ export default function ProfilePage() {
     const [showChatModal, setShowChatModal] = useState(false)
     const [showFollowersModal, setShowFollowersModal] = useState(false)
     const [showFollowingModal, setShowFollowingModal] = useState(false)
+    const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false)
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
 
@@ -205,9 +211,8 @@ export default function ProfilePage() {
 
     // 필터링된 알림
     const filteredNotifications = notifications.filter(n => {
-        if (notificationFilter === 'read') return n.read
-        if (notificationFilter === 'unread') return !n.read
-        return true
+        if (notificationFilter === 'all') return true
+        return n.category === notificationFilter
     })
 
     // 로딩 상태
@@ -240,9 +245,12 @@ export default function ProfilePage() {
                     isFriend={isFriend}
                     isFollowing={isFollowing}
                     isBlocked={isBlocked}
+                    hasPendingRequest={hasPendingRequest}
+                    receivedRequest={receivedRequest}
                     socialLoading={socialLoading}
                     onShowUsernameModal={() => setShowUsernameModal(true)}
                     onShowSettingsModal={() => setShowSettingsModal(true)}
+                    onShowFriendRequests={() => setShowFriendRequestsModal(true)}
                     onMessageClick={handleMessageClick}
                     onFriendToggle={handleFriendToggle}
                     onFollowToggle={handleFollowToggle}
@@ -261,6 +269,7 @@ export default function ProfilePage() {
                         notificationFilter={notificationFilter}
                         onFilterChange={setNotificationFilter}
                         onMarkAsRead={markAsRead}
+                        onOpenFriendRequests={() => setShowFriendRequestsModal(true)}
                         currentUser={currentUser}
                         router={router}
                     />
@@ -365,6 +374,15 @@ export default function ProfilePage() {
                 userIds={profileUser?.social.following || []}
                 currentUserId={currentUser?.uid || ''}
             />
+
+            {/* 친구 요청 모달 */}
+            {isOwnProfile && (
+                <FriendRequestModal
+                    isOpen={showFriendRequestsModal}
+                    onClose={() => setShowFriendRequestsModal(false)}
+                    currentUserId={currentUser?.uid || ''}
+                />
+            )}
         </div>
     )
 }

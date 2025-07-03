@@ -4,7 +4,7 @@ import React, {createContext, useContext, useEffect, useState} from 'react'
 import {useAuth} from '@/contexts/AuthContext'
 import {SocialService, UserService} from '@/lib/firebase/services'
 import type {User} from '@/lib/firebase/types'
-import {Unsubscribe} from 'firebase/firestore'
+import {serverTimestamp, Unsubscribe} from 'firebase/firestore'
 
 interface ProfileContextType {
     profileUser: User | null
@@ -13,6 +13,8 @@ interface ProfileContextType {
     isFriend: boolean
     isFollowing: boolean
     isBlocked: boolean
+    hasPendingRequest: boolean
+    receivedRequest: boolean
     socialLoading: boolean
     updateProfileUser: (username: string) => Promise<void>
     updateUserProfile: (data: Partial<User>) => Promise<void>
@@ -32,8 +34,25 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
     const [isBlocked, setIsBlocked] = useState(false)
     const [socialLoading, setSocialLoading] = useState(false)
     const [unsubscribe, setUnsubscribe] = useState<Unsubscribe | null>(null)
+    const [hasPendingRequest, setHasPendingRequest] = useState(false)
+    const [receivedRequest, setReceivedRequest] = useState(false)
 
     const isOwnProfile = currentUser?.uid === profileUser?.uid
+
+    // 친구 요청 상태 확인
+    const checkFriendRequestStatus = async (currentUserId: string, targetUserId: string) => {
+        try {
+            // 내가 보낸 요청이 있는지 확인
+            const sentRequest = await SocialService.getPendingRequestToUser(currentUserId, targetUserId)
+            setHasPendingRequest(!!sentRequest)
+
+            // 내가 받은 요청이 있는지 확인
+            const receivedReq = await SocialService.getPendingRequestFromUser(currentUserId, targetUserId)
+            setReceivedRequest(!!receivedReq)
+        } catch (error) {
+            console.error('Error checking friend request status:', error)
+        }
+    }
 
     // 소셜 관계 상태 업데이트
     useEffect(() => {
@@ -77,6 +96,9 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                             setIsFriend(updatedUser.social.friends.includes(currentUser.uid))
                             setIsFollowing(currentUser.social?.following?.includes(updatedUser.uid) || false)
                             setIsBlocked(currentUser.social?.blocked?.includes(updatedUser.uid) || false)
+
+                            // 친구 요청 상태 확인
+                            checkFriendRequestStatus(currentUser.uid, updatedUser.uid)
                         }
                     }
                 })
@@ -107,7 +129,10 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         if (!profileUser || !currentUser) return
 
         try {
-            await UserService.updateUser(profileUser.id, data)
+            await UserService.updateUser(profileUser.id, {
+                ...data,
+                updatedAt: serverTimestamp() as any
+            })
 
             // 본인 프로필인 경우 AuthContext도 업데이트
             if (isOwnProfile) {
@@ -169,6 +194,12 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         setSocialLoading(true)
         try {
             if (isFriend) {
+                // 친구 제거
+                if (!confirm(`${profileUser.displayName}님을 친구 목록에서 제거하시겠습니까?`)) {
+                    setSocialLoading(false)
+                    return
+                }
+
                 await SocialService.removeFriend(currentUser.uid, profileUser.uid)
                 // 낙관적 업데이트
                 setIsFriend(false)
@@ -181,7 +212,14 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                         friendCount: Math.max(0, (currentUser.social.friendCount || 0) - 1)
                     }
                 })
+            } else if (receivedRequest) {
+                // 받은 요청이 있으면 수락 여부 묻기
+                alert('이 사용자로부터 친구 요청을 받았습니다. 알림에서 확인해주세요.')
+            } else if (hasPendingRequest) {
+                // 이미 요청을 보낸 상태
+                alert('이미 친구 요청을 보냈습니다. 상대방의 응답을 기다려주세요.')
             } else {
+                // 새로운 친구 요청 보내기
                 await SocialService.sendFriendRequest(
                     {
                         uid: currentUser.uid,
@@ -194,6 +232,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                         displayName: profileUser.displayName
                     }
                 )
+                setHasPendingRequest(true)
                 alert('친구 요청을 보냈습니다.')
             }
         } catch (error: any) {
@@ -256,6 +295,8 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         isFriend,
         isFollowing,
         isBlocked,
+        hasPendingRequest,
+        receivedRequest,
         socialLoading,
         updateProfileUser,
         updateUserProfile,

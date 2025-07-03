@@ -6,7 +6,14 @@ import {Timestamp} from 'firebase/firestore'
 export type UserRole = 'user' | 'admin' | 'moderator'
 export type GameDifficulty = 'easy' | 'normal' | 'hard' | 'extreme'
 export type RoomStatus = 'draft' | 'published' | 'archived'
-export type NotificationType = 'friend_request' | 'message' | 'game_invite' | 'system' | 'achievement'
+export type NotificationType =
+    'friend_request'
+    | 'friend_request_accepted'
+    | 'message'
+    | 'game_invite'
+    | 'system'
+    | 'achievement'
+    | 'follow'
 
 // ==================== 사용자 관련 ====================
 
@@ -245,11 +252,16 @@ export interface MessageReaction {
     timestamp: Timestamp
 }
 
+// lib/firebase/types/index.ts의 Notification 타입 수정
+
+export type NotificationCategory = 'all' | 'message' | 'friend' | 'follow' | 'system'
+
 export interface Notification {
     id: string
     recipientId: string
 
     type: NotificationType
+    category: NotificationCategory  // 새로 추가
     title: string
     body: string
 
@@ -260,13 +272,31 @@ export interface Notification {
         senderAvatar?: string
         requestId?: string
         gameId?: string
-        roomId?: string         // mapId → roomId로 변경
+        roomId?: string
         achievementId?: string
         conversationId?: string
     }
 
     read: boolean
     createdAt: Timestamp
+}
+
+// 알림 타입별 카테고리 매핑 헬퍼
+export function getNotificationCategory(type: NotificationType): NotificationCategory {
+    switch (type) {
+        case 'message':
+            return 'message'
+        case 'friend_request':
+        case 'friend_request_accepted':
+            return 'friend'
+        case 'follow':
+            return 'follow'
+        case 'system':
+        case 'game_invite':
+        case 'achievement':
+        default:
+            return 'system'
+    }
 }
 
 // ==================== 리더보드 ====================

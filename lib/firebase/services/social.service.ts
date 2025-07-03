@@ -1,6 +1,7 @@
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import type {FriendRequest, Notification} from '@/lib/firebase/types'
+import {getNotificationCategory} from '@/lib/firebase/types'
 import {
     addDoc,
     arrayRemove,
@@ -9,6 +10,7 @@ import {
     deleteDoc,
     doc,
     getDocs,
+    increment,
     limit,
     orderBy,
     query,
@@ -21,7 +23,148 @@ import {db} from "@/lib/firebase/config"
 import {UserService} from "@/lib/firebase/services/user.service"
 
 export class SocialService extends BaseService {
-    // 친구 요청
+
+    /**
+     * 받은 친구 요청 목록 가져오기
+     */
+    static async getReceivedFriendRequests(userId: string) {
+        const q = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('to.uid', '==', userId),
+            where('status', '==', 'pending'),
+            orderBy('createdAt', 'desc')
+        )
+
+        const snapshot = await getDocs(q)
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as FriendRequest[]
+    }
+
+    /**
+     * 보낸 친구 요청 목록 가져오기
+     */
+    static async getSentFriendRequests(userId: string) {
+        const q = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('from.uid', '==', userId),
+            where('status', '==', 'pending'),
+            orderBy('createdAt', 'desc')
+        )
+
+        const snapshot = await getDocs(q)
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as FriendRequest[]
+    }
+
+    /**
+     * 친구 요청 수락
+     */
+    static async acceptFriendRequest(requestId: string, currentUserId: string, friendId: string) {
+        // 1. 친구 요청 상태 업데이트
+        await updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
+            status: 'accepted',
+            acceptedAt: serverTimestamp()
+        })
+
+        // 2. 양쪽 사용자의 친구 목록에 추가
+        const currentUserRef = doc(db, COLLECTIONS.USERS, currentUserId)
+        const friendRef = doc(db, COLLECTIONS.USERS, friendId)
+
+        await updateDoc(currentUserRef, {
+            'social.friends': arrayUnion(friendId),
+            'social.friendCount': increment(1)
+        })
+
+        await updateDoc(friendRef, {
+            'social.friends': arrayUnion(currentUserId),
+            'social.friendCount': increment(1)
+        })
+
+        // 3. 친구 정보 가져오기
+        const friend = await UserService.getUserById(friendId)
+        const currentUser = await UserService.getUserById(currentUserId)
+
+        if (friend && currentUser) {
+            // 4. 알림 생성
+            await this.createNotification({
+                recipientId: friendId,
+                type: 'friend_request_accepted',
+                category: 'friend',
+                title: '친구 요청 수락됨',
+                body: `${currentUser.displayName}님이 친구 요청을 수락했습니다.`,
+                data: {
+                    senderId: currentUserId,
+                    senderName: currentUser.username,
+                    requestId: requestId
+                }
+            })
+        }
+    }
+
+    /**
+     * 친구 요청 거절
+     */
+    static async rejectFriendRequest(requestId: string) {
+        await updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
+            status: 'rejected',
+            rejectedAt: serverTimestamp()
+        })
+    }
+
+    /**
+     * 친구 요청 취소
+     */
+    static async cancelFriendRequest(requestId: string) {
+        await deleteDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId))
+    }
+
+    /**
+     * 특정 사용자에게 보낸 친구 요청 확인
+     */
+    static async getPendingRequestToUser(fromUserId: string, toUserId: string) {
+        const q = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('from.uid', '==', fromUserId),
+            where('to.uid', '==', toUserId),
+            where('status', '==', 'pending')
+        )
+
+        const snapshot = await getDocs(q)
+        if (snapshot.empty) return null
+
+        return {
+            id: snapshot.docs[0].id,
+            ...snapshot.docs[0].data()
+        } as FriendRequest
+    }
+
+    /**
+     * 특정 사용자로부터 받은 친구 요청 확인
+     */
+    static async getPendingRequestFromUser(toUserId: string, fromUserId: string) {
+        const q = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('to.uid', '==', toUserId),
+            where('from.uid', '==', fromUserId),
+            where('status', '==', 'pending')
+        )
+
+        const snapshot = await getDocs(q)
+        if (snapshot.empty) return null
+
+        return {
+            id: snapshot.docs[0].id,
+            ...snapshot.docs[0].data()
+        } as FriendRequest
+    }
+
+    /**
+     * 친구 요청 보내기
+     */
     static async sendFriendRequest(
         from: { uid: string; username: string; displayName: string },
         to: { uid: string; username: string; displayName: string }
@@ -39,14 +182,8 @@ export class SocialService extends BaseService {
         }
 
         // 이미 보낸 요청이 있는지 확인
-        const existingRequest = await getDocs(query(
-            collection(db, COLLECTIONS.FRIEND_REQUESTS),
-            where('from.uid', '==', from.uid),
-            where('to.uid', '==', to.uid),
-            where('status', '==', 'pending')
-        ))
-
-        if (!existingRequest.empty) {
+        const existingRequest = await this.getPendingRequestToUser(from.uid, to.uid)
+        if (existingRequest) {
             throw new Error('Friend request already sent')
         }
 
@@ -62,6 +199,7 @@ export class SocialService extends BaseService {
         await this.createNotification({
             recipientId: to.uid,
             type: 'friend_request',
+            category: 'friend',
             title: '새로운 친구 요청',
             body: `${from.displayName}님이 친구 요청을 보냈습니다.`,
             data: {
@@ -72,70 +210,9 @@ export class SocialService extends BaseService {
         })
     }
 
-    static async acceptFriendRequest(requestId: string): Promise<void> {
-        const request = await this.getDocument<FriendRequest>(
-            COLLECTIONS.FRIEND_REQUESTS,
-            requestId
-        )
-
-        if (!request || request.status !== 'pending') {
-            throw new Error('Invalid friend request')
-        }
-
-        // 양쪽 유저의 friends 배열 업데이트
-        const fromUser = await UserService.getUserById(request.from.uid)
-        const toUser = await UserService.getUserById(request.to.uid)
-
-        if (!fromUser || !toUser) {
-            throw new Error('User not found')
-        }
-
-        await Promise.all([
-            updateDoc(doc(db, COLLECTIONS.USERS, fromUser.id), {
-                'social.friends': arrayUnion(request.to.uid),
-                'social.friendCount': fromUser.social.friendCount + 1
-            }),
-            updateDoc(doc(db, COLLECTIONS.USERS, toUser.id), {
-                'social.friends': arrayUnion(request.from.uid),
-                'social.friendCount': toUser.social.friendCount + 1
-            }),
-            updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
-                status: 'accepted',
-                respondedAt: serverTimestamp()
-            })
-        ])
-
-        // 수락 알림
-        await this.createNotification({
-            recipientId: request.from.uid,
-            type: 'friend_request',
-            title: '친구 요청 수락됨',
-            body: `${request.to.displayName}님이 친구 요청을 수락했습니다.`,
-            data: {
-                senderId: request.to.uid,
-                senderName: request.to.displayName
-            }
-        })
-    }
-
-    // 친구 요청 거절
-    static async rejectFriendRequest(requestId: string): Promise<void> {
-        const request = await this.getDocument<FriendRequest>(
-            COLLECTIONS.FRIEND_REQUESTS,
-            requestId
-        )
-
-        if (!request || request.status !== 'pending') {
-            throw new Error('Invalid friend request')
-        }
-
-        await updateDoc(doc(db, COLLECTIONS.FRIEND_REQUESTS, requestId), {
-            status: 'rejected',
-            respondedAt: serverTimestamp()
-        })
-    }
-
-    // 친구 제거
+    /**
+     * 친구 제거
+     */
     static async removeFriend(userId: string, friendId: string): Promise<void> {
         const user = await UserService.getUserById(userId)
         const friend = await UserService.getUserById(friendId)
@@ -156,7 +233,9 @@ export class SocialService extends BaseService {
         ])
     }
 
-    // 팔로우
+    /**
+     * 팔로우
+     */
     static async followUser(followerId: string, targetId: string): Promise<void> {
         const follower = await UserService.getUserById(followerId)
         const target = await UserService.getUserById(targetId)
@@ -173,9 +252,24 @@ export class SocialService extends BaseService {
                 'social.followers': arrayUnion(followerId)
             })
         ])
+
+        // 팔로우 알림 생성
+        await this.createNotification({
+            recipientId: targetId,
+            type: 'follow',
+            category: 'follow',
+            title: '새로운 팔로워',
+            body: `${follower.displayName}님이 회원님을 팔로우하기 시작했습니다.`,
+            data: {
+                senderId: followerId,
+                senderName: follower.username
+            }
+        })
     }
 
-    // 언팔로우
+    /**
+     * 언팔로우
+     */
     static async unfollowUser(followerId: string, targetId: string): Promise<void> {
         const follower = await UserService.getUserById(followerId)
         const target = await UserService.getUserById(targetId)
@@ -194,11 +288,17 @@ export class SocialService extends BaseService {
         ])
     }
 
-    // 알림 생성 시 자동 정리 포함
+    /**
+     * 알림 생성
+     */
     static async createNotification(notification: Omit<Notification, 'id' | 'read' | 'createdAt'>): Promise<void> {
+        // category가 없으면 type에서 자동 추론
+        const category = notification.category || getNotificationCategory(notification.type)
+
         // 새 알림 생성
         await addDoc(collection(db, COLLECTIONS.NOTIFICATIONS), {
             ...notification,
+            category,
             read: false,
             createdAt: serverTimestamp()
         })
@@ -207,7 +307,9 @@ export class SocialService extends BaseService {
         await this.cleanupUserNotifications(notification.recipientId)
     }
 
-    // 사용자의 알림 자동 정리
+    /**
+     * 사용자의 알림 자동 정리
+     */
     static async cleanupUserNotifications(userId: string): Promise<void> {
         try {
             // 3일 전 시간 계산
@@ -271,6 +373,9 @@ export class SocialService extends BaseService {
         }
     }
 
+    /**
+     * 알림 구독
+     */
     static subscribeToNotifications(
         userId: string,
         callback: (notifications: Notification[]) => void

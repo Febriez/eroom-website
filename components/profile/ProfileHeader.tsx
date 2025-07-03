@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
-import {Check, Edit, MessageSquare, Settings, Shield, X} from 'lucide-react'
+import {Check, Edit, MessageSquare, Settings, Shield, UserPlus, X} from 'lucide-react'
 import {useProfile} from '@/contexts/ProfileContext'
 import type {User} from '@/lib/firebase/types'
 
@@ -13,9 +13,12 @@ interface ProfileHeaderProps {
     isFriend: boolean
     isFollowing: boolean
     isBlocked: boolean
+    hasPendingRequest?: boolean
+    receivedRequest?: boolean
     socialLoading: boolean
     onShowUsernameModal: () => void
     onShowSettingsModal: () => void
+    onShowFriendRequests?: () => void
     onMessageClick: () => void
     onFriendToggle: () => void
     onFollowToggle: () => void
@@ -32,9 +35,12 @@ export default function ProfileHeader({
                                           isFriend,
                                           isFollowing,
                                           isBlocked,
+                                          hasPendingRequest,
+                                          receivedRequest,
                                           socialLoading,
                                           onShowUsernameModal,
                                           onShowSettingsModal,
+                                          onShowFriendRequests,
                                           onMessageClick,
                                           onFriendToggle,
                                           onFollowToggle,
@@ -257,6 +263,11 @@ export default function ProfileHeader({
                                 <Settings className="w-4 h-4"/>
                                 환경설정
                             </Button>
+                            <Button variant="secondary" onClick={onShowFriendRequests}
+                                    className="flex items-center gap-2">
+                                <UserPlus className="w-4 h-4"/>
+                                친구 요청
+                            </Button>
                             <Button variant="primary" onClick={onMessageClick} className="flex items-center gap-2">
                                 <MessageSquare className="w-4 h-4"/>
                                 메시지함 열기
@@ -265,12 +276,12 @@ export default function ProfileHeader({
                     ) : (
                         <>
                             <Button
-                                variant={isFriend ? "secondary" : "outline"}
+                                variant={isFriend ? "secondary" : receivedRequest ? "primary" : hasPendingRequest ? "secondary" : "outline"}
                                 onClick={onFriendToggle}
                                 disabled={socialLoading || isBlocked}
                                 className="flex items-center gap-2"
                             >
-                                {isFriend ? '친구' : '친구 추가'}
+                                {isFriend ? '친구' : receivedRequest ? '친구 요청 받음' : hasPendingRequest ? '요청 대기중' : '친구 추가'}
                             </Button>
 
                             <Button
