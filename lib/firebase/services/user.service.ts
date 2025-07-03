@@ -7,6 +7,8 @@ import {
     increment,
     orderBy,
     query,
+    runTransaction,
+    serverTimestamp,
     Unsubscribe,
     updateDoc,
     where
@@ -145,6 +147,41 @@ export class UserService extends BaseService {
         await updateDoc(friendRef, {
             'social.friends': arrayUnion(userId),
             'social.friendCount': increment(1)
+        })
+    }
+
+    /**
+     * 크레딧 잔액 확인
+     */
+    static async getCreditBalance(uid: string): Promise<number> {
+        const user = await this.getUserById(uid)
+        return user?.credits || 0
+    }
+
+    /**
+     * 크레딧 차감 (트랜잭션으로 안전하게)
+     */
+    static async deductCredits(uid: string, amount: number): Promise<void> {
+        const userRef = doc(db, COLLECTIONS.USERS, uid)
+
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userRef)
+
+            if (!userDoc.exists()) {
+                throw new Error('사용자를 찾을 수 없습니다')
+            }
+
+            const userData = userDoc.data() as User
+            const currentCredits = userData.credits || 0
+
+            if (currentCredits < amount) {
+                throw new Error('크레딧이 부족합니다')
+            }
+
+            transaction.update(userRef, {
+                credits: currentCredits - amount,
+                updatedAt: serverTimestamp()
+            })
         })
     }
 

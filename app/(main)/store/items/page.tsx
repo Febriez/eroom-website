@@ -33,6 +33,7 @@ import {
     X,
     Zap
 } from 'lucide-react'
+import {UserService} from "@/lib/firebase/services";
 
 interface ShopItem {
     id: string
@@ -370,10 +371,16 @@ export default function StoreItemsPage() {
             if (purchasedThemeItems.length > 0) {
                 setPurchasedItems(prev => [...prev, ...purchasedThemeItems.map(item => item.id)])
             }
-
-            alert('구매가 완료되었습니다!')
-            setCart([])
-            setShowCart(false)
+            UserService.deductCredits(user!.uid, totalPrice)
+                .then(_ => {
+                    alert('구매가 완료되었습니다!')
+                    setCart([])
+                    setShowCart(false)
+                })
+                .catch(error => {
+                    console.error('구매 실패:', error)
+                    alert(error.message || '구매 처리 중 오류가 발생했습니다.')
+                });
         }
     }
 
