@@ -65,6 +65,8 @@ export default function StoreItemsPage() {
     const [showCart, setShowCart] = useState(false)
     const [cart, setCart] = useState<CartItem[]>([])
     const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+    const [purchasedItems, setPurchasedItems] = useState<string[]>([]) // 구매한 아이템 ID 목록
+    const [animatingItems, setAnimatingItems] = useState<string[]>([]) // 애니메이션 중인 아이템들
 
     const userCredits = user?.credits || 0
 
@@ -276,6 +278,14 @@ export default function StoreItemsPage() {
         }
     }
 
+    const isPurchased = (item: ShopItem) => {
+        // 테마나 번들, 특별 아이템은 한 번만 구매 가능
+        if (['themes', 'bundles', 'special'].includes(item.category)) {
+            return purchasedItems.includes(item.id)
+        }
+        return false
+    }
+
     const filteredItems = items.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -285,16 +295,27 @@ export default function StoreItemsPage() {
     })
 
     const addToCart = (item: ShopItem) => {
-        const existingItem = cart.find(cartItem => cartItem.id === item.id)
-        if (existingItem) {
-            setCart(cart.map(cartItem =>
-                cartItem.id === item.id
-                    ? {...cartItem, cartQuantity: cartItem.cartQuantity + 1}
-                    : cartItem
-            ))
-        } else {
-            setCart([...cart, {...item, cartQuantity: 1}])
-        }
+        // 애니메이션 시작
+        setAnimatingItems(prev => [...prev, item.id])
+
+        // 카드 애니메이션 효과
+        setTimeout(() => {
+            const existingItem = cart.find(cartItem => cartItem.id === item.id)
+            if (existingItem) {
+                setCart(cart.map(cartItem =>
+                    cartItem.id === item.id
+                        ? {...cartItem, cartQuantity: cartItem.cartQuantity + 1}
+                        : cartItem
+                ))
+            } else {
+                setCart([...cart, {...item, cartQuantity: 1}])
+            }
+
+            // 애니메이션 완료
+            setTimeout(() => {
+                setAnimatingItems(prev => prev.filter(id => id !== item.id))
+            }, 100)
+        }, 300)
     }
 
     const removeFromCart = (itemId: string) => {
@@ -324,7 +345,10 @@ export default function StoreItemsPage() {
         }
 
         if (confirm(`"${item.name}"을(를) 구매하시겠습니까?\n\n가격: ${item.price.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
-            // 구매 로직
+            // 구매 완료 처리
+            if (['themes', 'bundles', 'special'].includes(item.category)) {
+                setPurchasedItems(prev => [...prev, item.id])
+            }
             alert('구매가 완료되었습니다!')
         }
     }
@@ -341,7 +365,12 @@ export default function StoreItemsPage() {
         const itemList = cart.map(item => `- ${item.name} x${item.cartQuantity}`).join('\n')
 
         if (confirm(`장바구니 아이템을 구매하시겠습니까?\n\n${itemList}\n\n총 가격: ${totalPrice.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
-            // 구매 로직
+            // 구매 완료 처리
+            const purchasedThemeItems = cart.filter(item => ['themes', 'bundles', 'special'].includes(item.category))
+            if (purchasedThemeItems.length > 0) {
+                setPurchasedItems(prev => [...prev, ...purchasedThemeItems.map(item => item.id)])
+            }
+
             alert('구매가 완료되었습니다!')
             setCart([])
             setShowCart(false)
@@ -448,24 +477,24 @@ export default function StoreItemsPage() {
                             {filteredItems.map(item => (
                                 <div
                                     key={item.id}
-                                    className={`group relative bg-gradient-to-br ${getRarityGradient(item.rarity)} rounded-2xl border-2 ${getRarityBorder(item.rarity)} overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl`}
+                                    className={`group relative bg-gradient-to-br ${getRarityGradient(item.rarity)} rounded-2xl border-2 ${getRarityBorder(item.rarity)} overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl transform-gpu`}
                                     onMouseEnter={() => setHoveredItem(item.id)}
                                     onMouseLeave={() => setHoveredItem(null)}
                                 >
-                                    {/* 배경 효과 */}
+                                    {/* 배경 효과 수정 - 버튼 제외 */}
                                     <div
-                                        className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"/>
+                                        className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-0"/>
 
-                                    {/* 할인 배지 */}
+                                    {/* 할인 배지 위치 수정 */}
                                     {item.discount && (
                                         <div
-                                            className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                            className="absolute top-3 left-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                                             -{item.discount}%
                                         </div>
                                     )}
 
-                                    {/* 인기/한정 배지 */}
-                                    <div className="absolute top-4 right-4 flex flex-col gap-2">
+                                    {/* 인기/한정 배지 위치 수정 */}
+                                    <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
                                         {item.popular && (
                                             <Badge variant="success" size="sm">인기</Badge>
                                         )}
@@ -474,7 +503,8 @@ export default function StoreItemsPage() {
                                         )}
                                     </div>
 
-                                    <div className="p-6">
+                                    {/* 카드 내용 - z-index 추가 */}
+                                    <div className="relative z-10 p-6">
                                         {/* 아이콘 */}
                                         <div
                                             className={`w-16 h-16 bg-gradient-to-br ${item.iconBg} rounded-2xl flex items-center justify-center mb-4 shadow-lg transform group-hover:rotate-12 transition-transform`}>
@@ -530,27 +560,44 @@ export default function StoreItemsPage() {
                                             </div>
                                         </div>
 
-                                        {/* 버튼 */}
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="flex-1"
-                                                onClick={() => addToCart(item)}
-                                            >
-                                                <ShoppingBag className="w-4 h-4"/>
-                                                담기
-                                            </Button>
-                                            <Button
-                                                variant="primary"
-                                                size="sm"
-                                                className="flex-1"
-                                                onClick={() => handleDirectPurchase(item)}
-                                            >
-                                                <Zap className="w-4 h-4"/>
-                                                바로 구매
-                                            </Button>
-                                        </div>
+                                        {/* 버튼 - 조건부 렌더링 및 애니메이션 추가 */}
+                                        {!isPurchased(item) && (
+                                            <div className="flex gap-2 relative z-20">
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="flex-1 relative overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+                                                    onClick={() => addToCart(item)}
+                                                >
+                                                    <ShoppingBag className="w-4 h-4"/>
+                                                    담기
+                                                    {/* 클릭 효과 */}
+                                                    <div
+                                                        className="absolute inset-0 bg-white/20 opacity-0 hover:opacity-100 transition-opacity"/>
+                                                </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    className="flex-1 relative overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+                                                    onClick={() => handleDirectPurchase(item)}
+                                                >
+                                                    <Zap className="w-4 h-4"/>
+                                                    바로 구매
+                                                    {/* 클릭 효과 */}
+                                                    <div
+                                                        className="absolute inset-0 bg-white/20 opacity-0 hover:opacity-100 transition-opacity"/>
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* 구매 완료 표시 */}
+                                        {isPurchased(item) && (
+                                            <div
+                                                className="flex items-center justify-center py-3 bg-green-600/20 rounded-lg border border-green-600/30">
+                                                <Check className="w-5 h-5 text-green-400 mr-2"/>
+                                                <span className="text-green-400 font-semibold">구매 완료</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -570,15 +617,23 @@ export default function StoreItemsPage() {
             {/* 장바구니 버튼 */}
             <button
                 onClick={() => setShowCart(true)}
-                className="fixed bottom-8 right-8 bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform"
+                className="fixed right-8 top-1/2 -translate-y-1/2 bg-gradient-to-r from-green-600 to-emerald-600 text-white p-5 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 z-40 group"
             >
-                <ShoppingCart className="w-6 h-6"/>
+                <ShoppingCart className="w-8 h-8 group-hover:animate-bounce"/>
                 {cart.length > 0 && (
                     <span
-                        className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">
-                        {cart.reduce((total, item) => total + item.cartQuantity, 0)}
-                    </span>
+                        className="absolute -top-2 -right-2 bg-red-500 text-white text-sm w-7 h-7 rounded-full flex items-center justify-center font-bold animate-pulse">
+            {cart.reduce((total, item) => total + item.cartQuantity, 0)}
+        </span>
                 )}
+
+                {/* 장바구니 툴팁 */}
+                <div
+                    className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                    장바구니 {cart.length > 0 && `(${cart.reduce((total, item) => total + item.cartQuantity, 0)})`}
+                    <div
+                        className="absolute left-full top-1/2 -translate-y-1/2 w-0 h-0 border-l-4 border-l-gray-800 border-y-4 border-y-transparent"></div>
+                </div>
             </button>
 
             {/* 장바구니 모달 */}
