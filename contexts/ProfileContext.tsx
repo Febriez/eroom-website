@@ -3,8 +3,9 @@
 import React, {createContext, useCallback, useContext, useEffect, useState} from 'react'
 import {useAuth} from '@/contexts/AuthContext'
 import {SocialService, UserService} from '@/lib/firebase/services'
-import type {User} from '@/lib/firebase/types'
+import type {FriendRequest, User} from '@/lib/firebase/types'
 import {serverTimestamp, Unsubscribe} from 'firebase/firestore'
+import {COLLECTIONS} from "@/lib/firebase/collections";
 
 interface ProfileContextType {
     profileUser: User | null
@@ -219,8 +220,38 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                 // 받은 요청이 있으면 수락 여부 묻기
                 alert('이 사용자로부터 친구 요청을 받았습니다. 알림에서 확인해주세요.')
             } else if (hasPendingRequest) {
-                // 이미 요청을 보낸 상태
-                alert('이미 친구 요청을 보냈습니다. 상대방의 응답을 기다려주세요.')
+                // 이미 요청을 보낸 상태 - 취소 여부 확인
+                if (confirm('이미 친구 요청을 보냈습니다. 친구 요청을 취소하시겠습니까?')) {
+                    // 보낸 요청 찾기
+                    const pendingRequest = await SocialService.getPendingRequestToUser(currentUser.uid, profileUser.uid)
+
+                    if (pendingRequest) {
+                        // 요청 상태 재확인
+                        const requestDoc = await SocialService.getDocument<FriendRequest>(COLLECTIONS.FRIEND_REQUESTS, pendingRequest.id)
+
+                        if (!requestDoc || requestDoc.status !== 'pending') {
+                            // 이미 처리된 요청
+                            if (requestDoc?.status === 'accepted') {
+                                alert('상대방이 이미 친구 요청을 수락했습니다.')
+                                // 친구 상태로 업데이트
+                                setIsFriend(true)
+                                setHasPendingRequest(false)
+                            } else if (requestDoc?.status === 'rejected') {
+                                alert('상대방이 이미 친구 요청을 거절했습니다.')
+                                setHasPendingRequest(false)
+                            }
+                        } else {
+                            // 취소 가능
+                            await SocialService.cancelFriendRequest(pendingRequest.id)
+                            setHasPendingRequest(false)
+
+                            // 상대방의 알림 삭제
+                            await SocialService.deleteFriendRequestNotification(profileUser.uid, pendingRequest.id)
+
+                            alert('친구 요청이 취소되었습니다.')
+                        }
+                    }
+                }
             } else {
                 // 새로운 친구 요청 보내기
                 await SocialService.sendFriendRequest(
@@ -240,8 +271,8 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
             }
         } catch (error: any) {
             console.error('Friend toggle error:', error)
-            // 에러 발생 시 상태 롤백
-            setIsFriend(!isFriend)
+            // 에러 발생 시 상태 재확인
+            await checkFriendRequestStatus(currentUser.uid, profileUser.uid)
             alert(error.message || '오류가 발생했습니다.')
         } finally {
             setSocialLoading(false)

@@ -38,27 +38,34 @@ export default function FriendRequestModal({isOpen, onClose, currentUserId}: Fri
     const [actionLoading, setActionLoading] = useState<string | null>(null)
 
     useEffect(() => {
-        if (isOpen && currentUserId) {
-            fetchRequests()
+        if (!isOpen || !currentUserId) return
+
+        setLoading(true)
+
+        // 받은 요청 구독
+        const unsubscribeReceived = SocialService.subscribeToReceivedFriendRequests(
+            currentUserId,
+            (requests) => {
+                setReceivedRequests(requests)
+                setLoading(false)
+            }
+        )
+
+        // 보낸 요청 구독
+        const unsubscribeSent = SocialService.subscribeToSentFriendRequests(
+            currentUserId,
+            (requests) => {
+                setSentRequests(requests)
+                setLoading(false)
+            }
+        )
+
+        // 클린업 함수
+        return () => {
+            unsubscribeReceived()
+            unsubscribeSent()
         }
     }, [isOpen, currentUserId])
-
-    const fetchRequests = async () => {
-        setLoading(true)
-        try {
-            // 받은 요청 가져오기
-            const received = await SocialService.getReceivedFriendRequests(currentUserId)
-            setReceivedRequests(received)
-
-            // 보낸 요청 가져오기
-            const sent = await SocialService.getSentFriendRequests(currentUserId)
-            setSentRequests(sent)
-        } catch (error) {
-            console.error('Error fetching friend requests:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const handleAcceptRequest = async (request: FriendRequest) => {
         setActionLoading(request.id)

@@ -22,6 +22,7 @@ interface Update {
 
 export default function UpdatesPage() {
     const [expandedUpdate, setExpandedUpdate] = useState<string | null>(null)
+    const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
 
     const updates: Update[] = [
         {
@@ -197,6 +198,20 @@ export default function UpdatesPage() {
         }
     ]
 
+    const toggleCategory = (category: string) => {
+        const newSet = new Set(selectedCategories)
+        if (newSet.has(category)) {
+            newSet.delete(category)
+        } else {
+            newSet.add(category)
+        }
+        setSelectedCategories(newSet)
+    }
+
+    const filteredUpdates = selectedCategories.size === 0
+        ? updates
+        : updates.filter(update => selectedCategories.has(update.category))
+
     const getCategoryColor = (category: string) => {
         switch (category) {
             case 'major':
@@ -242,6 +257,23 @@ export default function UpdatesPage() {
         }
     }
 
+    const categories = [
+        {
+            key: 'major',
+            label: '메이저 업데이트',
+            color: 'bg-green-600',
+            count: updates.filter(u => u.category === 'major').length
+        },
+        {
+            key: 'minor',
+            label: '마이너 업데이트',
+            color: 'bg-blue-600',
+            count: updates.filter(u => u.category === 'minor').length
+        },
+        {key: 'patch', label: '패치', color: 'bg-yellow-600', count: updates.filter(u => u.category === 'patch').length},
+        {key: 'hotfix', label: '핫픽스', color: 'bg-red-600', count: updates.filter(u => u.category === 'hotfix').length}
+    ]
+
     return (
         <>
             <PageHeader
@@ -252,37 +284,55 @@ export default function UpdatesPage() {
             />
 
             <Container className="py-12">
-                {/* 업데이트 통계 */}
+                {/* 업데이트 필터 */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-green-400">
-                            {updates.filter(u => u.category === 'major').length}
-                        </div>
-                        <div className="text-sm text-gray-400">메이저 업데이트</div>
-                    </Card>
-                    <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-blue-400">
-                            {updates.filter(u => u.category === 'minor').length}
-                        </div>
-                        <div className="text-sm text-gray-400">마이너 업데이트</div>
-                    </Card>
-                    <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-yellow-400">
-                            {updates.filter(u => u.category === 'patch').length}
-                        </div>
-                        <div className="text-sm text-gray-400">패치</div>
-                    </Card>
-                    <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-red-400">
-                            {updates.filter(u => u.category === 'hotfix').length}
-                        </div>
-                        <div className="text-sm text-gray-400">핫픽스</div>
-                    </Card>
+                    {categories.map(category => (
+                        <button
+                            key={category.key}
+                            onClick={() => toggleCategory(category.key)}
+                            className={`p-4 rounded-lg border transition-all ${
+                                selectedCategories.has(category.key)
+                                    ? 'border-white bg-gray-800'
+                                    : 'border-gray-700 hover:border-gray-600'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <div className={`w-3 h-3 rounded-full ${category.color}`}/>
+                                <span className="text-2xl font-bold">
+                                    {category.count}
+                                </span>
+                            </div>
+                            <div className="text-sm text-left">{category.label}</div>
+                        </button>
+                    ))}
                 </div>
+
+                {/* 필터 상태 표시 */}
+                {selectedCategories.size > 0 && (
+                    <div className="mb-6 flex items-center gap-2">
+                        <span className="text-sm text-gray-400">필터:</span>
+                        {Array.from(selectedCategories).map(cat => (
+                            <Badge
+                                key={cat}
+                                variant={getCategoryColor(cat) as any}
+                                className="cursor-pointer"
+                                onClick={() => toggleCategory(cat)}
+                            >
+                                {getCategoryLabel(cat)} ✕
+                            </Badge>
+                        ))}
+                        <button
+                            onClick={() => setSelectedCategories(new Set())}
+                            className="text-sm text-gray-400 hover:text-white ml-2"
+                        >
+                            필터 초기화
+                        </button>
+                    </div>
+                )}
 
                 {/* 업데이트 목록 */}
                 <div className="space-y-6">
-                    {updates.map(update => {
+                    {filteredUpdates.map(update => {
                         const isExpanded = expandedUpdate === update.id
 
                         return (
@@ -370,15 +420,29 @@ export default function UpdatesPage() {
                     })}
                 </div>
 
+                {/* 결과 없음 */}
+                {filteredUpdates.length === 0 && (
+                    <div className="text-center py-20">
+                        <Sparkles className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
+                        <h3 className="text-xl font-bold mb-2">선택한 필터에 해당하는 업데이트가 없습니다</h3>
+                        <p className="text-gray-400">다른 카테고리를 선택해보세요</p>
+                    </div>
+                )}
+
                 {/* 완료 메시지 */}
-                <div className="mt-12 text-center">
-                    <p className="text-gray-400 mb-2">
-                        총 {updates.length}개의 업데이트 내역을 모두 확인했습니다.
-                    </p>
-                    <p className="text-sm text-gray-500">
-                        EROOM의 정식 출시부터 현재까지의 모든 변경사항이 포함되어 있습니다.
-                    </p>
-                </div>
+                {filteredUpdates.length > 0 && (
+                    <div className="mt-12 text-center">
+                        <p className="text-gray-400 mb-2">
+                            {selectedCategories.size > 0
+                                ? `${filteredUpdates.length}개의 업데이트가 표시되었습니다.`
+                                : `총 ${updates.length}개의 업데이트 내역을 모두 확인했습니다.`
+                            }
+                        </p>
+                        <p className="text-sm text-gray-500">
+                            EROOM의 정식 출시부터 현재까지의 모든 변경사항이 포함되어 있습니다.
+                        </p>
+                    </div>
+                )}
             </Container>
         </>
     )

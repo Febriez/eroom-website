@@ -3,9 +3,10 @@ interface BadgeProps {
     variant?: 'default' | 'success' | 'warning' | 'danger' | 'info'
     size?: 'sm' | 'md'
     className?: string
+    onClick?: () => void // Add this line
 }
 
-export function Badge({children, variant = 'default', size = 'md', className = ''}: BadgeProps) {
+export function Badge({children, variant = 'default', size = 'md', className = '', onClick}: BadgeProps) {
     const variants = {
         default: 'bg-gray-800 text-gray-300',
         success: 'bg-green-900/30 text-green-400',
@@ -20,13 +21,16 @@ export function Badge({children, variant = 'default', size = 'md', className = '
     }
 
     return (
-        <span className={`
-      inline-flex items-center font-medium rounded-full
-      ${variants[variant]}
-      ${sizes[size]}
-      ${className}
-    `}>
-      {children}
-    </span>
+        <span
+            className={`
+                inline-flex items-center font-medium rounded-full
+                ${variants[variant]}
+                ${sizes[size]}
+                ${className}
+            `}
+            onClick={onClick} // Add this line
+        >
+            {children}
+        </span>
     )
 }

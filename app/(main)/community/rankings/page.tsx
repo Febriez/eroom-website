@@ -22,13 +22,13 @@ export default function RankingsPage() {
     const router = useRouter()
     const [users, setUsers] = useState<UserWithStats[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>('playCount')
+    const [activeTab, setActiveTab] = useState<'level' | 'playCount' | 'mapsCreated' | 'avgRating'>('level')
 
     useEffect(() => {
         loadUsers(activeTab)
     }, [activeTab])
 
-    const loadUsers = async (type: 'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating') => {
+    const loadUsers = async (type: 'level' | 'playCount' | 'mapsCreated' | 'avgRating') => {
         setLoading(true)
         try {
             let userData: User[] = []
@@ -64,14 +64,14 @@ export default function RankingsPage() {
             // 정렬
             let sortedUsers = [...usersWithStats]
             switch (type) {
+                case 'level':
+                    sortedUsers.sort((a, b) => b.level - a.level)
+                    break
                 case 'playCount':
-                    sortedUsers.sort((a, b) => b.stats.mapsCompleted - a.stats.mapsCompleted)
+                    sortedUsers.sort((a, b) => (b.totalMapPlays || 0) - (a.totalMapPlays || 0))
                     break
                 case 'mapsCreated':
                     sortedUsers.sort((a, b) => b.stats.mapsCreated - a.stats.mapsCreated)
-                    break
-                case 'totalPlays':
-                    sortedUsers.sort((a, b) => (b.totalMapPlays || 0) - (a.totalMapPlays || 0))
                     break
                 case 'avgRating':
                     sortedUsers.sort((a, b) => (b.avgMapRating || 0) - (a.avgMapRating || 0))
@@ -123,12 +123,12 @@ export default function RankingsPage() {
 
     const getRankLabel = (type: string) => {
         switch (type) {
+            case 'level':
+                return '레벨'
             case 'playCount':
                 return '플레이 횟수'
             case 'mapsCreated':
                 return '제작한 맵'
-            case 'totalPlays':
-                return '총 플레이 수'
             case 'avgRating':
                 return '평균 평점'
             default:
@@ -138,12 +138,12 @@ export default function RankingsPage() {
 
     const getRankValue = (user: UserWithStats, type: string) => {
         switch (type) {
+            case 'level':
+                return `Lv.${user.level}`
             case 'playCount':
-                return formatCount(user.stats.mapsCompleted)
+                return formatCount(user.totalMapPlays || 0)
             case 'mapsCreated':
                 return formatCount(user.stats.mapsCreated)
-            case 'totalPlays':
-                return formatCount(user.totalMapPlays || 0)
             case 'avgRating':
                 return (user.avgMapRating || 0).toFixed(1) + ' ⭐'
             default:
@@ -174,23 +174,23 @@ export default function RankingsPage() {
             <Container className="py-12">
                 {/* 탭 메뉴 - 여백 추가 */}
                 <div className="mb-12">
-                    <Tabs<'playCount' | 'mapsCreated' | 'totalPlays' | 'avgRating'>
+                    <Tabs<'level' | 'playCount' | 'mapsCreated' | 'avgRating'>
                         value={activeTab}
                         onValueChange={(val) => setActiveTab(val)}
-                        defaultValue="playCount"
+                        defaultValue="level"
                     >
                         <TabsList>
-                            <TabsTrigger value="playCount">
+                            <TabsTrigger value="level">
                                 <Trophy className="w-4 h-4"/>
+                                레벨
+                            </TabsTrigger>
+                            <TabsTrigger value="playCount">
+                                <Users className="w-4 h-4"/>
                                 플레이 횟수
                             </TabsTrigger>
                             <TabsTrigger value="mapsCreated">
                                 <MapPin className="w-4 h-4"/>
                                 맵 제작
-                            </TabsTrigger>
-                            <TabsTrigger value="totalPlays">
-                                <Users className="w-4 h-4"/>
-                                총 플레이 수
                             </TabsTrigger>
                             <TabsTrigger value="avgRating">
                                 <Star className="w-4 h-4"/>

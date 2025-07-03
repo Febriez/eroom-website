@@ -129,6 +129,7 @@ export class MessageService extends BaseService {
                 batch.set(notificationRef, {
                     recipientId: otherParticipantId,
                     type: 'message' as const,
+                    category: 'message' as const, // category 추가
                     title: `${sender.displayName}님의 메시지`,
                     body: content.length > 50 ? content.substring(0, 50) + '...' : content,
                     data: {

@@ -9,6 +9,7 @@ import {
     collection,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
     increment,
     limit,
@@ -371,6 +372,80 @@ export class SocialService extends BaseService {
         } catch (error) {
             console.error('Error cleaning up notifications:', error)
         }
+    }
+
+    /**
+     * 친구 요청 관련 알림 삭제
+     */
+    static async deleteFriendRequestNotification(recipientId: string, requestId: string) {
+        try {
+            const q = query(
+                collection(db, COLLECTIONS.NOTIFICATIONS),
+                where('recipientId', '==', recipientId),
+                where('type', '==', 'friend_request'),
+                where('data.requestId', '==', requestId)
+            )
+
+            const snapshot = await getDocs(q)
+            const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref))
+            await Promise.all(deletePromises)
+        } catch (error) {
+            console.error('Error deleting friend request notification:', error)
+        }
+    }
+
+    /**
+     * 문서 가져오기 (BaseService에서 상속받은 메소드 사용)
+     */
+    static async getDocument<T>(collection: string, docId: string): Promise<T | null> {
+        try {
+            const docRef = doc(db, collection, docId)
+            const docSnap = await getDoc(docRef)
+
+            if (docSnap.exists()) {
+                return {id: docSnap.id, ...docSnap.data()} as T
+            }
+            return null
+        } catch (error) {
+            console.error('Error getting document:', error)
+            return null
+        }
+    }
+
+    /**
+     * 받은 친구 요청 실시간 구독
+     */
+    static subscribeToReceivedFriendRequests(
+        userId: string,
+        callback: (requests: FriendRequest[]) => void
+    ) {
+        return this.subscribeToQuery<FriendRequest>(
+            COLLECTIONS.FRIEND_REQUESTS,
+            [
+                where('to.uid', '==', userId),
+                where('status', '==', 'pending'),
+                orderBy('createdAt', 'desc')
+            ],
+            callback
+        )
+    }
+
+    /**
+     * 보낸 친구 요청 실시간 구독
+     */
+    static subscribeToSentFriendRequests(
+        userId: string,
+        callback: (requests: FriendRequest[]) => void
+    ) {
+        return this.subscribeToQuery<FriendRequest>(
+            COLLECTIONS.FRIEND_REQUESTS,
+            [
+                where('from.uid', '==', userId),
+                where('status', '==', 'pending'),
+                orderBy('createdAt', 'desc')
+            ],
+            callback
+        )
     }
 
     /**
