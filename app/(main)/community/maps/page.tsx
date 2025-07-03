@@ -267,7 +267,7 @@ export default function CommunityMapsPage() {
                             <Button
                                 variant="primary"
                                 className="mt-4"
-                                onClick={() => router.push('/main/games/eroom/create')}
+                                onClick={() => router.push('/support/download')}
                             >
                                 첫 번째 맵 만들기
                             </Button>
