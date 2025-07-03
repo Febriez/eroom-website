@@ -1,3 +1,4 @@
+// lib/hooks/useNotifications.ts
 import {useEffect, useState} from 'react'
 import {SocialService} from '@/lib/firebase/services'
 import type {Notification, User} from '@/lib/firebase/types'

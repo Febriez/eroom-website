@@ -26,6 +26,24 @@ export function useConversations() {
     const [conversations, setConversations] = useState<ConversationWithParticipant[]>([])
     const [loading, setLoading] = useState(true)
     const [totalUnreadCount, setTotalUnreadCount] = useState(0)
+    const [dismissedConversations, setDismissedConversations] = useState<Set<string>>(new Set())
+
+    // localStorage에서 닫은 대화 목록 불러오기
+    useEffect(() => {
+        if (user) {
+            const saved = localStorage.getItem(`dismissedMessages_${user.uid}`)
+            if (saved) {
+                setDismissedConversations(new Set(JSON.parse(saved)))
+            }
+        }
+    }, [user])
+
+    // 닫은 대화 목록을 localStorage에 저장
+    const saveDismissedConversations = (dismissed: Set<string>) => {
+        if (user) {
+            localStorage.setItem(`dismissedMessages_${user.uid}`, JSON.stringify(Array.from(dismissed)))
+        }
+    }
 
     useEffect(() => {
         if (!user) {
@@ -76,6 +94,19 @@ export function useConversations() {
                     })
                 );
 
+                // 새로운 메시지가 있으면 닫기 상태 해제
+                conversationsWithParticipants.forEach(conv => {
+                    if (conv.lastMessage &&
+                        conv.lastMessage.senderId !== user.uid &&
+                        dismissedConversations.has(conv.id)) {
+                        // 이전에 닫았던 대화에 새 메시지가 왔으면 다시 표시
+                        const newDismissed = new Set(dismissedConversations)
+                        newDismissed.delete(conv.id)
+                        setDismissedConversations(newDismissed)
+                        saveDismissedConversations(newDismissed)
+                    }
+                })
+
                 setConversations(conversationsWithParticipants)
 
                 // 총 읽지 않은 메시지 수 계산
@@ -89,7 +120,7 @@ export function useConversations() {
         )
 
         return () => unsubscribe()
-    }, [user])
+    }, [user, dismissedConversations])
 
     const createConversation = async (
         targetUserId: string,
@@ -132,11 +163,39 @@ export function useConversations() {
         }
     }
 
+    // 대화 닫기
+    const dismissConversation = (conversationId: string) => {
+        const newDismissed = new Set(dismissedConversations)
+        newDismissed.add(conversationId)
+        setDismissedConversations(newDismissed)
+        saveDismissedConversations(newDismissed)
+    }
+
+    // 닫은 대화 다시 열기
+    const undismissConversation = (conversationId: string) => {
+        const newDismissed = new Set(dismissedConversations)
+        newDismissed.delete(conversationId)
+        setDismissedConversations(newDismissed)
+        saveDismissedConversations(newDismissed)
+    }
+
+    // 모든 닫은 대화 초기화
+    const clearDismissedConversations = () => {
+        setDismissedConversations(new Set())
+        if (user) {
+            localStorage.removeItem(`dismissedMessages_${user.uid}`)
+        }
+    }
+
     return {
         conversations,
         loading,
         totalUnreadCount,
+        dismissedConversations,
         createConversation,
-        markAllConversationsAsRead
+        markAllConversationsAsRead,
+        dismissConversation,
+        undismissConversation,
+        clearDismissedConversations
     }
 }

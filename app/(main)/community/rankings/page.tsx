@@ -31,7 +31,7 @@ export default function RankingsPage() {
     const loadUsers = async (type: 'level' | 'playCount' | 'mapsCreated' | 'avgRating') => {
         setLoading(true)
         try {
-            let userData: User[] = []
+            let userData: User[]
 
             // 모든 유저 가져오기
             userData = await UserService.getAllUsers()
@@ -61,24 +61,60 @@ export default function RankingsPage() {
                 })
             )
 
-            // 정렬
+            // 복잡한 정렬 로직: 메인 수치 → 레벨 → 포인트 → 이름
             let sortedUsers = [...usersWithStats]
             switch (type) {
                 case 'level':
-                    sortedUsers.sort((a, b) => b.level - a.level)
+                    sortedUsers.sort((a, b) => {
+                        // 1. 레벨로 정렬
+                        if (b.level !== a.level) return b.level - a.level
+                        // 2. 레벨이 같으면 포인트로 정렬
+                        if (b.points !== a.points) return b.points - a.points
+                        // 3. 포인트도 같으면 이름순
+                        return a.displayName.localeCompare(b.displayName)
+                    })
                     break
                 case 'playCount':
-                    sortedUsers.sort((a, b) => (b.totalMapPlays || 0) - (a.totalMapPlays || 0))
+                    sortedUsers.sort((a, b) => {
+                        // 1. 플레이 횟수로 정렬
+                        const playCountDiff = (b.totalMapPlays || 0) - (a.totalMapPlays || 0)
+                        if (playCountDiff !== 0) return playCountDiff
+                        // 2. 플레이 횟수가 같으면 레벨로 정렬
+                        if (b.level !== a.level) return b.level - a.level
+                        // 3. 레벨도 같으면 포인트로 정렬
+                        if (b.points !== a.points) return b.points - a.points
+                        // 4. 포인트도 같으면 이름순
+                        return a.displayName.localeCompare(b.displayName)
+                    })
                     break
                 case 'mapsCreated':
-                    sortedUsers.sort((a, b) => b.stats.mapsCreated - a.stats.mapsCreated)
+                    sortedUsers.sort((a, b) => {
+                        // 1. 제작한 맵 수로 정렬
+                        if (b.stats.mapsCreated !== a.stats.mapsCreated) return b.stats.mapsCreated - a.stats.mapsCreated
+                        // 2. 맵 수가 같으면 레벨로 정렬
+                        if (b.level !== a.level) return b.level - a.level
+                        // 3. 레벨도 같으면 포인트로 정렬
+                        if (b.points !== a.points) return b.points - a.points
+                        // 4. 포인트도 같으면 이름순
+                        return a.displayName.localeCompare(b.displayName)
+                    })
                     break
                 case 'avgRating':
-                    sortedUsers.sort((a, b) => (b.avgMapRating || 0) - (a.avgMapRating || 0))
+                    sortedUsers.sort((a, b) => {
+                        // 1. 평균 평점으로 정렬
+                        const ratingDiff = (b.avgMapRating || 0) - (a.avgMapRating || 0)
+                        if (ratingDiff !== 0) return ratingDiff
+                        // 2. 평점이 같으면 레벨로 정렬
+                        if (b.level !== a.level) return b.level - a.level
+                        // 3. 레벨도 같으면 포인트로 정렬
+                        if (b.points !== a.points) return b.points - a.points
+                        // 4. 포인트도 같으면 이름순
+                        return a.displayName.localeCompare(b.displayName)
+                    })
                     break
             }
 
-            setUsers(sortedUsers.slice(0, 50)) // 상위 50명만 표시
+            setUsers(sortedUsers) // 모든 유저 표시
         } catch (error) {
             console.error('Error loading users:', error)
         } finally {
@@ -93,7 +129,7 @@ export default function RankingsPage() {
             case 2:
                 return <Medal className="w-6 h-6 text-gray-300"/>
             case 3:
-                return <Medal className="w-6 h-6 text-orange-400"/>
+                return <Medal className="w-6 h-6 text-amber-700"/> // 어두운 갈색으로 변경
             default:
                 return null
         }
@@ -106,7 +142,7 @@ export default function RankingsPage() {
             case 2:
                 return 'bg-gradient-to-r from-gray-800/20 to-gray-700/20 border-gray-600/50'
             case 3:
-                return 'bg-gradient-to-r from-orange-900/20 to-orange-800/20 border-orange-700/50'
+                return 'bg-gradient-to-r from-amber-900/20 to-amber-800/20 border-amber-700/50' // 어두운 갈색으로 변경
             default:
                 return ''
         }
@@ -239,15 +275,22 @@ export default function RankingsPage() {
 
                                             <div className="w-full space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                        <span
-                                                            className="text-sm text-gray-400">{getRankLabel(activeTab)}</span>
+                                                    <span
+                                                        className="text-sm text-gray-400">{getRankLabel(activeTab)}</span>
                                                     <span
                                                         className="font-bold text-lg">{getRankValue(user, activeTab)}</span>
                                                 </div>
-                                                {activeTab === 'level' && (
+                                                {activeTab === 'level' ? (
+                                                    // 레벨 탭에서는 포인트 표시
                                                     <div className="flex items-center justify-between text-sm">
                                                         <span className="text-gray-500">포인트</span>
                                                         <span>{formatCount(user.points)}</span>
+                                                    </div>
+                                                ) : (
+                                                    // 다른 탭에서는 레벨 표시
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-gray-500">레벨</span>
+                                                        <span>Lv.{user.level}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -260,7 +303,7 @@ export default function RankingsPage() {
                         {/* 전체 랭킹 리스트 */}
                         <Card className="overflow-hidden">
                             <div className="p-4 border-b border-gray-800">
-                                <h2 className="text-xl font-bold">전체 순위</h2>
+                                <h2 className="text-xl font-bold">전체 순위 ({users.length}명)</h2>
                             </div>
 
                             <div className="overflow-x-auto">
@@ -269,14 +312,17 @@ export default function RankingsPage() {
                                     <tr>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">순위</th>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">유저</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">레벨</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">{getRankLabel(activeTab)}</th>
-                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">포인트</th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">
+                                            {activeTab === 'level' ? '레벨' : getRankLabel(activeTab)}
+                                        </th>
+                                        <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">
+                                            {activeTab === 'level' ? '포인트' : '레벨'}
+                                        </th>
                                         <th className="text-center px-6 py-4 text-sm font-medium text-gray-400">승률</th>
                                     </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
-                                    {users.slice(3).map((user, index) => (
+                                    {users.map((user, index) => (
                                         <tr
                                             key={user.id}
                                             className="hover:bg-gray-900/30 transition-colors cursor-pointer"
@@ -284,7 +330,7 @@ export default function RankingsPage() {
                                         >
                                             <td className="px-6 py-4">
                                                 <span className="text-2xl font-bold text-gray-500">
-                                                    #{index + 4}
+                                                    #{index + 1}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
@@ -297,18 +343,25 @@ export default function RankingsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <Badge variant={getLevelBadgeColor(user.level) as any} size="sm">
-                                                    Lv.{user.level}
-                                                </Badge>
+                                                {activeTab === 'level' ? (
+                                                    <Badge variant={getLevelBadgeColor(user.level) as any} size="sm">
+                                                        Lv.{user.level}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="font-bold">{getRankValue(user, activeTab)}</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="font-bold">{getRankValue(user, activeTab)}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Zap className="w-4 h-4 text-yellow-400"/>
-                                                    <span>{formatCount(user.points)}</span>
-                                                </div>
+                                                {activeTab === 'level' ? (
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Zap className="w-4 h-4 text-yellow-400"/>
+                                                        <span>{formatCount(user.points)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <Badge variant={getLevelBadgeColor(user.level) as any} size="sm">
+                                                        Lv.{user.level}
+                                                    </Badge>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className="text-sm">{user.stats.winRate}%</span>

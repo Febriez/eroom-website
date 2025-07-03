@@ -49,7 +49,13 @@ export default function Navigation() {
     const [showProfileMenu, setShowProfileMenu] = useState(false)
     const {user, loading: authLoading, logout} = useAuth()
     const {notifications, unreadCount, markAllAsRead: markAllNotificationsAsRead, markAsRead} = useNotifications()
-    const {conversations, totalUnreadCount, markAllConversationsAsRead} = useConversations()
+    const {
+        conversations,
+        totalUnreadCount,
+        dismissedConversations,
+        markAllConversationsAsRead,
+        dismissConversation
+    } = useConversations()
     const router = useRouter()
 
     // 표시할 최대 알림/메시지 수
@@ -194,6 +200,13 @@ export default function Navigation() {
         setShowNotifications(false)
     }
 
+    // 받은 메시지만 필터링 (닫지 않은 것만)
+    const receivedMessages = conversations.filter(conv =>
+        conv.lastMessage &&
+        conv.lastMessage.senderId !== user?.uid &&
+        !dismissedConversations.has(conv.id)
+    )
+
     return (
         <>
             <nav className={`fixed w-full z-40 transition-all duration-300 safe-top ${
@@ -287,13 +300,13 @@ export default function Navigation() {
                                         >
                                             <MessageSquare
                                                 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
-                                            {totalUnreadCount > 0 && (
+                                            {receivedMessages.length > 0 && (
                                                 <span
                                                     className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
                                             )}
                                         </button>
 
-                                        {/* Message Preview */}
+                                        {/* Message Preview - 받은 메시지만 표시 */}
                                         <div
                                             className={`absolute top-full right-0 mt-2 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
                                                 showMessages
@@ -302,7 +315,7 @@ export default function Navigation() {
                                             }`}>
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
-                                                    메시지
+                                                    받은 메시지
                                                     {totalUnreadCount > 0 && (
                                                         <button
                                                             onClick={(e) => {
@@ -318,21 +331,23 @@ export default function Navigation() {
                                                 </h3>
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
-                                                {conversations.length > 0 ? (
+                                                {receivedMessages.length > 0 ? (
                                                     <>
-                                                        {conversations.slice(0, MAX_PREVIEW_ITEMS).map((conversation) => {
+                                                        {receivedMessages.slice(0, MAX_PREVIEW_ITEMS).map((conversation) => {
                                                             const unreadCount = conversation.unreadCount?.[user.uid] || 0
                                                             const hasUnread = unreadCount > 0
 
                                                             return (
                                                                 <div
                                                                     key={conversation.id}
-                                                                    className={`p-4 hover:bg-gray-900 transition-colors cursor-pointer ${
+                                                                    className={`relative p-4 hover:bg-gray-900 transition-colors ${
                                                                         hasUnread ? 'bg-gray-900' : ''
                                                                     }`}
-                                                                    onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
                                                                 >
-                                                                    <div className="flex items-start gap-3">
+                                                                    <div
+                                                                        className="flex items-start gap-3 cursor-pointer"
+                                                                        onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
+                                                                    >
                                                                         <Avatar
                                                                             src={conversation.otherParticipant?.avatarUrl}
                                                                             size="sm"
@@ -358,10 +373,21 @@ export default function Navigation() {
                                                                             </span>
                                                                         )}
                                                                     </div>
+                                                                    {/* X 버튼 */}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            dismissConversation(conversation.id)
+                                                                        }}
+                                                                        className="absolute top-2 right-2 p-1 hover:bg-gray-800 rounded transition-colors"
+                                                                        title="메시지 숨기기"
+                                                                    >
+                                                                        <X className="w-3 h-3 text-gray-500 hover:text-white"/>
+                                                                    </button>
                                                                 </div>
                                                             )
                                                         })}
-                                                        {conversations.length > MAX_PREVIEW_ITEMS && (
+                                                        {receivedMessages.length > MAX_PREVIEW_ITEMS && (
                                                             <button
                                                                 onClick={() => router.push(`/profile/${user.username}`)}
                                                                 className="w-full p-3 text-center text-sm text-gray-400 hover:text-green-400 hover:bg-gray-900 transition-all flex items-center justify-center gap-2"
@@ -374,7 +400,7 @@ export default function Navigation() {
                                                 ) : (
                                                     <div className="p-8 text-center text-gray-500">
                                                         <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50"/>
-                                                        <p className="text-sm">메시지가 없습니다</p>
+                                                        <p className="text-sm">받은 메시지가 없습니다</p>
                                                     </div>
                                                 )}
                                             </div>

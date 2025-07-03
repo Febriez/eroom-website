@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
-import {validateUsername} from '@/lib/utils/validators'
+import {validateDisplayName, validateUsername} from '@/lib/utils/validators'
 import {doc, serverTimestamp, setDoc, Unsubscribe} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'
@@ -144,8 +144,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         username: string
     ) => {
         try {
-            // 닉네임 검증
-            const displayNameValidation = validateUsername(displayName)
+            // 닉네임(displayName) 검증
+            const displayNameValidation = validateDisplayName(displayName)
             if (!displayNameValidation.isValid) {
                 throw new Error(displayNameValidation.error)
             }
@@ -256,11 +256,20 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     counter++
                 }
 
-                // displayName 검증 및 조정
-                let displayName = firebaseUser.displayName || 'Player'
-                const displayNameValidation = validateUsername(displayName)
+                // displayName 설정 - 이메일 앞부분 사용
+                let displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Player'
+
+                // displayName 유효성 검증 (validateDisplayName 사용)
+                const displayNameValidation = validateDisplayName(displayName)
                 if (!displayNameValidation.isValid) {
-                    displayName = 'Player'
+                    // 이메일 앞부분 사용 시도
+                    displayName = firebaseUser.email?.split('@')[0] || 'Player'
+
+                    // 그래도 유효하지 않으면 기본값 사용
+                    const secondValidation = validateDisplayName(displayName)
+                    if (!secondValidation.isValid) {
+                        displayName = 'Player'
+                    }
                 }
 
                 const newUser: User = {

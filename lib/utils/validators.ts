@@ -34,15 +34,15 @@ export const validateDisplayName = (displayName: string): { isValid: boolean; er
         return {isValid: false, error: '닉네임은 공백만으로 만들 수 없습니다.'};
     }
 
-    // 길이 체크 (한글은 2자로 계산, 최대 16자)
+    // 길이 체크 (한글은 2자로 계산, 3~16자)
     const length = getStringLength(displayName);
     if (length > 16) {
         return {isValid: false, error: '닉네임은 최대 16자(한글 8자)까지 가능합니다.'};
     }
 
     // 최소 길이 체크
-    if (length < 2) {
-        return {isValid: false, error: '닉네임은 최소 2자 이상이어야 합니다.'};
+    if (length < 3) {
+        return {isValid: false, error: '닉네임은 최소 3자 이상이어야 합니다.'};
     }
 
     // 허용되지 않는 특수문자 체크
@@ -159,6 +159,7 @@ export const validateBio = (bio: string): { isValid: boolean; error?: string } =
 
     return {isValid: true};
 };
+
 /**
  * 태그 유효성 검증
  */
