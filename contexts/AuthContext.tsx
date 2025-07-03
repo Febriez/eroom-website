@@ -34,11 +34,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
+// 알림 권한 요청 함수
+const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+        return
+    }
+
+    // 이미 권한이 있거나 거부된 경우 요청하지 않음
+    if (Notification.permission !== 'default') {
+        return
+    }
+
+    try {
+        const permission = await Notification.requestPermission()
+        if (permission === 'granted') {
+            console.log('알림 권한이 허용되었습니다.')
+        }
+    } catch (error) {
+        console.error('알림 권한 요청 중 오류:', error)
+    }
+}
+
 export function AuthProvider({children}: { children: React.ReactNode }) {
     const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [userUnsubscribe, setUserUnsubscribe] = useState<Unsubscribe | null>(null)
+    const [hasRequestedPermission, setHasRequestedPermission] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -56,21 +78,24 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 const unsub = UserService.subscribeToUser(firebaseUser.uid, (userData) => {
                     setUser(userData)
 
-                    // 사용자가 로그인하면 알림 권한 요청
-                    if (userData && 'Notification' in window && Notification.permission === 'default') {
-                        // 사용자의 브라우저 알림 설정이 켜져 있는 경우에만 권한 요청
-                        if (userData.settings?.notifications?.browserNotifications !== false) {
+                    // 로그인한 사용자에게 한 번만 알림 권한 요청
+                    if (userData && !hasRequestedPermission) {
+                        // 브라우저 알림이 활성화된 사용자만 권한 요청
+                        const browserNotificationsEnabled = userData.settings?.notifications?.browserNotifications !== false
+
+                        if (browserNotificationsEnabled) {
+                            // 3초 후에 권한 요청 (사용자가 페이지에 적응할 시간)
                             setTimeout(() => {
-                                Notification.requestPermission().then(permission => {
-                                    console.log('Notification permission:', permission)
-                                })
-                            }, 2000) // 2초 후에 요청 (사용자가 페이지에 적응할 시간을 줌)
+                                requestNotificationPermission()
+                                setHasRequestedPermission(true)
+                            }, 3000)
                         }
                     }
                 })
                 setUserUnsubscribe(() => unsub)
             } else {
                 setUser(null)
+                setHasRequestedPermission(false)
             }
 
             setLoading(false)
@@ -82,7 +107,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 userUnsubscribe()
             }
         }
-    }, [])
+    }, [hasRequestedPermission])
 
     const checkUsernameAvailability = async (username: string): Promise<boolean> => {
         try {
@@ -185,7 +210,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                         gameInvites: true,
                         achievements: true,
                         updates: true,
-                        marketing: false
+                        marketing: false,
+                        browserNotifications: true  // 신규 사용자는 기본값 true
                     }
                 },
                 role: 'user',
@@ -285,7 +311,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                             gameInvites: true,
                             achievements: true,
                             updates: true,
-                            marketing: false
+                            marketing: false,
+                            browserNotifications: true  // 신규 사용자는 기본값 true
                         }
                     },
                     role: 'user',
@@ -330,6 +357,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             await signOut(auth)
             setUser(null)
             setFirebaseUser(null)
+            setHasRequestedPermission(false)
 
             router.push('/')
             setTimeout(() => {
