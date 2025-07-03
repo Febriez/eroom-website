@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
-import {Check, Edit, MessageSquare, Settings, Shield, UserPlus, X} from 'lucide-react'
+import {Check, Edit, MessageSquare, Settings, Shield, Users, X} from 'lucide-react'
 import {useProfile} from '@/contexts/ProfileContext'
 import type {User} from '@/lib/firebase/types'
 
@@ -16,6 +16,7 @@ interface ProfileHeaderProps {
     hasPendingRequest?: boolean
     receivedRequest?: boolean
     socialLoading: boolean
+    friendRequestCount?: number
     onShowUsernameModal: () => void
     onShowSettingsModal: () => void
     onShowFriendRequests?: () => void
@@ -38,6 +39,7 @@ export default function ProfileHeader({
                                           hasPendingRequest,
                                           receivedRequest,
                                           socialLoading,
+                                          friendRequestCount = 0,
                                           onShowUsernameModal,
                                           onShowSettingsModal,
                                           onShowFriendRequests,
@@ -263,10 +265,16 @@ export default function ProfileHeader({
                                 <Settings className="w-4 h-4"/>
                                 환경설정
                             </Button>
-                            <Button variant="secondary" onClick={onShowFriendRequests}
-                                    className="flex items-center gap-2">
-                                <UserPlus className="w-4 h-4"/>
-                                친구 요청
+                            <Button variant="outline" onClick={onShowFriendRequests}
+                                    className="flex items-center gap-2 relative">
+                                <Users className="w-4 h-4"/>
+                                <span>친구 요청 관리</span>
+                                {friendRequestCount > 0 && (
+                                    <span
+                                        className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1">
+                                        {friendRequestCount}
+                                    </span>
+                                )}
                             </Button>
                             <Button variant="primary" onClick={onMessageClick} className="flex items-center gap-2">
                                 <MessageSquare className="w-4 h-4"/>

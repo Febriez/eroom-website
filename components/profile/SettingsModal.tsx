@@ -114,9 +114,8 @@ export default function SettingsModal({
 
             setSettingsSaved(true)
             setTimeout(() => {
-                onClose()
                 setSettingsSaved(false)
-            }, 1500)
+            }, 3000)
         } catch (e) {
             console.error(e)
             alert('설정 저장에 실패했습니다.')
