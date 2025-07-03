@@ -1,8 +1,8 @@
 import {useEffect, useState} from 'react'
-import {Clock, MessageSquare, Users} from 'lucide-react'
+import {Clock, MessageSquare, Users, X} from 'lucide-react'
 import {Modal} from '@/components/ui/Modal'
 import {Avatar} from '@/components/ui/Avatar'
-import {UserService} from '@/lib/firebase/services'
+import {SocialService, UserService} from '@/lib/firebase/services'
 import type {User} from '@/lib/firebase/types'
 import {useRouter} from 'next/navigation'
 import {useAuth} from '@/contexts/AuthContext'
@@ -11,7 +11,7 @@ import {useConversations} from '@/lib/hooks/useConversations'
 interface SocialListModalProps {
     isOpen: boolean
     onClose: () => void
-    type: 'followers' | 'following'
+    type: 'followers' | 'following' | 'friends'
     userIds: string[]
     currentUserId: string
 }
@@ -34,8 +34,9 @@ export default function SocialListModal({
     const [loading, setLoading] = useState(true)
     const [sortBy, setSortBy] = useState<SortBy>('time')
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+    const [removingFollower, setRemovingFollower] = useState<string | null>(null)
     const router = useRouter()
-    const {user: currentUser} = useAuth()
+    const {user: currentUser, updateUserProfile} = useAuth()
     const {createConversation} = useConversations()
     const [messageLoading, setMessageLoading] = useState<string | null>(null)
 
@@ -125,6 +126,33 @@ export default function SocialListModal({
         }
     }
 
+    const handleRemoveFollower = async (followerUser: User) => {
+        if (!currentUser || type !== 'followers' || !confirm(`${followerUser.displayName}님을 팔로워에서 제거하시겠습니까?`)) return
+
+        setRemovingFollower(followerUser.uid)
+        try {
+            // SocialService의 removeFollower 메소드 사용
+            await SocialService.removeFollower(currentUser.uid, followerUser.uid)
+
+            // 목록에서 제거
+            setUsers(users.filter(u => u.uid !== followerUser.uid))
+
+            // 현재 사용자의 팔로워 목록 업데이트
+            await updateUserProfile({
+                social: {
+                    ...currentUser.social,
+                    followers: currentUser.social.followers.filter(id => id !== followerUser.uid)
+                }
+            })
+
+        } catch (error) {
+            console.error('Error removing follower:', error)
+            alert('팔로워 제거 중 오류가 발생했습니다.')
+        } finally {
+            setRemovingFollower(null)
+        }
+    }
+
     const formatFollowTime = (date?: Date) => {
         if (!date) return ''
 
@@ -140,11 +168,24 @@ export default function SocialListModal({
         return '방금 전'
     }
 
+    const getModalTitle = () => {
+        switch (type) {
+            case 'followers':
+                return '팔로워'
+            case 'following':
+                return '팔로잉'
+            case 'friends':
+                return '친구'
+            default:
+                return ''
+        }
+    }
+
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={type === 'followers' ? '팔로워' : '팔로잉'}
+            title={getModalTitle()}
             size="lg"
         >
             <div className="h-[600px] flex flex-col">
@@ -191,70 +232,103 @@ export default function SocialListModal({
                         </div>
                     ) : sortedUsers.length > 0 ? (
                         <div className="grid gap-3">
-                            {sortedUsers.map((user) => (
-                                <div
-                                    key={user.uid}
-                                    className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div
-                                            className="flex items-center gap-3 flex-1 cursor-pointer"
-                                            onClick={() => handleProfileClick(user.username)}
-                                        >
-                                            <Avatar
-                                                src={user.avatarUrl}
-                                                alt={user.username}
-                                                size="md"
-                                            />
-                                            <div className="flex-1">
-                                                <h3 className="font-medium text-white">
-                                                    {user.displayName}
-                                                </h3>
-                                                <p className="text-sm text-gray-400">
-                                                    @{user.username}
-                                                </p>
-                                                <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <Users className="w-3 h-3"/>
-                                                        {user.social.followers.length} 팔로워
-                                                    </span>
-                                                    {user.followTime && (
+                            {sortedUsers.map((user) => {
+                                const isCurrentUser = currentUser?.uid === currentUserId
+                                const canRemoveFollower = type === 'followers' && isCurrentUser
+
+                                return (
+                                    <div
+                                        key={user.uid}
+                                        className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div
+                                                className="flex items-center gap-3 flex-1 cursor-pointer"
+                                                onClick={() => handleProfileClick(user.username)}
+                                            >
+                                                <Avatar
+                                                    src={user.avatarUrl}
+                                                    alt={user.username}
+                                                    size="md"
+                                                />
+                                                <div className="flex-1">
+                                                    <h3 className="font-medium text-white">
+                                                        {user.displayName}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-400">
+                                                        @{user.username}
+                                                    </p>
+                                                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
                                                         <span className="flex items-center gap-1">
-                                                            <Clock className="w-3 h-3"/>
-                                                            {formatFollowTime(user.followTime)}
+                                                            <Users className="w-3 h-3"/>
+                                                            {user.social.followers.length} 팔로워
                                                         </span>
-                                                    )}
+                                                        {user.followTime && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Clock className="w-3 h-3"/>
+                                                                {formatFollowTime(user.followTime)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* 메시지 버튼 */}
-                                        {currentUser && user.uid !== currentUser.uid && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleMessageClick(user)
-                                                }}
-                                                disabled={messageLoading === user.uid}
-                                                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
-                                                title="메시지 보내기"
-                                            >
-                                                {messageLoading === user.uid ? (
-                                                    <div
-                                                        className="animate-spin rounded-full h-4 w-4 border-t-2 border-green-500"/>
-                                                ) : (
-                                                    <MessageSquare className="w-4 h-4 text-green-400"/>
+                                            <div className="flex items-center gap-2">
+                                                {/* 팔로워 제거 버튼 */}
+                                                {canRemoveFollower && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleRemoveFollower(user)
+                                                        }}
+                                                        disabled={removingFollower === user.uid}
+                                                        className="p-2 bg-red-900/20 hover:bg-red-900/40 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="팔로워 제거"
+                                                    >
+                                                        {removingFollower === user.uid ? (
+                                                            <div
+                                                                className="animate-spin rounded-full h-4 w-4 border-t-2 border-red-500"/>
+                                                        ) : (
+                                                            <X className="w-4 h-4 text-red-400"/>
+                                                        )}
+                                                    </button>
                                                 )}
-                                            </button>
-                                        )}
+
+                                                {/* 메시지 버튼 */}
+                                                {currentUser && user.uid !== currentUser.uid && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleMessageClick(user)
+                                                        }}
+                                                        disabled={messageLoading === user.uid}
+                                                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="메시지 보내기"
+                                                    >
+                                                        {messageLoading === user.uid ? (
+                                                            <div
+                                                                className="animate-spin rounded-full h-4 w-4 border-t-2 border-green-500"/>
+                                                        ) : (
+                                                            <MessageSquare className="w-4 h-4 text-green-400"/>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-gray-500">
                             <Users className="w-12 h-12 mb-2 opacity-50"/>
-                            <p>{type === 'followers' ? '팔로워가 없습니다' : '팔로잉이 없습니다'}</p>
+                            <p>
+                                {type === 'followers'
+                                    ? '팔로워가 없습니다'
+                                    : type === 'following'
+                                        ? '팔로잉이 없습니다'
+                                        : '친구가 없습니다'}
+                            </p>
                         </div>
                     )}
                 </div>

@@ -200,11 +200,14 @@ export default function Navigation() {
         setShowNotifications(false)
     }
 
-    // 받은 메시지만 필터링 (닫지 않은 것만)
-    const receivedMessages = conversations.filter(conv =>
-        conv.lastMessage &&
-        conv.lastMessage.senderId !== user?.uid &&
-        !dismissedConversations.has(conv.id)
+    // 받은 메시지만 필터링 (닫지 않은 것만) - useMemo로 최적화
+    const receivedMessages = React.useMemo(() =>
+            conversations.filter(conv =>
+                conv.lastMessage &&
+                conv.lastMessage.senderId !== user?.uid &&
+                !dismissedConversations.has(conv.id)
+            ),
+        [conversations, user?.uid, dismissedConversations]
     )
 
     return (

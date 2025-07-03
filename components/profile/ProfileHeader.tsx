@@ -3,6 +3,7 @@ import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
 import {Check, Edit, MessageSquare, Settings, Shield, Users, X} from 'lucide-react'
 import {useProfile} from '@/contexts/ProfileContext'
+import {validateDisplayName} from '@/lib/utils/validators'
 import type {User} from '@/lib/firebase/types'
 
 interface ProfileHeaderProps {
@@ -26,6 +27,7 @@ interface ProfileHeaderProps {
     onBlockToggle: () => void
     onShowFollowers: () => void
     onShowFollowing: () => void
+    onShowFriends?: () => void
 }
 
 export default function ProfileHeader({
@@ -48,7 +50,8 @@ export default function ProfileHeader({
                                           onFollowToggle,
                                           onBlockToggle,
                                           onShowFollowers,
-                                          onShowFollowing
+                                          onShowFollowing,
+                                          onShowFriends
                                       }: ProfileHeaderProps) {
     const {updateUserProfile} = useProfile()
     const [isEditingDisplayName, setIsEditingDisplayName] = useState(false)
@@ -60,6 +63,14 @@ export default function ProfileHeader({
 
     const handleSaveDisplayName = async () => {
         if (!profileUser || !isOwnProfile) return
+
+        // 닉네임 검증
+        const validation = validateDisplayName(editForm.displayName)
+        if (!validation.isValid) {
+            alert(validation.error)
+            return
+        }
+
         try {
             await updateUserProfile({displayName: editForm.displayName})
             setIsEditingDisplayName(false)
@@ -96,20 +107,22 @@ export default function ProfileHeader({
     }
 
     return (
-        <div className="bg-gray-900 rounded-xl p-8 mb-8">
-            <div className="flex items-start justify-between">
-                <div className="flex items-center gap-6">
-                    <Avatar src={profileUser.avatarUrl} size="lg"/>
-                    <div className="flex-1">
+        <div className="bg-gray-900 rounded-xl p-4 sm:p-6 lg:p-8 mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 flex-1">
+                    <Avatar src={profileUser.avatarUrl} size="lg" className="flex-shrink-0"/>
+                    <div className="flex-1 w-full sm:w-auto">
                         {/* 디스플레이 네임 */}
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
                             {isEditingDisplayName && isOwnProfile ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 w-full">
                                     <input
                                         type="text"
                                         value={editForm.displayName}
                                         onChange={e => setEditForm({...editForm, displayName: e.target.value})}
-                                        className="text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500"
+                                        className="flex-1 max-w-md text-2xl sm:text-3xl font-bold bg-gray-800 border border-gray-700 rounded px-3 py-1 focus:outline-none focus:border-green-500"
+                                        maxLength={32}
+                                        placeholder="닉네임 입력"
                                         autoFocus
                                     />
                                     <button
@@ -130,7 +143,7 @@ export default function ProfileHeader({
                                 </div>
                             ) : (
                                 <>
-                                    <h1 className="text-3xl font-bold">{profileUser.displayName}</h1>
+                                    <h1 className="text-2xl sm:text-3xl font-bold break-words">{profileUser.displayName}</h1>
                                     {isOwnProfile && (
                                         <button
                                             onClick={() => setIsEditingDisplayName(true)}
@@ -189,8 +202,10 @@ export default function ProfileHeader({
                                                 handleSaveBio()
                                             }
                                         }}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-green-500 text-gray-300 resize-none whitespace-pre-wrap break-words"
                                         rows={3}
+                                        maxLength={200}
+                                        placeholder="자기소개를 입력하세요 (Ctrl+Enter로 저장)"
                                     />
                                     <div className="flex gap-2">
                                         <button onClick={handleSaveBio}
@@ -209,16 +224,16 @@ export default function ProfileHeader({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-start gap-2">
+                                <div className="flex items-start gap-2 w-full">
                                     {profileUser.bio ? (
-                                        <p className="text-gray-300"
+                                        <p className="text-gray-300 break-words whitespace-pre-wrap flex-1"
                                            dangerouslySetInnerHTML={{__html: renderMarkdown(profileUser.bio)}}/>
                                     ) : (
                                         <p className="text-gray-500 italic">자기소개가 없습니다</p>
                                     )}
                                     {isOwnProfile && (
                                         <button onClick={() => setIsEditingBio(true)}
-                                                className="p-1 hover:bg-gray-800 rounded">
+                                                className="p-1 hover:bg-gray-800 rounded flex-shrink-0">
                                             <Edit className="w-3.5 h-3.5 text-white opacity-70"/>
                                         </button>
                                     )}
@@ -227,37 +242,56 @@ export default function ProfileHeader({
                         </div>
 
                         {/* 소셜 통계 */}
-                        <div className="flex gap-4 text-sm text-gray-400">
-                            <span>레벨 {profileUser.level}</span>
-                            <span>{profileUser.points.toLocaleString()} 포인트</span>
+                        <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-400">
+                            <div className="flex flex-col items-center">
+                                <span>레벨 {profileUser.level}</span>
+                                <span className="text-xs">{profileUser.points.toLocaleString()} 포인트</span>
+                            </div>
+
+                            <div className="h-8 w-px bg-gray-700"></div>
+
                             {isOwnProfile ? (
                                 <>
                                     <button
                                         onClick={onShowFollowers}
                                         className="hover:text-white transition-colors cursor-pointer"
                                     >
-                                        {profileUser.social.followers.length} 팔로워
+                                        팔로워 {profileUser.social.followers.length}
                                     </button>
+
+                                    <div className="h-8 w-px bg-gray-700"></div>
+
                                     <button
                                         onClick={onShowFollowing}
                                         className="hover:text-white transition-colors cursor-pointer"
                                     >
-                                        {profileUser.social.following.length} 팔로잉
+                                        팔로잉 {profileUser.social.following.length}
+                                    </button>
+
+                                    <div className="h-8 w-px bg-gray-700"></div>
+
+                                    <button
+                                        onClick={onShowFriends}
+                                        className="hover:text-white transition-colors cursor-pointer"
+                                    >
+                                        친구 {profileUser.social.friendCount}
                                     </button>
                                 </>
                             ) : (
                                 <>
-                                    <span>{profileUser.social.followers.length} 팔로워</span>
-                                    <span>{profileUser.social.following.length} 팔로잉</span>
+                                    <span>팔로워 {profileUser.social.followers.length}</span>
+                                    <div className="h-8 w-px bg-gray-700"></div>
+                                    <span>팔로잉 {profileUser.social.following.length}</span>
+                                    <div className="h-8 w-px bg-gray-700"></div>
+                                    <span>친구 {profileUser.social.friendCount}</span>
                                 </>
                             )}
-                            <span>{profileUser.social.friendCount} 친구</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 액션 버튼들 */}
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-start lg:justify-end">
                     {isOwnProfile ? (
                         <>
                             <Button variant="secondary" onClick={onShowSettingsModal}
@@ -272,8 +306,8 @@ export default function ProfileHeader({
                                 {friendRequestCount > 0 && (
                                     <span
                                         className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1">
-                                        {friendRequestCount}
-                                    </span>
+                        {friendRequestCount}
+                    </span>
                                 )}
                             </Button>
                             <Button variant="primary" onClick={onMessageClick} className="flex items-center gap-2">
@@ -283,43 +317,59 @@ export default function ProfileHeader({
                         </>
                     ) : (
                         <>
-                            <Button
-                                variant={isFriend ? "secondary" : receivedRequest ? "primary" : hasPendingRequest ? "secondary" : "outline"}
-                                onClick={onFriendToggle}
-                                disabled={socialLoading || isBlocked}
-                                className="flex items-center gap-2"
-                            >
-                                {isFriend ? '친구' : receivedRequest ? '친구 요청 받음' : hasPendingRequest ? '요청 대기중' : '친구 추가'}
-                            </Button>
+                            {/* 차단 상태면 차단 해제 버튼만 표시 */}
+                            {isBlocked ? (
+                                <>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={onBlockToggle}
+                                        disabled={socialLoading}
+                                        className="flex items-center gap-2 text-red-500 hover:text-red-400"
+                                    >
+                                        <Shield className="w-4 h-4"/>
+                                        차단해제
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant={isFriend ? "secondary" : receivedRequest ? "primary" : hasPendingRequest ? "secondary" : "outline"}
+                                        onClick={onFriendToggle}
+                                        disabled={socialLoading}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {isFriend ? '친구' : receivedRequest ? '친구 요청 받음' : hasPendingRequest ? '요청 대기중' : '친구 추가'}
+                                    </Button>
 
-                            <Button
-                                variant={isFollowing ? "secondary" : "outline"}
-                                onClick={onFollowToggle}
-                                disabled={socialLoading || isBlocked}
-                                className="flex items-center gap-2"
-                            >
-                                {isFollowing ? '팔로잉' : '팔로우'}
-                            </Button>
+                                    <Button
+                                        variant={isFollowing ? "secondary" : "outline"}
+                                        onClick={onFollowToggle}
+                                        disabled={socialLoading}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {isFollowing ? '팔로잉' : '팔로우'}
+                                    </Button>
 
-                            <Button
-                                variant="primary"
-                                onClick={onMessageClick}
-                                disabled={isBlocked}
-                                className="flex items-center gap-2"
-                            >
-                                <MessageSquare className="w-4 h-4"/>
-                                메시지 보내기
-                            </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={onMessageClick}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <MessageSquare className="w-4 h-4"/>
+                                        메시지 보내기
+                                    </Button>
 
-                            <Button
-                                variant={isBlocked ? "secondary" : "outline"}
-                                onClick={onBlockToggle}
-                                disabled={socialLoading}
-                                className={`flex items-center gap-2 ${isBlocked ? 'text-red-500 hover:text-red-400' : ''}`}
-                            >
-                                <Shield className="w-4 h-4"/>
-                                {isBlocked ? '차단해제' : '차단'}
-                            </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={onBlockToggle}
+                                        disabled={socialLoading}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Shield className="w-4 h-4"/>
+                                        차단
+                                    </Button>
+                                </>
+                            )}
                         </>
                     )}
                 </div>

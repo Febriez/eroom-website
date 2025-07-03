@@ -49,9 +49,9 @@ function ProfilePageContent() {
         receivedRequest,
         socialLoading,
         updateProfileUser,
-        handleFollowToggle,
-        handleFriendToggle,
-        handleBlockToggle
+        handleFollowToggle: contextHandleFollowToggle,
+        handleFriendToggle: contextHandleFriendToggle,
+        handleBlockToggle: contextHandleBlockToggle
     } = useProfile()
 
     const {
@@ -69,6 +69,7 @@ function ProfilePageContent() {
     const [showChatModal, setShowChatModal] = useState(false)
     const [showFollowersModal, setShowFollowersModal] = useState(false)
     const [showFollowingModal, setShowFollowingModal] = useState(false)
+    const [showFriendsModal, setShowFriendsModal] = useState(false)
     const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false)
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
     const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('all')
@@ -101,10 +102,18 @@ function ProfilePageContent() {
     // 채팅 자동 열기
     useEffect(() => {
         if (openChatId && profileUser && currentUser) {
-            setSelectedConversationId(openChatId)
-            setShowChatModal(true)
+            // 차단 상태가 아닌 경우에만 채팅 열기
+            if (!isBlocked) {
+                setSelectedConversationId(openChatId)
+                setShowChatModal(true)
+            } else {
+                // 차단된 상태면 URL에서 openChat 파라미터 제거
+                const u = new URL(window.location.href)
+                u.searchParams.delete('openChat')
+                window.history.replaceState({}, '', u)
+            }
         }
-    }, [openChatId, profileUser, currentUser])
+    }, [openChatId, profileUser, currentUser, isBlocked])
 
     // 사용자명 변경 핸들러
     const handleUsernameChange = async () => {
@@ -151,6 +160,12 @@ function ProfilePageContent() {
         if (isOwnProfile) {
             setShowMessagesModal(true)
         } else {
+            // 차단 상태 확인
+            if (isBlocked) {
+                alert('차단한 사용자에게는 메시지를 보낼 수 없습니다.')
+                return
+            }
+
             try {
                 const id = await createConversation(profileUser.uid, {
                     username: profileUser.username,
@@ -162,8 +177,13 @@ function ProfilePageContent() {
                 const u = new URL(window.location.href)
                 u.searchParams.set('openChat', id)
                 window.history.replaceState({}, '', u)
-            } catch (e) {
-                console.error(e)
+            } catch (error: any) {
+                if (error.message?.includes('차단')) {
+                    alert('차단된 사용자와는 대화를 시작할 수 없습니다.')
+                } else {
+                    console.error(error)
+                    alert('대화 시작 중 오류가 발생했습니다.')
+                }
             }
         }
     }
@@ -175,27 +195,94 @@ function ProfilePageContent() {
         setShowChatModal(true)
     }
 
-    // 대화 목록 포맷팅
-    const formattedConversations = conversations.map(conv => {
-        const time = conv.lastMessage?.timestamp ? formatRelativeTime(conv.lastMessage.timestamp) : ''
-        const other = conv.otherParticipant
-        return {
-            id: conv.id,
-            participants: [{
-                id: conv.otherParticipantId || '',
-                username: other?.username || '',
-                displayName: other?.displayName || '',
-                avatar: other?.avatarUrl,
-                level: other?.level || 1
-            }],
-            lastMessage: {
-                text: conv.lastMessage?.content || '대화를 시작하세요',
-                timestamp: time,
-                read: (conv.unreadCount?.[currentUser?.uid || ''] || 0) === 0
-            },
-            unreadCount: conv.unreadCount?.[currentUser?.uid || ''] || 0
+    // 차단 토글 핸들러 (확인 메시지 추가)
+    const handleBlockToggle = async () => {
+        if (!currentUser || !profileUser) return
+
+        const confirmMessage = isBlocked
+            ? `${profileUser.displayName}님의 차단을 해제하시겠습니까?`
+            : `${profileUser.displayName}님을 차단하시겠습니까?\n\n차단하면:\n- 서로 친구 관계가 해제됩니다\n- 서로 팔로우가 해제됩니다\n- 상대방은 회원님에게 메시지를 보낼 수 없습니다\n- 상대방은 차단 사실을 알 수 없습니다`
+
+        if (!confirm(confirmMessage)) return
+
+        try {
+            await contextHandleBlockToggle()
+
+            // 차단 시 열려있는 채팅 모달 닫기
+            if (!isBlocked && showChatModal) {
+                setShowChatModal(false)
+                setSelectedConversationId(null)
+                const u = new URL(window.location.href)
+                u.searchParams.delete('openChat')
+                window.history.replaceState({}, '', u)
+            }
+        } catch (error) {
+            console.error('Error toggling block:', error)
+            alert('차단 상태 변경 중 오류가 발생했습니다.')
         }
-    })
+    }
+
+    // 팔로우 토글 핸들러 (차단 상태 확인)
+    const handleFollowToggle = async () => {
+        if (isBlocked) {
+            alert('차단한 사용자를 팔로우할 수 없습니다.')
+            return
+        }
+
+        try {
+            await contextHandleFollowToggle()
+        } catch (error: any) {
+            if (error.message?.includes('blocked')) {
+                alert('차단된 사용자를 팔로우할 수 없습니다.')
+            } else {
+                console.error('Error toggling follow:', error)
+                alert('팔로우 상태 변경 중 오류가 발생했습니다.')
+            }
+        }
+    }
+
+    // 친구 토글 핸들러 (차단 상태 확인)
+    const handleFriendToggle = async () => {
+        if (isBlocked) {
+            alert('차단한 사용자에게 친구 요청을 보낼 수 없습니다.')
+            return
+        }
+
+        try {
+            await contextHandleFriendToggle()
+        } catch (error: any) {
+            if (error.message?.includes('blocked')) {
+                alert('차단된 사용자에게 친구 요청을 보낼 수 없습니다.')
+            } else {
+                console.error('Error toggling friend:', error)
+                alert('친구 상태 변경 중 오류가 발생했습니다.')
+            }
+        }
+    }
+
+    // 대화 목록 포맷팅 (차단된 대화 표시 제외)
+    const formattedConversations = conversations
+        .filter(conv => !conv.isBlocked) // 차단된 대화 제외
+        .map(conv => {
+            const time = conv.lastMessage?.timestamp ? formatRelativeTime(conv.lastMessage.timestamp) : ''
+            const other = conv.otherParticipant
+            return {
+                id: conv.id,
+                participants: [{
+                    id: conv.otherParticipantId || '',
+                    username: other?.username || '',
+                    displayName: other?.displayName || '',
+                    avatar: other?.avatarUrl,
+                    level: other?.level || 1
+                }],
+                lastMessage: {
+                    text: conv.lastMessage?.content || '대화를 시작하세요',
+                    timestamp: time,
+                    read: (conv.unreadCount?.[currentUser?.uid || ''] || 0) === 0
+                },
+                unreadCount: conv.unreadCount?.[currentUser?.uid || ''] || 0
+            }
+        })
 
     // 선택된 대화 정보
     const selectedConv = conversations.find(c => c.id === selectedConversationId)
@@ -276,6 +363,7 @@ function ProfilePageContent() {
                     onBlockToggle={handleBlockToggle}
                     onShowFollowers={() => setShowFollowersModal(true)}
                     onShowFollowing={() => setShowFollowingModal(true)}
+                    onShowFriends={() => setShowFriendsModal(true)}
                 />
 
                 {/* 통계 카드 */}
@@ -391,6 +479,15 @@ function ProfilePageContent() {
                 onClose={() => setShowFollowingModal(false)}
                 type="following"
                 userIds={profileUser?.social.following || []}
+                currentUserId={currentUser?.uid || ''}
+            />
+
+            {/* 친구 목록 모달 */}
+            <SocialListModal
+                isOpen={showFriendsModal}
+                onClose={() => setShowFriendsModal(false)}
+                type="friends"
+                userIds={profileUser?.social.friends || []}
                 currentUserId={currentUser?.uid || ''}
             />
 

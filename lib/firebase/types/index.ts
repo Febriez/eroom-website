@@ -62,10 +62,10 @@ export interface UserStats {
 }
 
 export interface UserSocial {
-    followers: string[]          // uid 배열
-    following: string[]          // uid 배열
-    friends: string[]           // uid 배열
-    blocked: string[]           // uid 배열
+    followers: string[]      // uid 배열
+    following: string[]      // uid 배열
+    friends: string[]        // uid 배열
+    blocked: string[]        // uid 배열 (이미 있어야 함)
     friendCount: number
 }
 
@@ -192,18 +192,20 @@ export interface FriendRequest {
 
 export interface Conversation {
     id: string
-    participants: string[]       // uid 배열 (2명)
+    participants: string[]              // uid 배열 (2명)
 
-    // 참가자 정보 캐시
-    participantInfo: {
+    // 차단 관련 필드 추가
+    blockedBy?: string[]               // 차단한 사용자 uid 배열
+
+    participantInfo?: {
         [uid: string]: {
             username: string
             displayName: string
             avatarUrl?: string
+            level?: number
         }
     }
 
-    // 마지막 메시지
     lastMessage?: {
         content: string
         senderId: string
@@ -211,14 +213,8 @@ export interface Conversation {
         type: 'text' | 'image' | 'system'
     }
 
-    // 읽지 않은 메시지 수
     unreadCount: {
         [uid: string]: number
-    }
-
-    // 타이핑 상태
-    typing: {
-        [uid: string]: boolean
     }
 
     createdAt: Timestamp
@@ -228,22 +224,20 @@ export interface Conversation {
 export interface Message {
     id: string
     conversationId: string
-
     sender: {
         uid: string
         username: string
         displayName: string
     }
-
     content: string
     type: 'text' | 'image' | 'system'
+    readBy: string[]
+    reactions: any[]
 
-    readBy: string[]           // uid 배열
-    reactions?: MessageReaction[]
+    // 차단된 메시지인지 표시 (선택적)
+    blockedFor?: string[]              // 이 메시지를 볼 수 없는 사용자 uid 배열
 
     createdAt: Timestamp
-    editedAt?: Timestamp
-    deletedAt?: Timestamp
 }
 
 export interface MessageReaction {

@@ -19,6 +19,7 @@ interface ParticipantInfo {
 interface ConversationWithParticipant extends Conversation {
     otherParticipant?: ParticipantInfo
     otherParticipantId?: string
+    isBlocked?: boolean
 }
 
 export function useConversations() {
@@ -52,10 +53,14 @@ export function useConversations() {
             return
         }
 
-        // 실시간 대화 목록 구독
+        // 실시간 대화 목록 구독 (차단된 대화 자동 필터링됨)
         const unsubscribe = MessageService.subscribeToConversations(
             user.uid,
             async (convs) => {
+                // 사용자 정보 가져오기 (차단 목록 확인용)
+                const currentUser = await UserService.getUserById(user.uid)
+                if (!currentUser) return
+
                 // 각 대화의 상대방 정보 추출
                 const conversationsWithParticipants = await Promise.all(
                     convs.map(async (conv) => {
@@ -80,10 +85,14 @@ export function useConversations() {
                                 }
                             }
 
+                            // 차단 상태 확인
+                            const isBlocked = currentUser.social.blocked?.includes(otherParticipantId) || false
+
                             return {
                                 ...conv,
                                 otherParticipantId,
-                                otherParticipant: participantData
+                                otherParticipant: participantData,
+                                isBlocked
                             } as ConversationWithParticipant
                         }
 
@@ -94,11 +103,12 @@ export function useConversations() {
                     })
                 );
 
-                // 새로운 메시지가 있으면 닫기 상태 해제
+                // 새로운 메시지가 있으면 닫기 상태 해제 (차단된 대화 제외)
                 conversationsWithParticipants.forEach(conv => {
                     if (conv.lastMessage &&
                         conv.lastMessage.senderId !== user.uid &&
-                        dismissedConversations.has(conv.id)) {
+                        dismissedConversations.has(conv.id) &&
+                        !conv.isBlocked) {
                         // 이전에 닫았던 대화에 새 메시지가 왔으면 다시 표시
                         const newDismissed = new Set(dismissedConversations)
                         newDismissed.delete(conv.id)
@@ -109,11 +119,13 @@ export function useConversations() {
 
                 setConversations(conversationsWithParticipants)
 
-                // 총 읽지 않은 메시지 수 계산
-                const unreadTotal = conversationsWithParticipants.reduce(
-                    (sum, conv) => sum + (conv.unreadCount?.[user.uid] || 0),
-                    0
-                )
+                // 총 읽지 않은 메시지 수 계산 (차단된 대화 제외)
+                const unreadTotal = conversationsWithParticipants
+                    .filter(conv => !conv.isBlocked)
+                    .reduce(
+                        (sum, conv) => sum + (conv.unreadCount?.[user.uid] || 0),
+                        0
+                    )
                 setTotalUnreadCount(unreadTotal)
                 setLoading(false)
             }
@@ -132,11 +144,18 @@ export function useConversations() {
     ): Promise<string> => {
         if (!user) throw new Error('User not authenticated')
 
-        // MessageService가 이제 participantInfo를 자동으로 처리합니다
-        return await MessageService.createOrGetConversation(
-            user.uid,
-            targetUserId
-        )
+        try {
+            // MessageService가 차단 확인을 자동으로 처리
+            return await MessageService.createOrGetConversation(
+                user.uid,
+                targetUserId
+            )
+        } catch (error: any) {
+            if (error.message?.includes('blocked')) {
+                throw new Error('차단된 사용자와는 대화를 시작할 수 없습니다.')
+            }
+            throw error
+        }
     }
 
     const markAllConversationsAsRead = async () => {
@@ -145,9 +164,9 @@ export function useConversations() {
         try {
             const batch = writeBatch(db)
 
-            // 현재 읽지 않은 메시지가 있는 대화들만 처리
+            // 현재 읽지 않은 메시지가 있는 대화들만 처리 (차단된 대화 제외)
             const unreadConversations = conversations.filter(
-                conv => (conv.unreadCount?.[user.uid] || 0) > 0
+                conv => (conv.unreadCount?.[user.uid] || 0) > 0 && !conv.isBlocked
             )
 
             unreadConversations.forEach((conv) => {
@@ -162,6 +181,7 @@ export function useConversations() {
             console.error('Error marking all conversations as read:', error)
         }
     }
+
 
     // 대화 닫기
     const dismissConversation = (conversationId: string) => {

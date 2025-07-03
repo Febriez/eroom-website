@@ -18,12 +18,178 @@ import {
     serverTimestamp,
     Timestamp,
     updateDoc,
-    where
+    where,
+    writeBatch
 } from "firebase/firestore"
 import {db} from "@/lib/firebase/config"
 import {UserService} from "@/lib/firebase/services/user.service"
 
 export class SocialService extends BaseService {
+
+    /**
+     * 사용자 차단 (업데이트된 버전)
+     */
+    static async blockUser(blockerId: string, targetId: string): Promise<void> {
+        const batch = writeBatch(db)
+
+        // 1. 차단자의 blocked 목록에 추가
+        const blockerRef = doc(db, COLLECTIONS.USERS, blockerId)
+        batch.update(blockerRef, {
+            'social.blocked': arrayUnion(targetId)
+        })
+
+        // 2. 친구 관계가 있다면 해제
+        const blocker = await UserService.getUserById(blockerId)
+        const target = await UserService.getUserById(targetId)
+
+        if (!blocker || !target) {
+            throw new Error('User not found')
+        }
+
+        // 친구 관계 해제
+        if (blocker.social.friends.includes(targetId)) {
+            batch.update(blockerRef, {
+                'social.friends': arrayRemove(targetId),
+                'social.friendCount': Math.max(0, blocker.social.friendCount - 1)
+            })
+
+            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
+            batch.update(targetRef, {
+                'social.friends': arrayRemove(blockerId),
+                'social.friendCount': Math.max(0, target.social.friendCount - 1)
+            })
+        }
+
+        // 3. 팔로우 관계 해제
+        if (blocker.social.following.includes(targetId)) {
+            batch.update(blockerRef, {
+                'social.following': arrayRemove(targetId)
+            })
+
+            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
+            batch.update(targetRef, {
+                'social.followers': arrayRemove(blockerId)
+            })
+        }
+
+        // 상대방이 나를 팔로우하고 있다면 해제
+        if (target.social.following.includes(blockerId)) {
+            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
+            batch.update(targetRef, {
+                'social.following': arrayRemove(blockerId)
+            })
+
+            batch.update(blockerRef, {
+                'social.followers': arrayRemove(targetId)
+            })
+        }
+
+        // 4. 대기 중인 친구 요청 취소
+        const pendingRequests = await this.getPendingRequestsBetweenUsers(blockerId, targetId)
+        pendingRequests.forEach(request => {
+            batch.delete(doc(db, COLLECTIONS.FRIEND_REQUESTS, request.id))
+        })
+
+        // 5. 대화 차단 상태 업데이트
+        const conversationsQuery = query(
+            collection(db, COLLECTIONS.CONVERSATIONS),
+            where('participants', 'array-contains', blockerId)
+        )
+
+        const conversationsSnapshot = await getDocs(conversationsQuery)
+        conversationsSnapshot.forEach((convDoc) => {
+            const data = convDoc.data()
+            if (data.participants.includes(targetId)) {
+                // 대화에 blockedBy 필드 추가
+                batch.update(convDoc.ref, {
+                    blockedBy: arrayUnion(blockerId)
+                })
+            }
+        })
+
+        await batch.commit()
+    }
+
+    /**
+     * 사용자 차단 해제 (업데이트된 버전)
+     */
+    static async unblockUser(blockerId: string, targetId: string): Promise<void> {
+        const batch = writeBatch(db)
+
+        // 1. 차단 목록에서 제거
+        const blockerRef = doc(db, COLLECTIONS.USERS, blockerId)
+        batch.update(blockerRef, {
+            'social.blocked': arrayRemove(targetId)
+        })
+
+        // 2. 대화 차단 상태 해제
+        const conversationsQuery = query(
+            collection(db, COLLECTIONS.CONVERSATIONS),
+            where('participants', 'array-contains', blockerId)
+        )
+
+        const conversationsSnapshot = await getDocs(conversationsQuery)
+        conversationsSnapshot.forEach((convDoc) => {
+            const data = convDoc.data()
+            if (data.participants.includes(targetId) && data.blockedBy?.includes(blockerId)) {
+                // blockedBy에서 제거
+                batch.update(convDoc.ref, {
+                    blockedBy: arrayRemove(blockerId)
+                })
+            }
+        })
+
+        await batch.commit()
+    }
+
+    /**
+     * 팔로워 제거
+     */
+    static async removeFollower(userId: string, followerId: string): Promise<void> {
+        const batch = writeBatch(db)
+
+        const userRef = doc(db, COLLECTIONS.USERS, userId)
+        const followerRef = doc(db, COLLECTIONS.USERS, followerId)
+
+        // 나의 팔로워 목록에서 제거
+        batch.update(userRef, {
+            'social.followers': arrayRemove(followerId)
+        })
+
+        // 상대방의 팔로잉 목록에서 나를 제거
+        batch.update(followerRef, {
+            'social.following': arrayRemove(userId)
+        })
+
+        await batch.commit()
+    }
+
+    /**
+     * 두 사용자 간의 대기 중인 친구 요청 조회
+     */
+    static async getPendingRequestsBetweenUsers(user1Id: string, user2Id: string): Promise<FriendRequest[]> {
+        const q1 = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('from.uid', '==', user1Id),
+            where('to.uid', '==', user2Id),
+            where('status', '==', 'pending')
+        )
+
+        const q2 = query(
+            collection(db, COLLECTIONS.FRIEND_REQUESTS),
+            where('from.uid', '==', user2Id),
+            where('to.uid', '==', user1Id),
+            where('status', '==', 'pending')
+        )
+
+        const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)])
+
+        const requests: FriendRequest[] = []
+        snapshot1.forEach(doc => requests.push({id: doc.id, ...doc.data()} as FriendRequest))
+        snapshot2.forEach(doc => requests.push({id: doc.id, ...doc.data()} as FriendRequest))
+
+        return requests
+    }
 
     /**
      * 받은 친구 요청 목록 가져오기
@@ -170,12 +336,17 @@ export class SocialService extends BaseService {
         from: { uid: string; username: string; displayName: string },
         to: { uid: string; username: string; displayName: string }
     ): Promise<void> {
-        // 이미 친구인지 확인
+        // 차단 확인
         const fromUser = await UserService.getUserById(from.uid)
         const toUser = await UserService.getUserById(to.uid)
 
         if (!fromUser || !toUser) {
             throw new Error('User not found')
+        }
+
+        // 차단 상태 확인
+        if (fromUser.social.blocked?.includes(to.uid) || toUser.social.blocked?.includes(from.uid)) {
+            throw new Error('Cannot send friend request to blocked user')
         }
 
         if (fromUser.social.friends.includes(to.uid)) {
@@ -245,6 +416,11 @@ export class SocialService extends BaseService {
             throw new Error('User not found')
         }
 
+        // 차단 상태 확인
+        if (follower.social.blocked?.includes(targetId) || target.social.blocked?.includes(followerId)) {
+            throw new Error('Cannot follow blocked user')
+        }
+
         await Promise.all([
             updateDoc(doc(db, COLLECTIONS.USERS, follower.id), {
                 'social.following': arrayUnion(targetId)
@@ -293,6 +469,12 @@ export class SocialService extends BaseService {
      * 알림 생성
      */
     static async createNotification(notification: Omit<Notification, 'id' | 'read' | 'createdAt'>): Promise<void> {
+        // 차단된 사용자에게는 알림을 보내지 않음
+        const recipient = await UserService.getUserById(notification.recipientId)
+        if (recipient?.social.blocked?.includes(notification.data?.senderId || '')) {
+            return
+        }
+
         // category가 없으면 type에서 자동 추론
         const category = notification.category || getNotificationCategory(notification.type)
 

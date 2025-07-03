@@ -130,10 +130,13 @@ export function roomToCardDisplay(room: RoomSchema): RoomCardDisplay {
     }
 }
 
-// 대화 (typing 필드 제거)
+// ConversationSchema에 차단 관련 필드 추가
 export interface ConversationSchema {
     id: string
     participants: string[]              // uid 배열 (2명)
+
+    // 차단된 상태 추가
+    blockedBy?: string[]               // 차단한 사용자 uid 배열
 
     lastMessage?: {
         content: string
@@ -146,10 +149,28 @@ export interface ConversationSchema {
         [uid: string]: number
     }
 
-    // typing 필드 제거됨
-
     createdAt: Timestamp
     updatedAt: Timestamp
+}
+
+// Message 스키마에 차단 확인용 필드 추가
+export interface MessageSchema {
+    id: string
+    conversationId: string
+    sender: {
+        uid: string
+        username: string
+        displayName: string
+    }
+    content: string
+    type: 'text' | 'image' | 'system'
+    readBy: string[]
+    reactions: any[]
+
+    // 차단된 메시지인지 표시 (선택적)
+    blockedFor?: string[]              // 이 메시지를 볼 수 없는 사용자 uid 배열
+
+    createdAt: Timestamp
 }
 
 // 알림
