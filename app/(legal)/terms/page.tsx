@@ -153,9 +153,23 @@ export default function TermsPage() {
         }
     ]
 
+    // 스크롤 함수 - 제목이 잘 보이도록 오프셋 추가
+    const scrollToSection = (sectionId: string) => {
+        const element = document.getElementById(sectionId)
+        if (element) {
+            const headerHeight = 80 // 페이지 헤더 높이 고려
+            const elementPosition = element.offsetTop - headerHeight
+
+            window.scrollTo({
+                top: elementPosition,
+                behavior: 'smooth'
+            })
+        }
+    }
+
     // 공통 헤더 컴포넌트
     const SectionHeader = ({section}: { section: Section }) => (
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 scroll-mt-24" id={`${section.id}-header`}>
             <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                 {section.icon}
             </div>
@@ -167,7 +181,7 @@ export default function TermsPage() {
     const renderSection = (section: Section) => {
         // 모든 케이스에서 공통으로 사용할 wrapper div
         const sectionWrapper = (content: React.ReactNode) => (
-            <div key={section.id} id={section.id}>
+            <div key={section.id} className="scroll-mt-24">
                 {content}
             </div>
         )
@@ -297,12 +311,7 @@ export default function TermsPage() {
                                         key={section.id}
                                         type="button"
                                         className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                        onClick={() => {
-                                            const element = document.getElementById(section.id)
-                                            if (element) {
-                                                element.scrollIntoView({behavior: 'smooth'})
-                                            }
-                                        }}
+                                        onClick={() => scrollToSection(section.id)}
                                     >
                                         {section.title}
                                     </button>
@@ -311,12 +320,7 @@ export default function TermsPage() {
                                 <button
                                     type="button"
                                     className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                    onClick={() => {
-                                        const element = document.getElementById('contact')
-                                        if (element) {
-                                            element.scrollIntoView({behavior: 'smooth'})
-                                        }
-                                    }}
+                                    onClick={() => scrollToSection('contact')}
                                 >
                                     <MessageSquare className="w-4 h-4 inline mr-2"/>
                                     문의하기
@@ -330,9 +334,14 @@ export default function TermsPage() {
                         {sections.map(renderSection)}
 
                         {/* 문의하기 */}
-                        <div id="contact">
+                        <div id="contact" className="scroll-mt-24">
                             <Card className="p-8 bg-gradient-to-br from-gray-900 to-gray-800">
-                                <h2 className="text-xl font-bold mb-4">약관에 대한 문의</h2>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-2 bg-gray-800 rounded-lg text-green-400">
+                                        <MessageSquare className="w-5 h-5"/>
+                                    </div>
+                                    <h2 className="text-2xl font-bold">약관에 대한 문의</h2>
+                                </div>
                                 <p className="text-gray-300 mb-6">
                                     본 약관에 관한 질문이나 의견이 있으시면 다음 연락처로 문의해 주십시오.
                                 </p>

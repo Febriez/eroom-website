@@ -6,8 +6,19 @@ import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {AlertCircle, Clock, Database, Lock, Shield, UserCheck, Users} from 'lucide-react'
 import {CONSTANTS} from '@/lib/utils/constants'
+import React from "react";
 
 export default function PrivacyPage() {
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+        e.preventDefault()
+        const target = document.getElementById(targetId)
+        if (target) {
+            const yOffset = -80 // 헤더 높이만큼 오프셋 (조정 가능)
+            const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset
+            window.scrollTo({top: y, behavior: 'smooth'})
+        }
+    }
+
     const sections = [
         {
             id: 'overview',
@@ -166,6 +177,7 @@ export default function PrivacyPage() {
                                     <a
                                         key={section.id}
                                         href={`#${section.id}`}
+                                        onClick={(e) => handleNavClick(e, section.id)}
                                         className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
                                     >
                                         {section.title}
@@ -178,7 +190,7 @@ export default function PrivacyPage() {
                     {/* 메인 콘텐츠 */}
                     <div className="lg:col-span-3 space-y-8">
                         {/* 개요 */}
-                        <Card id="overview" className="p-8">
+                        <Card id="overview" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[0].icon}
@@ -191,7 +203,7 @@ export default function PrivacyPage() {
                         </Card>
 
                         {/* 수집하는 개인정보 */}
-                        <Card id="collect" className="p-8">
+                        <Card id="collect" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[1].icon}
@@ -216,7 +228,7 @@ export default function PrivacyPage() {
                         </Card>
 
                         {/* 이용 목적 */}
-                        <Card id="use" className="p-8">
+                        <Card id="use" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[2].icon}
@@ -234,7 +246,7 @@ export default function PrivacyPage() {
                         </Card>
 
                         {/* 보유 및 파기 */}
-                        <Card id="retention" className="p-8">
+                        <Card id="retention" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[3].icon}
@@ -255,7 +267,7 @@ export default function PrivacyPage() {
                         </Card>
 
                         {/* 이용자 권리 */}
-                        <Card id="rights" className="p-8">
+                        <Card id="rights" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[4].icon}
@@ -273,7 +285,7 @@ export default function PrivacyPage() {
                         </Card>
 
                         {/* 보안 조치 */}
-                        <Card id="security" className="p-8">
+                        <Card id="security" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[5].icon}

@@ -6,8 +6,19 @@ import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Cookie, Eye, Info, Settings, Shield} from 'lucide-react'
 import {CONSTANTS} from '@/lib/utils/constants'
+import React from "react";
 
 export default function CookiesPage() {
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+        e.preventDefault()
+        const target = document.getElementById(targetId)
+        if (target) {
+            const yOffset = -80 // 헤더 높이만큼 오프셋 (조정 가능)
+            const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset
+            window.scrollTo({top: y, behavior: 'smooth'})
+        }
+    }
+
     const sections = [
         {
             id: 'what',
@@ -125,6 +136,7 @@ export default function CookiesPage() {
                                     <a
                                         key={section.id}
                                         href={`#${section.id}`}
+                                        onClick={(e) => handleNavClick(e, section.id)}
                                         className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
                                     >
                                         {section.title}
@@ -137,7 +149,7 @@ export default function CookiesPage() {
                     {/* 메인 콘텐츠 */}
                     <div className="lg:col-span-3 space-y-8">
                         {/* 쿠키란 무엇인가요? */}
-                        <Card id="what" className="p-8">
+                        <Card id="what" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[0].icon}
@@ -154,7 +166,7 @@ export default function CookiesPage() {
                         </Card>
 
                         {/* 사용하는 쿠키 유형 */}
-                        <Card id="types" className="p-8">
+                        <Card id="types" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[1].icon}
@@ -195,7 +207,7 @@ export default function CookiesPage() {
                         </Card>
 
                         {/* 제3자 쿠키 */}
-                        <Card id="third-party" className="p-8">
+                        <Card id="third-party" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[2].icon}
@@ -220,7 +232,7 @@ export default function CookiesPage() {
                         </Card>
 
                         {/* 쿠키 관리 방법 */}
-                        <Card id="manage" className="p-8">
+                        <Card id="manage" className="p-8 scroll-mt-24">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                                     {sections[3].icon}
