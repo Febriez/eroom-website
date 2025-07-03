@@ -24,7 +24,9 @@ export function useMessages(conversationId: string | null) {
         const unsubscribe = MessageService.subscribeToMessages(
             conversationId,
             (messageList) => {
-                setMessages(messageList)
+                const blockedIds = user.social.blocked || []
+                const filtered = messageList.filter(msg => !blockedIds.includes(msg.sender.uid))
+                setMessages(filtered)
                 setLoading(false)
                 setError(null)
             }

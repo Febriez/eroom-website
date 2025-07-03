@@ -151,8 +151,13 @@ export function useNotifications() {
                 }
 
                 previousNotificationIds = currentNotificationIds
-                setNotifications(notificationList)
-                setUnreadCount(notificationList.filter(n => !n.read).length)
+                const blockedIds = (user as User).social.blocked || []
+                // 차단된 사용자가 보낸 알림 제외
+                const filtered = notificationList.filter(n =>
+                    !(n.data?.senderId && blockedIds.includes(n.data.senderId))
+                )
+                setNotifications(filtered)
+                setUnreadCount(filtered.filter(n => !n.read).length)
                 setLoading(false)
             }
         )
