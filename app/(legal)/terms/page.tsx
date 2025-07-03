@@ -51,6 +51,16 @@ interface TerminationSection extends BaseSection {
 type Section = ContentSection | ListSection | ConditionsSection | PoliciesSection | TerminationSection
 
 export default function TermsPage() {
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+        e.preventDefault()
+        const target = document.getElementById(targetId)
+        if (target) {
+            const yOffset = -80 // 헤더 높이만큼 오프셋 (조정 가능)
+            const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset
+            window.scrollTo({top: y, behavior: 'smooth'})
+        }
+    }
+
     const sections: Section[] = [
         {
             id: 'intro',
@@ -153,23 +163,9 @@ export default function TermsPage() {
         }
     ]
 
-    // 스크롤 함수 - 제목이 잘 보이도록 오프셋 추가
-    const scrollToSection = (sectionId: string) => {
-        const element = document.getElementById(sectionId)
-        if (element) {
-            const headerHeight = 80 // 페이지 헤더 높이 고려
-            const elementPosition = element.offsetTop - headerHeight
-
-            window.scrollTo({
-                top: elementPosition,
-                behavior: 'smooth'
-            })
-        }
-    }
-
     // 공통 헤더 컴포넌트
     const SectionHeader = ({section}: { section: Section }) => (
-        <div className="flex items-center gap-3 mb-6 scroll-mt-24" id={`${section.id}-header`}>
+        <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gray-800 rounded-lg text-green-400">
                 {section.icon}
             </div>
@@ -189,7 +185,7 @@ export default function TermsPage() {
         switch (section.type) {
             case 'content':
                 return sectionWrapper(
-                    <Card className="p-8">
+                    <Card id={section.id} className="p-8 scroll-mt-24">
                         <SectionHeader section={section}/>
                         <p className="text-gray-300 leading-relaxed">
                             {section.content}
@@ -206,7 +202,7 @@ export default function TermsPage() {
 
             case 'list':
                 return sectionWrapper(
-                    <Card className="p-8">
+                    <Card id={section.id} className="p-8 scroll-mt-24">
                         <SectionHeader section={section}/>
                         <div className="bg-gray-800 rounded-lg p-6">
                             <ul className="space-y-3">
@@ -233,7 +229,7 @@ export default function TermsPage() {
 
             case 'conditions':
                 return sectionWrapper(
-                    <Card className="p-8">
+                    <Card id={section.id} className="p-8 scroll-mt-24">
                         <SectionHeader section={section}/>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {section.conditions.map((condition, index) => (
@@ -255,7 +251,7 @@ export default function TermsPage() {
 
             case 'policies':
                 return sectionWrapper(
-                    <Card className="p-8">
+                    <Card id={section.id} className="p-8 scroll-mt-24">
                         <SectionHeader section={section}/>
                         <div className="space-y-4">
                             {section.policies.map((policy, index) => (
@@ -270,7 +266,7 @@ export default function TermsPage() {
 
             case 'termination':
                 return sectionWrapper(
-                    <Card className="p-8">
+                    <Card id={section.id} className="p-8 scroll-mt-24">
                         <SectionHeader section={section}/>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {section.conditions.map((condition, index) => (
@@ -307,24 +303,24 @@ export default function TermsPage() {
                             <h3 className="font-bold mb-4">목차</h3>
                             <nav className="space-y-2">
                                 {sections.map((section) => (
-                                    <button
+                                    <a
                                         key={section.id}
-                                        type="button"
-                                        className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                        onClick={() => scrollToSection(section.id)}
+                                        href={`#${section.id}`}
+                                        onClick={(e) => handleNavClick(e, section.id)}
+                                        className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
                                     >
                                         {section.title}
-                                    </button>
+                                    </a>
                                 ))}
                                 <hr className="border-gray-800 my-4"/>
-                                <button
-                                    type="button"
-                                    className="block w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                    onClick={() => scrollToSection('contact')}
+                                <a
+                                    href="#contact"
+                                    onClick={(e) => handleNavClick(e, 'contact')}
+                                    className="block px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
                                 >
                                     <MessageSquare className="w-4 h-4 inline mr-2"/>
                                     문의하기
-                                </button>
+                                </a>
                             </nav>
                         </Card>
                     </div>
@@ -334,38 +330,36 @@ export default function TermsPage() {
                         {sections.map(renderSection)}
 
                         {/* 문의하기 */}
-                        <div id="contact" className="scroll-mt-24">
-                            <Card className="p-8 bg-gradient-to-br from-gray-900 to-gray-800">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="p-2 bg-gray-800 rounded-lg text-green-400">
-                                        <MessageSquare className="w-5 h-5"/>
-                                    </div>
-                                    <h2 className="text-2xl font-bold">약관에 대한 문의</h2>
+                        <Card id="contact" className="p-8 bg-gradient-to-br from-gray-900 to-gray-800 scroll-mt-24">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-gray-800 rounded-lg text-green-400">
+                                    <MessageSquare className="w-5 h-5"/>
                                 </div>
-                                <p className="text-gray-300 mb-6">
-                                    본 약관에 관한 질문이나 의견이 있으시면 다음 연락처로 문의해 주십시오.
-                                </p>
-                                <div className="space-y-3">
-                                    <div>
-                                        <span className="text-gray-400">이메일:</span>
-                                        <a
-                                            href={`mailto:${CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}`}
-                                            className="ml-2 text-green-400 hover:text-green-300"
-                                        >
-                                            {CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}
-                                        </a>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-400">주소:</span>
-                                        <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.ADDRESS}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-400">전화:</span>
-                                        <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.PHONE}</span>
-                                    </div>
+                                <h2 className="text-2xl font-bold">약관에 대한 문의</h2>
+                            </div>
+                            <p className="text-gray-300 mb-6">
+                                본 약관에 관한 질문이나 의견이 있으시면 다음 연락처로 문의해 주십시오.
+                            </p>
+                            <div className="space-y-3">
+                                <div>
+                                    <span className="text-gray-400">이메일:</span>
+                                    <a
+                                        href={`mailto:${CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}`}
+                                        className="ml-2 text-green-400 hover:text-green-300"
+                                    >
+                                        {CONSTANTS.LEGAL.TERMS_CONTACT.EMAIL}
+                                    </a>
                                 </div>
-                            </Card>
-                        </div>
+                                <div>
+                                    <span className="text-gray-400">주소:</span>
+                                    <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.ADDRESS}</span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">전화:</span>
+                                    <span className="ml-2">{CONSTANTS.LEGAL.TERMS_CONTACT.PHONE}</span>
+                                </div>
+                            </div>
+                        </Card>
                     </div>
                 </div>
             </Container>

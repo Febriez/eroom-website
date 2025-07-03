@@ -7,7 +7,7 @@ import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
-import {AlertCircle, Mail, Paperclip, Send} from 'lucide-react'
+import {AlertCircle, File, FileImage, FileVideo, Mail, Paperclip, Send, X} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 
 export default function InquiryPage() {
@@ -19,6 +19,7 @@ export default function InquiryPage() {
         content: '',
         email: user?.email || ''
     })
+    const [attachedFiles, setAttachedFiles] = useState<File[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitted, setSubmitted] = useState(false)
 
@@ -32,6 +33,53 @@ export default function InquiryPage() {
         {value: 'other', label: '기타'}
     ]
 
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || [])
+        const maxFileSize = 10 * 1024 * 1024 // 10MB
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime']
+
+        const validFiles = files.filter(file => {
+            if (file.size > maxFileSize) {
+                alert(`${file.name}은(는) 10MB를 초과합니다.`)
+                return false
+            }
+            if (!allowedTypes.includes(file.type)) {
+                alert(`${file.name}은(는) 지원하지 않는 파일 형식입니다.`)
+                return false
+            }
+            return true
+        })
+
+        // 총 파일 개수 제한 (5개)
+        const totalFiles = attachedFiles.length + validFiles.length
+        if (totalFiles > 5) {
+            alert('최대 5개의 파일까지 첨부할 수 있습니다.')
+            return
+        }
+
+        setAttachedFiles(prev => [...prev, ...validFiles])
+        // input 값 초기화
+        e.target.value = ''
+    }
+
+    const removeFile = (index: number) => {
+        setAttachedFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const getFileIcon = (fileType: string) => {
+        if (fileType.startsWith('image/')) return <FileImage className="w-4 h-4"/>
+        if (fileType.startsWith('video/')) return <FileVideo className="w-4 h-4"/>
+        return <File className="w-4 h-4"/>
+    }
+
+    const formatFileSize = (bytes: number) => {
+        if (bytes === 0) return '0 Bytes'
+        const k = 1024
+        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
@@ -39,6 +87,17 @@ export default function InquiryPage() {
         try {
             // TODO: 실제 문의 제출 로직 구현
             // Firebase Functions 또는 이메일 서비스 연동
+            // FormData를 사용하여 파일과 함께 전송
+            const submitData = new FormData()
+            submitData.append('category', formData.category)
+            submitData.append('subject', formData.subject)
+            submitData.append('content', formData.content)
+            submitData.append('email', formData.email)
+
+            attachedFiles.forEach((file, index) => {
+                submitData.append(`attachment_${index}`, file)
+            })
+
             await new Promise(resolve => setTimeout(resolve, 2000)) // 임시 딜레이
 
             setSubmitted(true)
@@ -92,6 +151,7 @@ export default function InquiryPage() {
                                     content: '',
                                     email: user?.email || ''
                                 })
+                                setAttachedFiles([])
                                 window.scrollTo({top: 0, behavior: 'smooth'})
                             }}>
                                 새 문의 작성
@@ -128,7 +188,7 @@ export default function InquiryPage() {
                                         <ul className="text-gray-400 space-y-1">
                                             <li>• FAQ에서 해결 방법을 찾으셨나요?</li>
                                             <li>• 답변은 영업일 기준 1-2일 내에 이메일로 발송됩니다.</li>
-                                            <li>• 스크린샷이나 동영상이 있다면 첨부해주세요.</li>
+                                            <li>• 스크린샷이나 동영상이 있다면 파일로 첨부해주세요.</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -195,18 +255,57 @@ export default function InquiryPage() {
                                 />
                             </div>
 
-                            {/* 첨부파일 안내 */}
-                            <div className="bg-gray-800 rounded-lg p-4">
-                                <div className="flex items-center gap-2 text-sm text-gray-400">
-                                    <Paperclip className="w-4 h-4"/>
-                                    <span>
-                                        스크린샷이나 동영상이 있다면
-                                        <a href="https://imgur.com" target="_blank" rel="noopener noreferrer"
-                                           className="text-green-400 hover:underline mx-1">
-                                            이미지 호스팅 서비스
-                                        </a>
-                                        에 업로드 후 링크를 본문에 포함해주세요.
-                                    </span>
+                            {/* 파일 첨부 */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2">
+                                    파일 첨부 <span className="text-gray-400">(선택사항)</span>
+                                </label>
+
+                                <div className="space-y-4">
+                                    {/* 파일 업로드 버튼 */}
+                                    <div className="flex items-center gap-4">
+                                        <label
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors">
+                                            <Paperclip className="w-4 h-4"/>
+                                            <span className="text-sm">파일 선택</span>
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*,video/*"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                        <div className="text-xs text-gray-400">
+                                            이미지, 동영상 파일 (최대 10MB, 5개까지)
+                                        </div>
+                                    </div>
+
+                                    {/* 첨부된 파일 목록 */}
+                                    {attachedFiles.length > 0 && (
+                                        <div className="space-y-2">
+                                            {attachedFiles.map((file, index) => (
+                                                <div key={index}
+                                                     className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
+                                                    <div className="text-gray-400">
+                                                        {getFileIcon(file.type)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm truncate">{file.name}</div>
+                                                        <div
+                                                            className="text-xs text-gray-400">{formatFileSize(file.size)}</div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeFile(index)}
+                                                        className="text-gray-400 hover:text-red-400 transition-colors"
+                                                    >
+                                                        <X className="w-4 h-4"/>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
