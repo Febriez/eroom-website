@@ -1,6 +1,6 @@
 'use client'
 
-import React, {createContext, useContext, useEffect, useState} from 'react'
+import React, {createContext, useCallback, useContext, useEffect, useState} from 'react'
 import {useAuth} from '@/contexts/AuthContext'
 import {SocialService, UserService} from '@/lib/firebase/services'
 import type {User} from '@/lib/firebase/types'
@@ -40,7 +40,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
     const isOwnProfile = currentUser?.uid === profileUser?.uid
 
     // 친구 요청 상태 확인
-    const checkFriendRequestStatus = async (currentUserId: string, targetUserId: string) => {
+    const checkFriendRequestStatus = useCallback(async (currentUserId: string, targetUserId: string) => {
         try {
             // 내가 보낸 요청이 있는지 확인
             const sentRequest = await SocialService.getPendingRequestToUser(currentUserId, targetUserId)
@@ -52,7 +52,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error checking friend request status:', error)
         }
-    }
+    }, [])
 
     // 소셜 관계 상태 업데이트
     useEffect(() => {
@@ -60,8 +60,11 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
             setIsFriend(profileUser.social.friends.includes(currentUser.uid))
             setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
             setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+
+            // 친구 요청 상태 확인
+            checkFriendRequestStatus(currentUser.uid, profileUser.uid)
         }
-    }, [profileUser, currentUser])
+    }, [profileUser, currentUser, checkFriendRequestStatus])
 
     // 현재 사용자 변경 시 소셜 관계 재확인
     useEffect(() => {
@@ -73,7 +76,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
     }, [currentUser?.social.following, currentUser?.social.blocked, profileUser?.uid, isOwnProfile])
 
     // 프로필 사용자 정보 구독
-    const updateProfileUser = async (username: string) => {
+    const updateProfileUser = useCallback(async (username: string) => {
         setLoading(true)
 
         // 이전 구독 해제
@@ -113,7 +116,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [currentUser, unsubscribe, checkFriendRequestStatus])
 
     // 컴포넌트 언마운트 시 구독 해제
     useEffect(() => {

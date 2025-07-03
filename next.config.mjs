@@ -21,6 +21,14 @@ const nextConfig = {
                         key: 'X-XSS-Protection',
                         value: '1; mode=block',
                     },
+                    {
+                        key: 'Cross-Origin-Opener-Policy',
+                        value: 'same-origin-allow-popups', // Google OAuth 팝업 허용
+                    },
+                    {
+                        key: 'Cross-Origin-Embedder-Policy',
+                        value: 'unsafe-none', // 외부 리소스 허용
+                    },
                 ],
             },
             {

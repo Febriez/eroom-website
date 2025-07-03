@@ -3,7 +3,7 @@
 import {useEffect, useState} from 'react'
 import {useParams, useRouter, useSearchParams} from 'next/navigation'
 import {useAuth} from '@/contexts/AuthContext'
-import {useProfile} from '@/contexts/ProfileContext'
+import {ProfileProvider, useProfile} from '@/contexts/ProfileContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
 import {useConversations} from '@/lib/hooks/useConversations'
 import {useMessages} from '@/lib/hooks/useMessages'
@@ -24,12 +24,11 @@ import {doc, serverTimestamp, updateDoc} from 'firebase/firestore'
 import {db} from '@/lib/firebase/config'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {formatRelativeTime} from '@/lib/utils'
-
 import type {NotificationCategory} from '@/lib/firebase/types'
 
 type NotificationFilter = NotificationCategory
 
-export default function ProfilePage() {
+function ProfilePageContent() {
     // 라우팅 관련
     const params = useParams()
     const router = useRouter()
@@ -90,7 +89,7 @@ export default function ProfilePage() {
         if (username) {
             updateProfileUser(username)
         }
-    }, [username, updateProfileUser])
+    }, [username]) // updateProfileUser를 의존성에서 제거
 
     // username 초기값 설정
     useEffect(() => {
@@ -384,5 +383,13 @@ export default function ProfilePage() {
                 />
             )}
         </div>
+    )
+}
+
+export default function ProfilePage() {
+    return (
+        <ProfileProvider>
+            <ProfilePageContent/>
+        </ProfileProvider>
     )
 }
