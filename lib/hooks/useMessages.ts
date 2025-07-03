@@ -1,7 +1,6 @@
-// lib/hooks/useMessages.ts
 import {useEffect, useState} from 'react'
-import {MessageService} from '@/lib/firebase/services'
-import type {Message} from '@/lib/firebase/types'
+import type {Message} from '@/lib/firebase/services/message.service'
+import {MessageService} from '@/lib/firebase/services/message.service'
 import {useAuth} from '@/contexts/AuthContext'
 import {useNotifications} from './useNotifications'
 
@@ -20,22 +19,22 @@ export function useMessages(conversationId: string | null) {
         }
 
         setLoading(true)
-
         const unsubscribe = MessageService.subscribeToMessages(
             conversationId,
             (messageList) => {
                 const blockedIds = user.social.blocked || []
-                const filtered = messageList.filter(msg => !blockedIds.includes(msg.sender.uid))
+                // 역순 처리 **없음**: MessageThread 에서 한 번만 reverse
+                const filtered = messageList.filter(
+                    (msg) => !blockedIds.includes(msg.sender.uid)
+                )
                 setMessages(filtered)
                 setLoading(false)
                 setError(null)
             }
         )
 
-        // 메시지 읽음 처리
+        // 읽음 처리
         MessageService.markMessagesAsRead(conversationId, user.uid).catch(console.error)
-
-        // 해당 대화의 알림들도 읽음 처리
         markNotificationsByConversation(conversationId).catch(console.error)
 
         return () => unsubscribe()
@@ -45,27 +44,16 @@ export function useMessages(conversationId: string | null) {
         if (!user || !conversationId) {
             throw new Error('User not authenticated or no conversation selected')
         }
-
-        try {
-            await MessageService.sendMessage(
-                conversationId,
-                {
-                    uid: user.uid,
-                    username: user.username || '',
-                    displayName: user.displayName || ''
-                },
-                content
-            )
-        } catch (err) {
-            console.error('Error sending message:', err)
-            throw err
-        }
+        await MessageService.sendMessage(
+            conversationId,
+            {
+                uid: user.uid,
+                username: user.username || '',
+                displayName: user.displayName || ''
+            },
+            content
+        )
     }
 
-    return {
-        messages,
-        loading,
-        error,
-        sendMessage
-    }
+    return {messages, loading, error, sendMessage}
 }
