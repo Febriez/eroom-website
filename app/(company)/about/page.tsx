@@ -269,7 +269,7 @@ export default function AboutPage() {
                         {CONSTANTS.COMPANY.NAME}과 함께 AI 게임의 새로운 역사를 써내려갈 인재를 찾고 있습니다
                     </p>
                     <button
-                        onClick={() => window.location.href = '/company/careers'}
+                        onClick={() => window.location.href = '/careers'}
                         className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
                     >
                         채용 정보 보기
