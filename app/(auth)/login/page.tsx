@@ -221,7 +221,7 @@ export default function LoginPage() {
                             <input type="checkbox" className="w-4 h-4 bg-gray-800 border-gray-700 rounded"/>
                             <span className="ml-2 text-sm text-gray-400">로그인 상태 유지</span>
                         </label>
-                        <Link href="/(auth)/forgot-password" className="text-sm text-green-400 hover:text-green-300">
+                        <Link href="/forgot-password" className="text-sm text-green-400 hover:text-green-300">
                             비밀번호 찾기
                         </Link>
                     </div>

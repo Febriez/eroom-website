@@ -291,11 +291,11 @@ export default function FAQPage() {
                 <Card className="p-8 mt-12 text-center max-w-2xl mx-auto">
                     <h3 className="text-xl font-bold mb-4">원하는 답변을 찾지 못하셨나요?</h3>
                     <p className="text-gray-400 mb-6">
-                        고객센터에서 더 자세한 도움을 받으실 수 있습니다.
+                        1:1 문의를 통해 더 자세한 도움을 받으실 수 있습니다.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link href="/support/help" className="btn-primary">
-                            고객센터 문의
+                        <Link href="/support/inquiry" className="btn-primary">
+                            1:1 문의
                         </Link>
                         <Link href="/community/guides" className="btn-outline">
                             커뮤니티 가이드
