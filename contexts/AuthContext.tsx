@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth'
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
-import {validateDisplayName, validateUsername} from '@/lib/utils/validators'
+import {validateDisplayName} from '@/lib/utils/validators'
 import {doc, serverTimestamp, setDoc, Unsubscribe} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'
@@ -393,7 +393,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         try {
             // 닉네임 변경 시 검증
             if (data.displayName) {
-                const validation = validateUsername(data.displayName)
+                const validation = validateDisplayName(data.displayName)
                 if (!validation.isValid) {
                     throw new Error(validation.error)
                 }

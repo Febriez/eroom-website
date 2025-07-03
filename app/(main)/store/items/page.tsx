@@ -2,141 +2,264 @@
 
 import {useState} from 'react'
 import {useRouter} from 'next/navigation'
+import {useAuth} from '@/contexts/AuthContext'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
-import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
-import {Crown, Filter, Palette, Search, Shield, ShoppingCart, Sparkles, Star, Zap} from 'lucide-react'
+import {
+    Brain,
+    Check,
+    Clock,
+    Crown,
+    Eye,
+    Filter,
+    Gem,
+    Gift,
+    Key,
+    Lock,
+    Minus,
+    Palette,
+    Plus,
+    Search,
+    Shield,
+    ShoppingBag,
+    ShoppingCart,
+    Sparkles,
+    Star,
+    Timer,
+    TrendingUp,
+    X,
+    Zap
+} from 'lucide-react'
 
 interface ShopItem {
     id: string
     name: string
     description: string
-    category: 'theme' | 'skin' | 'tool' | 'bundle'
+    category: 'themes' | 'boosts' | 'tools' | 'bundles' | 'special'
     price: number
     originalPrice?: number
-    rarity: 'common' | 'rare' | 'epic' | 'legendary'
+    rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
     icon: React.ReactNode
-    new?: boolean
-    limited?: boolean
+    iconBg: string
+    features?: string[]
+    duration?: string
+    quantity?: number
+    popular?: boolean
+    limitedTime?: boolean
+    discount?: number
+}
+
+interface CartItem extends ShopItem {
+    cartQuantity: number
 }
 
 export default function StoreItemsPage() {
     const router = useRouter()
+    const {user} = useAuth()
     const [searchTerm, setSearchTerm] = useState('')
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-    const [selectedRarity, setSelectedRarity] = useState<string | null>(null)
-    const [selectedItem, setSelectedItem] = useState<string | null>(null)
+    const [selectedCategory, setSelectedCategory] = useState<string>('all')
+    const [selectedRarity, setSelectedRarity] = useState<string>('all')
+    const [showCart, setShowCart] = useState(false)
+    const [cart, setCart] = useState<CartItem[]>([])
+    const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+
+    const userCredits = user?.credits || 0
 
     const items: ShopItem[] = [
+        // 테마 카테고리
         {
-            id: '1',
-            name: '사이버펑크 2077 테마',
-            description: '네온 빛이 가득한 미래 도시 테마',
-            category: 'theme',
-            price: 1200,
-            originalPrice: 1500,
+            id: 'theme-ancient',
+            name: '고대 신전 테마',
+            description: '신비로운 고대 문명의 비밀을 담은 프리미엄 테마',
+            category: 'themes',
+            price: 2500,
+            originalPrice: 3000,
             rarity: 'epic',
-            icon: <Palette className="w-8 h-8"/>,
-            new: true
+            icon: <Palette className="w-6 h-6"/>,
+            iconBg: 'from-purple-500 to-pink-500',
+            features: ['10개의 독특한 퍼즐', '몰입감 있는 사운드', '히든 엔딩 포함'],
+            popular: true,
+            discount: 17
         },
         {
-            id: '2',
-            name: '황금 기사 스킨',
-            description: '빛나는 황금 갑옷을 입은 캐릭터',
-            category: 'skin',
-            price: 2000,
-            rarity: 'legendary',
-            icon: <Crown className="w-8 h-8"/>,
-            limited: true
-        },
-        {
-            id: '3',
-            name: '마스터 키 세트',
-            description: '모든 문을 열 수 있는 특수 도구',
-            category: 'tool',
-            price: 500,
-            rarity: 'rare',
-            icon: <Zap className="w-8 h-8"/>
-        },
-        {
-            id: '4',
-            name: '고대 유적 테마',
-            description: '신비로운 고대 문명의 비밀',
-            category: 'theme',
-            price: 800,
-            rarity: 'rare',
-            icon: <Shield className="w-8 h-8"/>
-        },
-        {
-            id: '5',
-            name: '우주 탐험가 번들',
-            description: '우주 테마 + 우주복 스킨 + 특수 도구',
-            category: 'bundle',
+            id: 'theme-cyber',
+            name: '사이버펑크 2099',
+            description: '네온 빛 미래 도시를 배경으로 한 SF 테마',
+            category: 'themes',
             price: 3000,
-            originalPrice: 4000,
-            rarity: 'epic',
-            icon: <Sparkles className="w-8 h-8"/>,
-            new: true
+            rarity: 'legendary',
+            icon: <Zap className="w-6 h-6"/>,
+            iconBg: 'from-cyan-500 to-blue-500',
+            features: ['AR 퍼즐 시스템', '동적 환경 변화', '멀티 엔딩'],
+            limitedTime: true
         },
         {
-            id: '6',
-            name: '시간 조작기',
-            description: '30초간 시간을 멈출 수 있는 도구',
-            category: 'tool',
+            id: 'theme-horror',
+            name: '저주받은 저택',
+            description: '공포 애호가를 위한 호러 테마',
+            category: 'themes',
+            price: 2000,
+            rarity: 'rare',
+            icon: <Eye className="w-6 h-6"/>,
+            iconBg: 'from-red-600 to-red-800',
+            features: ['심리적 공포 요소', '랜덤 이벤트', '생존 모드']
+        },
+
+        // 부스터 카테고리
+        {
+            id: 'boost-exp',
+            name: '경험치 부스터 (7일)',
+            description: '획득 경험치 200% 증가',
+            category: 'boosts',
+            price: 500,
+            rarity: 'common',
+            icon: <TrendingUp className="w-6 h-6"/>,
+            iconBg: 'from-green-500 to-emerald-500',
+            duration: '7일',
+            popular: true
+        },
+        {
+            id: 'boost-credit',
+            name: '크레딧 부스터 (30일)',
+            description: '게임 클리어 시 크레딧 150% 추가 획득',
+            category: 'boosts',
+            price: 1200,
+            rarity: 'rare',
+            icon: <Gem className="w-6 h-6"/>,
+            iconBg: 'from-yellow-500 to-orange-500',
+            duration: '30일'
+        },
+
+        // 도구 카테고리
+        {
+            id: 'tool-hints',
+            name: '힌트 묶음 (5개)',
+            description: '막힐 때 사용하는 힌트 아이템',
+            category: 'tools',
             price: 300,
             rarity: 'common',
-            icon: <Zap className="w-8 h-8"/>
+            icon: <Brain className="w-6 h-6"/>,
+            iconBg: 'from-indigo-500 to-purple-500',
+            quantity: 5,
+            popular: true
+        },
+        {
+            id: 'tool-time',
+            name: '시간 조작기',
+            description: '제한 시간을 30분 연장',
+            category: 'tools',
+            price: 800,
+            rarity: 'rare',
+            icon: <Timer className="w-6 h-6"/>,
+            iconBg: 'from-blue-500 to-cyan-500',
+            quantity: 1
+        },
+        {
+            id: 'tool-master-key',
+            name: '마스터 키',
+            description: '한 번에 하나의 잠금을 해제',
+            category: 'tools',
+            price: 1000,
+            rarity: 'epic',
+            icon: <Key className="w-6 h-6"/>,
+            iconBg: 'from-amber-500 to-yellow-500',
+            quantity: 1
+        },
+
+        // 번들 카테고리
+        {
+            id: 'bundle-starter',
+            name: '초보자 스타터 팩',
+            description: '게임 시작을 위한 완벽한 세트',
+            category: 'bundles',
+            price: 1500,
+            originalPrice: 2200,
+            rarity: 'rare',
+            icon: <Gift className="w-6 h-6"/>,
+            iconBg: 'from-pink-500 to-rose-500',
+            features: ['힌트 10개', '시간 조작기 2개', '7일 경험치 부스터'],
+            discount: 32
+        },
+        {
+            id: 'bundle-pro',
+            name: '프로 게이머 번들',
+            description: '진정한 방탈출 마스터를 위한 패키지',
+            category: 'bundles',
+            price: 5000,
+            originalPrice: 7500,
+            rarity: 'legendary',
+            icon: <Crown className="w-6 h-6"/>,
+            iconBg: 'from-purple-600 to-indigo-600',
+            features: ['모든 테마 1개월 이용권', '힌트 30개', '마스터 키 3개', '30일 크레딧 부스터'],
+            popular: true,
+            discount: 33
+        },
+
+        // 특별 카테고리
+        {
+            id: 'special-private',
+            name: '비공개방 이용권',
+            description: '친구들과 프라이빗 게임 생성',
+            category: 'special',
+            price: 1500,
+            rarity: 'epic',
+            icon: <Lock className="w-6 h-6"/>,
+            iconBg: 'from-slate-600 to-gray-700',
+            duration: '1회'
+        },
+        {
+            id: 'special-vip',
+            name: 'VIP 멤버십 (30일)',
+            description: '모든 콘텐츠 무제한 이용',
+            category: 'special',
+            price: 9900,
+            rarity: 'mythic',
+            icon: <Sparkles className="w-6 h-6"/>,
+            iconBg: 'from-gradient-start to-gradient-end',
+            features: ['모든 테마 이용', '무제한 힌트', '전용 배지', '우선 매칭'],
+            limitedTime: true
         }
     ]
 
     const categories = [
-        {id: 'theme', name: '테마', icon: <Palette className="w-4 h-4"/>},
-        {id: 'skin', name: '스킨', icon: <Crown className="w-4 h-4"/>},
-        {id: 'tool', name: '도구', icon: <Zap className="w-4 h-4"/>},
-        {id: 'bundle', name: '번들', icon: <Sparkles className="w-4 h-4"/>}
+        {id: 'all', name: '전체', icon: <ShoppingBag className="w-4 h-4"/>},
+        {id: 'themes', name: '테마', icon: <Palette className="w-4 h-4"/>},
+        {id: 'boosts', name: '부스터', icon: <TrendingUp className="w-4 h-4"/>},
+        {id: 'tools', name: '도구', icon: <Brain className="w-4 h-4"/>},
+        {id: 'bundles', name: '번들', icon: <Gift className="w-4 h-4"/>},
+        {id: 'special', name: '특별', icon: <Sparkles className="w-4 h-4"/>}
     ]
 
     const rarities = [
+        {id: 'all', name: '전체', color: 'text-gray-400'},
         {id: 'common', name: '일반', color: 'text-gray-400'},
         {id: 'rare', name: '레어', color: 'text-blue-400'},
         {id: 'epic', name: '에픽', color: 'text-purple-400'},
-        {id: 'legendary', name: '전설', color: 'text-orange-400'}
+        {id: 'legendary', name: '전설', color: 'text-orange-400'},
+        {id: 'mythic', name: '신화', color: 'text-red-400'}
     ]
 
-    const getRarityColor = (rarity: string) => {
+    const getRarityGradient = (rarity: string) => {
         switch (rarity) {
             case 'common':
-                return 'from-gray-600 to-gray-700'
+                return 'from-gray-800 to-gray-900'
             case 'rare':
-                return 'from-blue-600 to-blue-700'
+                return 'from-blue-900/50 to-gray-900'
             case 'epic':
-                return 'from-purple-600 to-purple-700'
+                return 'from-purple-900/50 to-gray-900'
             case 'legendary':
-                return 'from-orange-600 to-orange-700'
+                return 'from-orange-900/50 to-gray-900'
+            case 'mythic':
+                return 'from-red-900/50 to-gray-900'
             default:
-                return 'from-gray-600 to-gray-700'
+                return 'from-gray-800 to-gray-900'
         }
     }
 
-    const getRarityBorder = (rarity: string, isSelected: boolean) => {
-        if (isSelected) {
-            switch (rarity) {
-                case 'common':
-                    return 'border-gray-500 ring-2 ring-gray-500'
-                case 'rare':
-                    return 'border-blue-500 ring-2 ring-blue-500'
-                case 'epic':
-                    return 'border-purple-500 ring-2 ring-purple-500'
-                case 'legendary':
-                    return 'border-orange-500 ring-2 ring-orange-500'
-                default:
-                    return 'border-gray-500 ring-2 ring-gray-500'
-            }
-        }
-
+    const getRarityBorder = (rarity: string) => {
         switch (rarity) {
             case 'common':
                 return 'border-gray-700'
@@ -146,6 +269,8 @@ export default function StoreItemsPage() {
                 return 'border-purple-600'
             case 'legendary':
                 return 'border-orange-600'
+            case 'mythic':
+                return 'border-red-600 animate-pulse'
             default:
                 return 'border-gray-700'
         }
@@ -154,194 +279,405 @@ export default function StoreItemsPage() {
     const filteredItems = items.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.description.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesCategory = !selectedCategory || item.category === selectedCategory
-        const matchesRarity = !selectedRarity || item.rarity === selectedRarity
+        const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
+        const matchesRarity = selectedRarity === 'all' || item.rarity === selectedRarity
         return matchesSearch && matchesCategory && matchesRarity
     })
 
-    const handlePurchase = (itemId: string, itemName: string) => {
-        if (!selectedItem || selectedItem !== itemId) {
-            alert(`먼저 &quot;${itemName}&quot;을(를) 선택해주세요.`)
-            setSelectedItem(itemId)
+    const addToCart = (item: ShopItem) => {
+        const existingItem = cart.find(cartItem => cartItem.id === item.id)
+        if (existingItem) {
+            setCart(cart.map(cartItem =>
+                cartItem.id === item.id
+                    ? {...cartItem, cartQuantity: cartItem.cartQuantity + 1}
+                    : cartItem
+            ))
+        } else {
+            setCart([...cart, {...item, cartQuantity: 1}])
+        }
+    }
+
+    const removeFromCart = (itemId: string) => {
+        setCart(cart.filter(item => item.id !== itemId))
+    }
+
+    const updateCartQuantity = (itemId: string, quantity: number) => {
+        if (quantity <= 0) {
+            removeFromCart(itemId)
+        } else {
+            setCart(cart.map(item =>
+                item.id === itemId ? {...item, cartQuantity: quantity} : item
+            ))
+        }
+    }
+
+    const getTotalPrice = () => {
+        return cart.reduce((total, item) => total + (item.price * item.cartQuantity), 0)
+    }
+
+    const handleDirectPurchase = (item: ShopItem) => {
+        const remainingCredits = userCredits - item.price
+
+        if (remainingCredits < 0) {
+            alert(`크레딧이 부족합니다!\n\n필요한 크레딧: ${item.price.toLocaleString()}\n현재 크레딧: ${userCredits.toLocaleString()}\n부족한 크레딧: ${Math.abs(remainingCredits).toLocaleString()}`)
             return
         }
 
-        // 실제 구매 로직
-        alert(`&quot;${itemName}&quot;을(를) 구매하시겠습니까?`)
+        if (confirm(`"${item.name}"을(를) 구매하시겠습니까?\n\n가격: ${item.price.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
+            // 구매 로직
+            alert('구매가 완료되었습니다!')
+        }
+    }
+
+    const handleCartPurchase = () => {
+        const totalPrice = getTotalPrice()
+        const remainingCredits = userCredits - totalPrice
+
+        if (remainingCredits < 0) {
+            alert(`크레딧이 부족합니다!\n\n필요한 크레딧: ${totalPrice.toLocaleString()}\n현재 크레딧: ${userCredits.toLocaleString()}\n부족한 크레딧: ${Math.abs(remainingCredits).toLocaleString()}`)
+            return
+        }
+
+        const itemList = cart.map(item => `- ${item.name} x${item.cartQuantity}`).join('\n')
+
+        if (confirm(`장바구니 아이템을 구매하시겠습니까?\n\n${itemList}\n\n총 가격: ${totalPrice.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
+            // 구매 로직
+            alert('구매가 완료되었습니다!')
+            setCart([])
+            setShowCart(false)
+        }
     }
 
     return (
         <>
             <PageHeader
-                title="아이템 샵"
-                description="게임을 더욱 특별하게 만들어줄 프리미엄 아이템"
-                badge="매주 업데이트"
+                title="아이템 상점"
+                description="당신의 방탈출 경험을 업그레이드하세요"
+                badge={
+                    <div className="flex items-center gap-2">
+                        <Gem className="w-4 h-4"/>
+                        <span>{userCredits.toLocaleString()} 크레딧</span>
+                    </div>
+                }
                 icon={<ShoppingCart className="w-5 h-5"/>}
             />
 
-            <Container className="py-12">
-                {/* 검색 및 필터 */}
-                <div className="mb-8">
-                    <div className="flex flex-col md:flex-row gap-4 mb-6">
-                        <div className="flex-1">
+            <Container className="py-8">
+                <div className="flex gap-8">
+                    {/* 왼쪽 사이드바 */}
+                    <div className="w-64 flex-shrink-0 hidden lg:block">
+                        <div className="sticky top-24 space-y-6">
+                            {/* 검색 */}
+                            <div>
+                                <Input
+                                    placeholder="아이템 검색..."
+                                    icon={<Search className="w-5 h-5"/>}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="mb-4"
+                                />
+                            </div>
+
+                            {/* 카테고리 */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-400 mb-3">카테고리</h3>
+                                <div className="space-y-1">
+                                    {categories.map(category => (
+                                        <button
+                                            key={category.id}
+                                            onClick={() => setSelectedCategory(category.id)}
+                                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${
+                                                selectedCategory === category.id
+                                                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-600/20'
+                                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                            }`}
+                                        >
+                                            {category.icon}
+                                            <span className="font-medium">{category.name}</span>
+                                            <span className="ml-auto text-xs">
+                                                {items.filter(item =>
+                                                    category.id === 'all' || item.category === category.id
+                                                ).length}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 희귀도 필터 */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-400 mb-3">희귀도</h3>
+                                <div className="space-y-1">
+                                    {rarities.map(rarity => (
+                                        <button
+                                            key={rarity.id}
+                                            onClick={() => setSelectedRarity(rarity.id)}
+                                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${
+                                                selectedRarity === rarity.id
+                                                    ? 'bg-gray-800 text-white'
+                                                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                                            }`}
+                                        >
+                                            <Star className={`w-4 h-4 ${rarity.color}`}/>
+                                            <span className={`font-medium ${rarity.color}`}>{rarity.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 메인 콘텐츠 */}
+                    <div className="flex-1">
+                        {/* 모바일 필터 */}
+                        <div className="lg:hidden mb-6 flex gap-2">
                             <Input
-                                placeholder="아이템 검색..."
+                                placeholder="검색..."
                                 icon={<Search className="w-5 h-5"/>}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                className="flex-1"
                             />
+                            <Button variant="outline" size="sm">
+                                <Filter className="w-4 h-4"/>
+                            </Button>
                         </div>
-                        <Button variant="outline">
-                            <Filter className="w-4 h-4"/>
-                            필터
-                        </Button>
-                    </div>
 
-                    {/* 카테고리 필터 */}
-                    <div className="mb-4">
-                        <p className="text-sm text-gray-400 mb-2">카테고리</p>
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => setSelectedCategory(null)}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                    !selectedCategory
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
-                            >
-                                전체
-                            </button>
-                            {categories.map(category => (
-                                <button
-                                    key={category.id}
-                                    onClick={() => setSelectedCategory(category.id)}
-                                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                                        selectedCategory === category.id
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                    }`}
+                        {/* 아이템 그리드 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {filteredItems.map(item => (
+                                <div
+                                    key={item.id}
+                                    className={`group relative bg-gradient-to-br ${getRarityGradient(item.rarity)} rounded-2xl border-2 ${getRarityBorder(item.rarity)} overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl`}
+                                    onMouseEnter={() => setHoveredItem(item.id)}
+                                    onMouseLeave={() => setHoveredItem(null)}
                                 >
-                                    {category.icon}
-                                    {category.name}
-                                </button>
+                                    {/* 배경 효과 */}
+                                    <div
+                                        className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"/>
+
+                                    {/* 할인 배지 */}
+                                    {item.discount && (
+                                        <div
+                                            className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                            -{item.discount}%
+                                        </div>
+                                    )}
+
+                                    {/* 인기/한정 배지 */}
+                                    <div className="absolute top-4 right-4 flex flex-col gap-2">
+                                        {item.popular && (
+                                            <Badge variant="success" size="sm">인기</Badge>
+                                        )}
+                                        {item.limitedTime && (
+                                            <Badge variant="danger" size="sm">한정</Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="p-6">
+                                        {/* 아이콘 */}
+                                        <div
+                                            className={`w-16 h-16 bg-gradient-to-br ${item.iconBg} rounded-2xl flex items-center justify-center mb-4 shadow-lg transform group-hover:rotate-12 transition-transform`}>
+                                            {item.icon}
+                                        </div>
+
+                                        {/* 제목과 설명 */}
+                                        <h3 className="text-lg font-bold mb-2">{item.name}</h3>
+                                        <p className="text-sm text-gray-400 mb-4">{item.description}</p>
+
+                                        {/* 특징 */}
+                                        {item.features && (
+                                            <ul className="text-xs text-gray-500 space-y-1 mb-4">
+                                                {item.features.map((feature, i) => (
+                                                    <li key={i} className="flex items-center gap-2">
+                                                        <Check className="w-3 h-3 text-green-500"/>
+                                                        {feature}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+
+                                        {/* 지속시간/수량 */}
+                                        {(item.duration || item.quantity) && (
+                                            <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                                                {item.duration && (
+                                                    <div className="flex items-center gap-1">
+                                                        <Clock className="w-3 h-3"/>
+                                                        {item.duration}
+                                                    </div>
+                                                )}
+                                                {item.quantity && (
+                                                    <div className="flex items-center gap-1">
+                                                        <Shield className="w-3 h-3"/>
+                                                        {item.quantity}개
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* 가격 */}
+                                        <div className="flex items-end justify-between mb-4">
+                                            <div>
+                                                {item.originalPrice && (
+                                                    <p className="text-sm text-gray-500 line-through">
+                                                        {item.originalPrice.toLocaleString()}
+                                                    </p>
+                                                )}
+                                                <p className="text-2xl font-bold text-green-400">
+                                                    {item.price.toLocaleString()}
+                                                    <span className="text-sm text-gray-400 ml-1">크레딧</span>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* 버튼 */}
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="flex-1"
+                                                onClick={() => addToCart(item)}
+                                            >
+                                                <ShoppingBag className="w-4 h-4"/>
+                                                담기
+                                            </Button>
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                className="flex-1"
+                                                onClick={() => handleDirectPurchase(item)}
+                                            >
+                                                <Zap className="w-4 h-4"/>
+                                                바로 구매
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
                             ))}
                         </div>
-                    </div>
 
-                    {/* 희귀도 필터 */}
-                    <div>
-                        <p className="text-sm text-gray-400 mb-2">희귀도</p>
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => setSelectedRarity(null)}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                    !selectedRarity
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
-                            >
-                                전체
-                            </button>
-                            {rarities.map(rarity => (
-                                <button
-                                    key={rarity.id}
-                                    onClick={() => setSelectedRarity(rarity.id)}
-                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        selectedRarity === rarity.id
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                    }`}
-                                >
-                                    <span className={rarity.color}>{rarity.name}</span>
-                                </button>
-                            ))}
-                        </div>
+                        {/* 빈 상태 */}
+                        {filteredItems.length === 0 && (
+                            <div className="text-center py-20">
+                                <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4"/>
+                                <p className="text-gray-400">검색 결과가 없습니다.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
+            </Container>
 
-                {/* 아이템 그리드 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredItems.map(item => {
-                        const rarity = rarities.find(r => r.id === item.rarity)
-                        const discount = item.originalPrice
-                            ? Math.round((1 - item.price / item.originalPrice) * 100)
-                            : 0
-                        const isSelected = selectedItem === item.id
+            {/* 장바구니 버튼 */}
+            <button
+                onClick={() => setShowCart(true)}
+                className="fixed bottom-8 right-8 bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform"
+            >
+                <ShoppingCart className="w-6 h-6"/>
+                {cart.length > 0 && (
+                    <span
+                        className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">
+                        {cart.reduce((total, item) => total + item.cartQuantity, 0)}
+                    </span>
+                )}
+            </button>
 
-                        return (
-                            <Card
-                                key={item.id}
-                                hover
-                                className={`p-6 relative overflow-hidden cursor-pointer transition-all ${getRarityBorder(item.rarity, isSelected)}`}
-                                onClick={() => setSelectedItem(item.id)}
-                            >
-                                {/* 배지들 */}
-                                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                                    {item.new && (
-                                        <Badge variant="success" size="sm">NEW</Badge>
-                                    )}
-                                    {item.limited && (
-                                        <Badge variant="danger" size="sm">한정판</Badge>
-                                    )}
-                                    {discount > 0 && (
-                                        <Badge variant="warning" size="sm">{discount}% OFF</Badge>
-                                    )}
+            {/* 장바구니 모달 */}
+            {showCart && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                        <div className="p-6 border-b border-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold">장바구니</h2>
+                                <button
+                                    onClick={() => setShowCart(false)}
+                                    className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5"/>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto max-h-[50vh]">
+                            {cart.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <ShoppingBag className="w-12 h-12 text-gray-600 mx-auto mb-4"/>
+                                    <p className="text-gray-400">장바구니가 비어있습니다.</p>
                                 </div>
-
-                                {/* 아이콘 */}
-                                <div
-                                    className={`w-20 h-20 bg-gradient-to-br ${getRarityColor(item.rarity)} rounded-2xl flex items-center justify-center mb-4`}>
-                                    {item.icon}
+                            ) : (
+                                <div className="space-y-4">
+                                    {cart.map(item => (
+                                        <div key={item.id}
+                                             className="bg-gray-800 rounded-xl p-4 flex items-center gap-4">
+                                            <div
+                                                className={`w-12 h-12 bg-gradient-to-br ${item.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                                {item.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-semibold">{item.name}</h4>
+                                                <p className="text-sm text-gray-400">
+                                                    {item.price.toLocaleString()} 크레딧
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => updateCartQuantity(item.id, item.cartQuantity - 1)}
+                                                    className="p-1 hover:bg-gray-700 rounded"
+                                                >
+                                                    <Minus className="w-4 h-4"/>
+                                                </button>
+                                                <span className="w-8 text-center">{item.cartQuantity}</span>
+                                                <button
+                                                    onClick={() => updateCartQuantity(item.id, item.cartQuantity + 1)}
+                                                    className="p-1 hover:bg-gray-700 rounded"
+                                                >
+                                                    <Plus className="w-4 h-4"/>
+                                                </button>
+                                            </div>
+                                            <p className="font-semibold text-green-400">
+                                                {(item.price * item.cartQuantity).toLocaleString()}
+                                            </p>
+                                            <button
+                                                onClick={() => removeFromCart(item.id)}
+                                                className="p-2 hover:bg-gray-700 rounded-lg"
+                                            >
+                                                <X className="w-4 h-4 text-red-400"/>
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
+                            )}
+                        </div>
 
-                                {/* 정보 */}
-                                <h3 className="text-lg font-bold mb-2 break-keep-all">{item.name}</h3>
-                                <p className="text-sm text-gray-400 mb-4 break-keep-all">{item.description}</p>
-
-                                {/* 희귀도 */}
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Star className={`w-4 h-4 ${rarity?.color}`}/>
-                                    <span className={`text-sm font-medium ${rarity?.color}`}>
-                                        {rarity?.name}
+                        {cart.length > 0 && (
+                            <div className="p-6 border-t border-gray-800">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-lg">총 금액</span>
+                                    <span className="text-2xl font-bold text-green-400">
+                                        {getTotalPrice().toLocaleString()} 크레딧
                                     </span>
                                 </div>
-
-                                {/* 가격 및 구매 버튼 */}
-                                <div className="flex items-end justify-between">
-                                    <div>
-                                        {item.originalPrice && (
-                                            <p className="text-sm text-gray-500 line-through">
-                                                {item.originalPrice.toLocaleString()} 크레딧
-                                            </p>
-                                        )}
-                                        <p className="text-xl font-bold text-green-400">
-                                            {item.price.toLocaleString()} 크레딧
-                                        </p>
-                                    </div>
+                                <div className="flex gap-3">
                                     <Button
-                                        variant={isSelected ? "primary" : "secondary"}
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handlePurchase(item.id, item.name)
-                                        }}
+                                        variant="secondary"
+                                        className="flex-1"
+                                        onClick={() => setShowCart(false)}
                                     >
-                                        구매
+                                        계속 쇼핑
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        className="flex-1"
+                                        onClick={handleCartPurchase}
+                                    >
+                                        <ShoppingCart className="w-4 h-4"/>
+                                        결제하기
                                     </Button>
                                 </div>
-                            </Card>
-                        )
-                    })}
-                </div>
-
-                {/* 빈 상태 */}
-                {filteredItems.length === 0 && (
-                    <div className="text-center py-20">
-                        <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4"/>
-                        <p className="text-gray-400">검색 결과가 없습니다.</p>
+                            </div>
+                        )}
                     </div>
-                )}
-            </Container>
+                </div>
+            )}
         </>
     )
 }

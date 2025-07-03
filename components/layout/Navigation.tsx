@@ -210,6 +210,13 @@ export default function Navigation() {
         [conversations, user?.uid, dismissedConversations]
     )
 
+    // 받은 메시지의 총 읽지 않은 수 계산
+    const totalReceivedUnreadCount = React.useMemo(() => {
+        return receivedMessages.reduce((total, conv) => {
+            return total + (conv.unreadCount?.[user!.uid] || 0)
+        }, 0)
+    }, [receivedMessages, user?.uid])
+
     return (
         <>
             <nav className={`fixed w-full z-40 transition-all duration-300 safe-top ${
@@ -303,7 +310,7 @@ export default function Navigation() {
                                         >
                                             <MessageSquare
                                                 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 hover:text-white transition-colors"/>
-                                            {receivedMessages.length > 0 && (
+                                            {totalReceivedUnreadCount > 0 && (
                                                 <span
                                                     className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
                                             )}
@@ -319,7 +326,7 @@ export default function Navigation() {
                                             <div className="p-4 border-b border-gray-800">
                                                 <h3 className="font-semibold flex items-center justify-between">
                                                     받은 메시지
-                                                    {totalUnreadCount > 0 && (
+                                                    {totalReceivedUnreadCount > 0 && (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
@@ -351,30 +358,35 @@ export default function Navigation() {
                                                                         className="flex items-start gap-3 cursor-pointer"
                                                                         onClick={() => router.push(`/profile/${user.username}?openChat=${conversation.id}`)}
                                                                     >
-                                                                        <Avatar
-                                                                            src={conversation.otherParticipant?.avatarUrl}
-                                                                            size="sm"
-                                                                        />
-                                                                        <div className="flex-1 min-w-0">
+                                                                        <div className="relative">
+                                                                            <Avatar
+                                                                                src={conversation.otherParticipant?.avatarUrl}
+                                                                                size="sm"
+                                                                            />
+                                                                            {hasUnread && (
+                                                                                <span
+                                                                                    className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center">
+                                                                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0 pr-8">
                                                                             <div
-                                                                                className="flex items-center justify-between">
+                                                                                className="flex items-center justify-between mb-1">
                                                                                 <p className="font-medium text-sm">
                                                                                     {conversation.otherParticipant?.displayName || 'Unknown'}
                                                                                 </p>
+                                                                            </div>
+                                                                            <p className="text-sm text-gray-400 truncate">
+                                                                                {conversation.lastMessage?.content || '대화를 시작하세요'}
+                                                                            </p>
+                                                                            <div
+                                                                                className="flex items-center justify-end mt-1">
                                                                                 <span className="text-xs text-gray-500">
                                                                                     {conversation.lastMessage && formatTime(conversation.lastMessage.timestamp)}
                                                                                 </span>
                                                                             </div>
-                                                                            <p className="text-sm text-gray-400 truncate mt-1">
-                                                                                {conversation.lastMessage?.content || '대화를 시작하세요'}
-                                                                            </p>
                                                                         </div>
-                                                                        {hasUnread && (
-                                                                            <span
-                                                                                className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
-                                                                                {unreadCount}
-                                                                            </span>
-                                                                        )}
                                                                     </div>
                                                                     {/* X 버튼 */}
                                                                     <button

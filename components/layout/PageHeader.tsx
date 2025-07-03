@@ -4,7 +4,7 @@ import React from "react";
 interface PageHeaderProps {
     title: string
     description?: string
-    badge?: string
+    badge?: string | React.ReactNode
     icon?: React.ReactNode
     actions?: React.ReactNode
 }
@@ -17,7 +17,11 @@ export function PageHeader({title, description, badge, icon, actions}: PageHeade
                     {badge && (
                         <div className="inline-flex items-center gap-2 bg-green-900/20 px-6 py-2 rounded-full mb-6">
                             {icon && <div className="text-green-400">{icon}</div>}
-                            <span className="text-green-400 font-medium">{badge}</span>
+                            {typeof badge === 'string' ? (
+                                <span className="text-green-400 font-medium">{badge}</span>
+                            ) : (
+                                <div className="text-green-400 font-medium">{badge}</div>
+                            )}
                         </div>
                     )}
 
