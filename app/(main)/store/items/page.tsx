@@ -492,10 +492,10 @@ export default function StoreItemsPage() {
                                     <div
                                         className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-0"/>
 
-                                    {/* 할인 배지 위치 수정 */}
+                                    {/* 할인 배지 - 카드 왼쪽 위에 튀어나오도록 */}
                                     {item.discount && (
                                         <div
-                                            className="absolute top-3 left-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+                                            className="absolute -top-2 -left-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full z-20 shadow-lg border-2 border-red-400">
                                             -{item.discount}%
                                         </div>
                                     )}
