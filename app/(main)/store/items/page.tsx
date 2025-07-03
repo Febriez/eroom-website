@@ -677,9 +677,6 @@ export default function StoreItemsPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    // 장바구니 모달 내부의 아이템 렌더링 부분 수정
-                                    // 기존 코드의 516-544 라인을 다음과 같이 교체
-
                                     {cart.map(item => (
                                         <div key={item.id}
                                              className="bg-gray-800 rounded-xl p-4 flex items-center gap-4">
