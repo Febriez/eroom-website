@@ -6,7 +6,7 @@ import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
 import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
-import {AlertCircle, Bug, CheckCircle, Paperclip, Upload, X} from 'lucide-react'
+import {AlertCircle, Bug, CheckCircle, File, FileImage, FileVideo, Paperclip, X} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 
 interface BugReport {
@@ -59,6 +59,24 @@ export default function BugReportPage() {
             ...prev,
             attachments: prev.attachments.filter((_, i) => i !== index)
         }))
+    }
+
+    const getFileIcon = (fileType: string) => {
+        if (fileType.startsWith('image/')) {
+            return <FileImage className="w-5 h-5"/>
+        } else if (fileType.startsWith('video/')) {
+            return <FileVideo className="w-5 h-5"/>
+        } else {
+            return <File className="w-5 h-5"/>
+        }
+    }
+
+    const formatFileSize = (bytes: number) => {
+        if (bytes === 0) return '0 Bytes'
+        const k = 1024
+        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -316,42 +334,43 @@ export default function BugReportPage() {
 
                             {/* 파일 첨부 */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    파일 첨부 (선택사항)
+                                <label className="block text-sm font-medium mb-2">
+                                    파일 첨부 <span className="text-gray-400">(선택사항)</span>
                                 </label>
-                                <div className="space-y-3">
-                                    <label
-                                        className="flex items-center justify-center w-full p-4 border-2 border-dashed border-gray-700 rounded-lg hover:border-gray-600 cursor-pointer transition-colors">
-                                        <div className="text-center">
-                                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2"/>
-                                            <p className="text-sm text-gray-400">
-                                                클릭하여 파일 업로드 (최대 5개)
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                이미지, 동영상, 로그 파일 등
-                                            </p>
+
+                                <div className="space-y-4">
+                                    {/* 파일 업로드 버튼 */}
+                                    <div className="flex items-center gap-4">
+                                        <label
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors">
+                                            <Paperclip className="w-4 h-4"/>
+                                            <span className="text-sm">파일 선택</span>
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*,video/*"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                        <div className="text-xs text-gray-400">
+                                            이미지, 동영상 파일 (최대 10MB, 5개까지)
                                         </div>
-                                        <input
-                                            type="file"
-                                            multiple
-                                            className="hidden"
-                                            onChange={handleFileUpload}
-                                            accept="image/*,video/*,.txt,.log"
-                                        />
-                                    </label>
+                                    </div>
 
                                     {/* 첨부된 파일 목록 */}
                                     {formData.attachments.length > 0 && (
                                         <div className="space-y-2">
                                             {formData.attachments.map((file, index) => (
                                                 <div key={index}
-                                                     className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                                                    <div className="flex items-center gap-3">
-                                                        <Paperclip className="w-4 h-4 text-gray-400"/>
-                                                        <span className="text-sm break-keep-all">{file.name}</span>
-                                                        <span className="text-xs text-gray-500">
-                                                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                                                        </span>
+                                                     className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
+                                                    <div className="text-gray-400">
+                                                        {getFileIcon(file.type)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm truncate">{file.name}</div>
+                                                        <div
+                                                            className="text-xs text-gray-400">{formatFileSize(file.size)}</div>
                                                     </div>
                                                     <button
                                                         type="button"
