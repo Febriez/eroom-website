@@ -303,11 +303,14 @@ export default function StoreItemsPage() {
         setTimeout(() => {
             const existingItem = cart.find(cartItem => cartItem.id === item.id)
             if (existingItem) {
-                setCart(cart.map(cartItem =>
-                    cartItem.id === item.id
-                        ? {...cartItem, cartQuantity: cartItem.cartQuantity + 1}
-                        : cartItem
-                ))
+                // 테마, 번들, 특별 아이템은 1개만 담을 수 있음
+                if (!['themes', 'bundles', 'special'].includes(item.category)) {
+                    setCart(cart.map(cartItem =>
+                        cartItem.id === item.id
+                            ? {...cartItem, cartQuantity: cartItem.cartQuantity + 1}
+                            : cartItem
+                    ))
+                }
             } else {
                 setCart([...cart, {...item, cartQuantity: 1}])
             }
@@ -674,6 +677,9 @@ export default function StoreItemsPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
+                                    // 장바구니 모달 내부의 아이템 렌더링 부분 수정
+                                    // 기존 코드의 516-544 라인을 다음과 같이 교체
+
                                     {cart.map(item => (
                                         <div key={item.id}
                                              className="bg-gray-800 rounded-xl p-4 flex items-center gap-4">
@@ -688,19 +694,49 @@ export default function StoreItemsPage() {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => updateCartQuantity(item.id, item.cartQuantity - 1)}
-                                                    className="p-1 hover:bg-gray-700 rounded"
-                                                >
-                                                    <Minus className="w-4 h-4"/>
-                                                </button>
-                                                <span className="w-8 text-center">{item.cartQuantity}</span>
-                                                <button
-                                                    onClick={() => updateCartQuantity(item.id, item.cartQuantity + 1)}
-                                                    className="p-1 hover:bg-gray-700 rounded"
-                                                >
-                                                    <Plus className="w-4 h-4"/>
-                                                </button>
+                                                {/* 테마, 번들, 특별 아이템은 수량 조절 불가 */}
+                                                {['themes', 'bundles', 'special'].includes(item.category) ? (
+                                                    <div className="w-20 text-center">
+                                                        <span className="text-gray-400">1개</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => updateCartQuantity(item.id, item.cartQuantity - 1)}
+                                                            className="p-1 hover:bg-gray-700 rounded"
+                                                        >
+                                                            <Minus className="w-4 h-4"/>
+                                                        </button>
+                                                        <input
+                                                            type="text"
+                                                            value={item.cartQuantity}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                // 숫자만 허용하고, 빈 문자열도 허용 (입력 중에)
+                                                                if (value === '' || /^\d+$/.test(value)) {
+                                                                    const numValue = value === '' ? 1 : parseInt(value);
+                                                                    // 자연수만 허용 (1 이상)
+                                                                    if (numValue >= 1) {
+                                                                        updateCartQuantity(item.id, numValue);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                // 포커스를 잃을 때 빈 값이면 1로 설정
+                                                                if (e.target.value === '') {
+                                                                    updateCartQuantity(item.id, 1);
+                                                                }
+                                                            }}
+                                                            className="w-16 text-center bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm"
+                                                        />
+                                                        <button
+                                                            onClick={() => updateCartQuantity(item.id, item.cartQuantity + 1)}
+                                                            className="p-1 hover:bg-gray-700 rounded"
+                                                        >
+                                                            <Plus className="w-4 h-4"/>
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                             <p className="font-semibold text-green-400">
                                                 {(item.price * item.cartQuantity).toLocaleString()}
