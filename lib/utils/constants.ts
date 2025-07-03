@@ -1,15 +1,15 @@
 export const CONSTANTS = {
     // 회사 정보
     COMPANY: {
-        NAME: '주식회사 이룸',
-        NAME_EN: 'EROOM',
+        NAME: '주식회사 호소기업 방탈소년단',
+        NAME_EN: 'BangtalBoyBand',
         SLOGAN: 'AI, 방탈출의 지도를 새로 그리다',
-        BRAND: 'BangtalBoyBand',
-        ADDRESS: '서울특별시 강남구 테헤란로 123',
+        BRAND: 'ERoom',
+        ADDRESS: '서울 강남구 테헤란로5길 20',
         MAIN_PHONE: '02-1234-5678',
-        MAIN_EMAIL: 'bangtal@bangtal.com',
+        MAIN_EMAIL: 'bangtal@gmail.com',
         CUSTOMER_SUPPORT_PHONE: '1588-1234',
-        CUSTOMER_SUPPORT_HOURS: '평일 10:00 - 18:00 (점심시간 12:30 - 13:30, 주말 및 공휴일 제외)',
+        CUSTOMER_SUPPORT_HOURS: '평일 10:00 - 18:00 (점심시간 12:50 - 14:00, 주말 및 공휴일 제외)',
         RECRUITER_EMAIL: 'recruit@bangtal.com'
     },
 
@@ -22,12 +22,12 @@ export const CONSTANTS = {
             PHONE: '010-1357-2468'
         },
         TERMS_CONTACT: {
-            EMAIL: 'bangcontact@bangtal.com',
-            ADDRESS: '서울특별시 강남구 테헤란로 123',
+            EMAIL: 'bangtal@gmail.com',
+            ADDRESS: '서울 강남구 테헤란로5길 20',
             PHONE: '02-1234-5678'
         },
         COOKIES_CONTACT: {
-            EMAIL: 'bangcookie@bangtal.com',
+            EMAIL: 'bangtal@gmail.com',
             PHONE: '02-2468-1357'
         }
     },
@@ -35,7 +35,7 @@ export const CONSTANTS = {
     // 게임 정보
     GAME_INFO: {
         NAME: 'EROOM',
-        DEVELOPER: '주식회사 이룸',
+        DEVELOPER: '방탈소년단',
         RELEASE_DATE: '2025년 7월 7일',
         PLATFORM: 'Windows PC',
         SYSTEM_REQUIREMENTS: {
@@ -60,8 +60,8 @@ export const CONSTANTS = {
     COMMUNITY_LINKS: {
         DISCORD: 'https://discord.gg/eroom-official',
         REDDIT: 'https://www.reddit.com/r/EROOM_Official/',
-        YOUTUBE: 'https://www.youtube.com/@EROOM_Official',
-        TWITCH: 'https://www.twitch.tv/eroom_official'
+        YOUTUBE: 'https://www.youtube.com/@BangtalBoyBand',
+        TWITCH: 'https://www.twitch.tv/BangtalBoyBand'
     },
 
     // SEO 정보
