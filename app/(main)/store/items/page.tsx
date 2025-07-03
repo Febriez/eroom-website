@@ -350,7 +350,14 @@ export default function StoreItemsPage() {
             if (['themes', 'bundles', 'special'].includes(item.category)) {
                 setPurchasedItems(prev => [...prev, item.id])
             }
-            alert('구매가 완료되었습니다!')
+            UserService.deductCredits(user!.uid, item.price)
+                .then(_ => {
+                    alert('구매가 완료되었습니다!')
+                })
+                .catch(error => {
+                    console.error('구매 실패:', error)
+                    alert(error.message || '구매 처리 중 오류가 발생했습니다.')
+                });
         }
     }
 
