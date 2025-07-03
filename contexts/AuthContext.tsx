@@ -14,7 +14,7 @@ import {
 import {auth, db, googleProvider} from '@/lib/firebase/config'
 import {UserService} from '@/lib/firebase/services'
 import {validateUsername} from '@/lib/utils/validators'
-import {doc, serverTimestamp, setDoc, Timestamp} from 'firebase/firestore'
+import {doc, serverTimestamp, setDoc, Unsubscribe} from 'firebase/firestore'
 import {COLLECTIONS} from '@/lib/firebase/collections'
 import {useRouter} from 'next/navigation'
 import type {User} from '@/lib/firebase/types'
@@ -38,26 +38,25 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
+    const [userUnsubscribe, setUserUnsubscribe] = useState<Unsubscribe | null>(null)
     const router = useRouter()
-
-    // Firestore에서 사용자 정보를 가져오는 함수
-    const fetchUserData = async (firebaseUser: FirebaseUser): Promise<User | null> => {
-        try {
-            const userData = await UserService.getUserById(firebaseUser.uid)
-            setUser(userData)
-            return userData
-        } catch (error) {
-            console.error('Error fetching user data:', error)
-            return null
-        }
-    }
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setFirebaseUser(firebaseUser)
 
+            // 이전 사용자 구독 해제
+            if (userUnsubscribe) {
+                userUnsubscribe()
+                setUserUnsubscribe(null)
+            }
+
             if (firebaseUser) {
-                await fetchUserData(firebaseUser)
+                // 실시간 구독 설정
+                const unsub = UserService.subscribeToUser(firebaseUser.uid, (userData) => {
+                    setUser(userData)
+                })
+                setUserUnsubscribe(() => unsub)
             } else {
                 setUser(null)
             }
@@ -65,7 +64,12 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             setLoading(false)
         })
 
-        return () => unsubscribe()
+        return () => {
+            unsubscribe()
+            if (userUnsubscribe) {
+                userUnsubscribe()
+            }
+        }
     }, [])
 
     const checkUsernameAvailability = async (username: string): Promise<boolean> => {
@@ -82,24 +86,12 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         try {
             const {user: firebaseUser} = await signInWithEmailAndPassword(auth, email, password)
 
-            // 로그인 즉시 사용자 정보 가져오기
-            const userData = await fetchUserData(firebaseUser)
+            // 로그인 시간 업데이트
+            await UserService.updateUser(firebaseUser.uid, {
+                lastLoginAt: serverTimestamp() as any
+            })
 
-            if (userData) {
-                // 로그인 시간 업데이트
-                await UserService.updateUser(userData.id, {
-                    lastLoginAt: serverTimestamp() as any
-                })
-
-                // 상태 다시 업데이트 (Timestamp 유지)
-                const updatedUser = {
-                    ...userData,
-                    lastLoginAt: Timestamp.now()
-                }
-                setUser(updatedUser)
-            }
-
-            // 사용자 정보가 완전히 로드될 때까지 대기
+            // 상태 업데이트는 실시간 리스너가 처리
             await new Promise(resolve => setTimeout(resolve, 100))
 
         } catch (error) {
@@ -133,7 +125,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             await updateProfile(firebaseUser, {displayName})
 
             // Firestore에 사용자 정보 저장
-            const userId = firebaseUser.uid // Firebase Auth UID를 그대로 사용
+            const userId = firebaseUser.uid
             const newUser: User = {
                 id: userId,
                 uid: firebaseUser.uid,
@@ -193,13 +185,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
 
-            // 생성한 사용자 정보를 즉시 상태에 반영
-            setUser({
-                ...newUser,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-                lastLoginAt: Timestamp.now()
-            })
+            // 상태 업데이트는 실시간 리스너가 처리
 
         } catch (error) {
             console.error('Signup error:', error)
@@ -236,7 +222,6 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 let displayName = firebaseUser.displayName || 'Player'
                 const displayNameValidation = validateUsername(displayName)
                 if (!displayNameValidation.isValid) {
-                    // 기본값 사용
                     displayName = 'Player'
                 }
 
@@ -249,7 +234,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     avatarUrl: firebaseUser.photoURL || undefined,
                     level: 1,
                     points: 0,
-                    credits: 150, // 구글 가입 보너스
+                    credits: 150,
                     stats: {
                         mapsCompleted: 0,
                         mapsCreated: 0,
@@ -299,28 +284,14 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 }
 
                 await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
-
-                // 생성한 사용자 정보를 즉시 상태에 반영
-                setUser({
-                    ...newUser,
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now(),
-                    lastLoginAt: Timestamp.now()
-                })
             } else {
                 // 기존 사용자라면 로그인 시간만 업데이트
                 await UserService.updateUser(userData.id, {
                     lastLoginAt: serverTimestamp() as any
                 })
-
-                // 상태 업데이트
-                setUser({
-                    ...userData,
-                    lastLoginAt: Timestamp.now()
-                })
             }
 
-            // 상태가 완전히 업데이트될 때까지 대기
+            // 상태 업데이트는 실시간 리스너가 처리
             await new Promise(resolve => setTimeout(resolve, 100))
 
         } catch (error: any) {
@@ -338,18 +309,19 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
+            // 구독 해제
+            if (userUnsubscribe) {
+                userUnsubscribe()
+                setUserUnsubscribe(null)
+            }
+
             await signOut(auth)
             setUser(null)
             setFirebaseUser(null)
 
-            // 로그아웃 후 메인 페이지로 이동하고 새로고침
             router.push('/')
-
-            // 상태가 완전히 정리될 때까지 약간의 지연 후 새로고침
             setTimeout(() => {
                 router.refresh()
-                // 또는 완전한 페이지 새로고침을 원한다면:
-                // window.location.href = '/'
             }, 100)
         } catch (error) {
             console.error('Logout error:', error)
@@ -378,11 +350,13 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 }
             }
 
-            await UserService.updateUser(user.id, data)
+            await UserService.updateUser(user.id, {
+                ...data,
+                updatedAt: serverTimestamp() as any
+            })
 
-            // 상태 즉시 업데이트
-            const updatedUser = {...user, ...data}
-            setUser(updatedUser)
+            // 낙관적 업데이트 (실시간 리스너가 곧 업데이트할 것)
+            setUser({...user, ...data})
         } catch (error) {
             console.error('Error updating user profile:', error)
             throw error

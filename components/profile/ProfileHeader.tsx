@@ -2,8 +2,7 @@ import {useState} from 'react'
 import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
 import {Check, Edit, MessageSquare, Settings, Shield, X} from 'lucide-react'
-import {UserService} from '@/lib/firebase/services'
-import {useAuth} from '@/contexts/AuthContext'
+import {useProfile} from '@/contexts/ProfileContext'
 import type {User} from '@/lib/firebase/types'
 
 interface ProfileHeaderProps {
@@ -43,7 +42,7 @@ export default function ProfileHeader({
                                           onShowFollowers,
                                           onShowFollowing
                                       }: ProfileHeaderProps) {
-    const {user: currentUser, updateUserProfile} = useAuth()
+    const {updateUserProfile} = useProfile()
     const [isEditingDisplayName, setIsEditingDisplayName] = useState(false)
     const [isEditingBio, setIsEditingBio] = useState(false)
     const [editForm, setEditForm] = useState({
@@ -52,24 +51,24 @@ export default function ProfileHeader({
     })
 
     const handleSaveDisplayName = async () => {
-        if (!profileUser || !currentUser) return
+        if (!profileUser || !isOwnProfile) return
         try {
-            await UserService.updateUser(profileUser.id, {displayName: editForm.displayName})
-            if (isOwnProfile) await updateUserProfile({displayName: editForm.displayName})
+            await updateUserProfile({displayName: editForm.displayName})
             setIsEditingDisplayName(false)
         } catch (e) {
             console.error(e)
+            alert('닉네임 변경에 실패했습니다.')
         }
     }
 
     const handleSaveBio = async () => {
-        if (!profileUser || !currentUser) return
+        if (!profileUser || !isOwnProfile) return
         try {
-            await UserService.updateUser(profileUser.id, {bio: editForm.bio})
-            if (isOwnProfile) await updateUserProfile({bio: editForm.bio})
+            await updateUserProfile({bio: editForm.bio})
             setIsEditingBio(false)
         } catch (e) {
             console.error(e)
+            alert('자기소개 변경에 실패했습니다.')
         }
     }
 

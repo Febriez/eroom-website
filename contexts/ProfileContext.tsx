@@ -1,9 +1,10 @@
 'use client'
 
-import React, {createContext, useContext, useState} from 'react'
+import React, {createContext, useContext, useEffect, useState} from 'react'
 import {useAuth} from '@/contexts/AuthContext'
 import {SocialService, UserService} from '@/lib/firebase/services'
 import type {User} from '@/lib/firebase/types'
+import {Unsubscribe} from 'firebase/firestore'
 
 interface ProfileContextType {
     profileUser: User | null
@@ -30,21 +31,59 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
     const [isFollowing, setIsFollowing] = useState(false)
     const [isBlocked, setIsBlocked] = useState(false)
     const [socialLoading, setSocialLoading] = useState(false)
+    const [unsubscribe, setUnsubscribe] = useState<Unsubscribe | null>(null)
 
     const isOwnProfile = currentUser?.uid === profileUser?.uid
 
-    // 프로필 사용자 정보 업데이트
+    // 소셜 관계 상태 업데이트
+    useEffect(() => {
+        if (profileUser && currentUser && currentUser.uid !== profileUser.uid) {
+            setIsFriend(profileUser.social.friends.includes(currentUser.uid))
+            setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
+            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+        }
+    }, [profileUser, currentUser])
+
+    // 현재 사용자 변경 시 소셜 관계 재확인
+    useEffect(() => {
+        if (profileUser && currentUser && !isOwnProfile) {
+            // 현재 사용자의 following 목록이 변경되었을 때 isFollowing 상태 업데이트
+            setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
+            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+        }
+    }, [currentUser?.social.following, currentUser?.social.blocked, profileUser?.uid, isOwnProfile])
+
+    // 프로필 사용자 정보 구독
     const updateProfileUser = async (username: string) => {
         setLoading(true)
-        try {
-            const user = await UserService.getUserByUsername(username)
-            setProfileUser(user)
 
-            // 소셜 관계 확인
-            if (user && currentUser && currentUser.uid !== user.uid) {
-                setIsFriend(user.social.friends.includes(currentUser.uid))
-                setIsFollowing(currentUser.social?.following?.includes(user.uid) || false)
-                setIsBlocked(currentUser.social?.blocked?.includes(user.uid) || false)
+        // 이전 구독 해제
+        if (unsubscribe) {
+            unsubscribe()
+        }
+
+        try {
+            // 먼저 username으로 사용자 찾기
+            const user = await UserService.getUserByUsername(username)
+
+            if (user) {
+                // 실시간 구독 설정
+                const unsub = UserService.subscribeToUser(user.uid, (updatedUser) => {
+                    if (updatedUser) {
+                        setProfileUser(updatedUser)
+
+                        // 소셜 관계 확인
+                        if (currentUser && currentUser.uid !== updatedUser.uid) {
+                            setIsFriend(updatedUser.social.friends.includes(currentUser.uid))
+                            setIsFollowing(currentUser.social?.following?.includes(updatedUser.uid) || false)
+                            setIsBlocked(currentUser.social?.blocked?.includes(updatedUser.uid) || false)
+                        }
+                    }
+                })
+
+                setUnsubscribe(() => unsub)
+            } else {
+                setProfileUser(null)
             }
         } catch (error) {
             console.error('Error fetching user:', error)
@@ -54,17 +93,28 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         }
     }
 
+    // 컴포넌트 언마운트 시 구독 해제
+    useEffect(() => {
+        return () => {
+            if (unsubscribe) {
+                unsubscribe()
+            }
+        }
+    }, [unsubscribe])
+
     // 사용자 프로필 업데이트
     const updateUserProfile = async (data: Partial<User>) => {
         if (!profileUser || !currentUser) return
 
         try {
             await UserService.updateUser(profileUser.id, data)
-            setProfileUser({...profileUser, ...data})
 
+            // 본인 프로필인 경우 AuthContext도 업데이트
             if (isOwnProfile) {
                 await updateCurrentUserProfile(data)
             }
+
+            // 상태는 실시간 리스너가 자동으로 업데이트
         } catch (error) {
             console.error('Error updating profile:', error)
             throw error
@@ -79,13 +129,33 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         try {
             if (isFollowing) {
                 await SocialService.unfollowUser(currentUser.uid, profileUser.uid)
+                // 낙관적 업데이트
                 setIsFollowing(false)
+
+                // 현재 사용자의 following 목록 업데이트
+                await updateCurrentUserProfile({
+                    social: {
+                        ...currentUser.social,
+                        following: currentUser.social.following.filter(id => id !== profileUser.uid)
+                    }
+                })
             } else {
                 await SocialService.followUser(currentUser.uid, profileUser.uid)
+                // 낙관적 업데이트
                 setIsFollowing(true)
+
+                // 현재 사용자의 following 목록 업데이트
+                await updateCurrentUserProfile({
+                    social: {
+                        ...currentUser.social,
+                        following: [...currentUser.social.following, profileUser.uid]
+                    }
+                })
             }
         } catch (error) {
             console.error('Follow toggle error:', error)
+            // 에러 발생 시 상태 롤백
+            setIsFollowing(!isFollowing)
             alert('오류가 발생했습니다.')
         } finally {
             setSocialLoading(false)
@@ -100,7 +170,17 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         try {
             if (isFriend) {
                 await SocialService.removeFriend(currentUser.uid, profileUser.uid)
+                // 낙관적 업데이트
                 setIsFriend(false)
+
+                // 친구 목록 업데이트
+                await updateCurrentUserProfile({
+                    social: {
+                        ...currentUser.social,
+                        friends: currentUser.social.friends.filter(id => id !== profileUser.uid),
+                        friendCount: Math.max(0, (currentUser.social.friendCount || 0) - 1)
+                    }
+                })
             } else {
                 await SocialService.sendFriendRequest(
                     {
@@ -118,6 +198,8 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
             }
         } catch (error: any) {
             console.error('Friend toggle error:', error)
+            // 에러 발생 시 상태 롤백
+            setIsFriend(!isFriend)
             alert(error.message || '오류가 발생했습니다.')
         } finally {
             setSocialLoading(false)
@@ -147,9 +229,20 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                 }
             })
 
+            // 낙관적 업데이트
             setIsBlocked(!isBlocked)
+
+            // AuthContext 업데이트
+            await updateCurrentUserProfile({
+                social: {
+                    ...currentUser.social,
+                    blocked: updatedBlocked
+                }
+            })
         } catch (error) {
             console.error('Block toggle error:', error)
+            // 에러 발생 시 상태 롤백
+            setIsBlocked(!isBlocked)
             alert('오류가 발생했습니다.')
         } finally {
             setSocialLoading(false)

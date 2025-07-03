@@ -1,13 +1,13 @@
-// app/(main)/profile/[userId]/page.tsx
 'use client'
 
 import {useEffect, useState} from 'react'
 import {useParams, useRouter, useSearchParams} from 'next/navigation'
 import {useAuth} from '@/contexts/AuthContext'
+import {useProfile} from '@/contexts/ProfileContext'
 import {useNotifications} from '@/lib/hooks/useNotifications'
 import {useConversations} from '@/lib/hooks/useConversations'
 import {useMessages} from '@/lib/hooks/useMessages'
-import {SocialService, UserService} from '@/lib/firebase/services'
+import {UserService} from '@/lib/firebase/services'
 import {Container} from '@/components/ui/Container'
 import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
@@ -37,22 +37,26 @@ export default function ProfilePage() {
     // 인증 및 훅
     const {user: currentUser, updateUserProfile} = useAuth()
     const {
+        profileUser,
+        loading,
+        isOwnProfile,
+        isFriend,
+        isFollowing,
+        isBlocked,
+        socialLoading,
+        updateProfileUser,
+        handleFollowToggle,
+        handleFriendToggle,
+        handleBlockToggle
+    } = useProfile()
+
+    const {
         notifications,
         browserNotificationPermission,
         requestBrowserNotificationPermission,
         markAsRead
     } = useNotifications()
     const {conversations, createConversation} = useConversations()
-
-    // 프로필 상태
-    const [profileUser, setProfileUser] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-
-    // 소셜 관계 상태
-    const [isFriend, setIsFriend] = useState(false)
-    const [isFollowing, setIsFollowing] = useState(false)
-    const [isBlocked, setIsBlocked] = useState(false)
-    const [socialLoading, setSocialLoading] = useState(false)
 
     // UI 상태
     const [showUsernameModal, setShowUsernameModal] = useState(false)
@@ -72,35 +76,22 @@ export default function ProfilePage() {
     const {messages, sendMessage} = useMessages(selectedConversationId)
 
     // 계산된 값들
-    const isOwnProfile = currentUser?.uid === profileUser?.uid
     const isGoogleUser = currentUser?.email?.includes('@gmail.com') || false
     const canChangeUsername = (isGoogleUser && profileUser?.canChangeUsername) || false
 
-    // 프로필 사용자 정보 가져오기
+    // 프로필 사용자 정보 가져오기 (ProfileContext 사용)
     useEffect(() => {
-        const fetchUser = async () => {
-            setLoading(true)
-            try {
-                const user = await UserService.getUserByUsername(username)
-                setProfileUser(user)
-                setNewUsername(user!.username || '')
-            } catch (e) {
-                console.error(e)
-            } finally {
-                setLoading(false)
-            }
+        if (username) {
+            updateProfileUser(username)
         }
-        if (username) fetchUser()
-    }, [username])
+    }, [username, updateProfileUser])
 
-    // 소셜 관계 확인
+    // username 초기값 설정
     useEffect(() => {
-        if (profileUser && currentUser && !isOwnProfile) {
-            setIsFriend(profileUser.social.friends.includes(currentUser.uid))
-            setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
-            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+        if (profileUser) {
+            setNewUsername(profileUser.username || '')
         }
-    }, [profileUser, currentUser, isOwnProfile])
+    }, [profileUser])
 
     // 채팅 자동 열기
     useEffect(() => {
@@ -132,100 +123,19 @@ export default function ProfilePage() {
                 canChangeUsername: false,
                 usernameChangedAt: serverTimestamp()
             })
+
+            // AuthContext 업데이트
+            if (isOwnProfile) {
+                await updateUserProfile({
+                    username: newUsername,
+                    canChangeUsername: false
+                })
+            }
+
             router.replace(`/profile/${newUsername}`)
             setShowUsernameModal(false)
         } catch (e) {
             console.error(e)
-        }
-    }
-
-    // 친구 추가/제거 핸들러
-    const handleFriendToggle = async () => {
-        if (!currentUser || !profileUser || socialLoading) return
-        setSocialLoading(true)
-
-        try {
-            if (isFriend) {
-                await SocialService.removeFriend(currentUser.uid, profileUser.uid)
-                setIsFriend(false)
-            } else {
-                await SocialService.sendFriendRequest(
-                    {
-                        uid: currentUser.uid,
-                        username: currentUser.username || '',
-                        displayName: currentUser.displayName || ''
-                    },
-                    {
-                        uid: profileUser.uid,
-                        username: profileUser.username,
-                        displayName: profileUser.displayName
-                    }
-                )
-                alert('친구 요청을 보냈습니다.')
-            }
-        } catch (error: any) {
-            console.error('Friend toggle error:', error)
-            alert(error.message || '오류가 발생했습니다.')
-        } finally {
-            setSocialLoading(false)
-        }
-    }
-
-    // 팔로우/언팔로우 핸들러
-    const handleFollowToggle = async () => {
-        if (!currentUser || !profileUser || socialLoading) return
-        setSocialLoading(true)
-
-        try {
-            if (isFollowing) {
-                await SocialService.unfollowUser(currentUser.uid, profileUser.uid)
-                setIsFollowing(false)
-            } else {
-                await SocialService.followUser(currentUser.uid, profileUser.uid)
-                setIsFollowing(true)
-            }
-        } catch (error) {
-            console.error('Follow toggle error:', error)
-            alert('오류가 발생했습니다.')
-        } finally {
-            setSocialLoading(false)
-        }
-    }
-
-    // 차단/차단해제 핸들러
-    const handleBlockToggle = async () => {
-        if (!currentUser || !profileUser || socialLoading) return
-
-        const confirmMessage = isBlocked
-            ? '이 사용자를 차단 해제하시겠습니까?'
-            : '이 사용자를 차단하시겠습니까? 차단하면 서로 메시지를 보낼 수 없습니다.'
-
-        if (!confirm(confirmMessage)) return
-
-        setSocialLoading(true)
-        try {
-            if (isBlocked) {
-                await UserService.updateUser(currentUser.uid, {
-                    social: {
-                        ...currentUser.social,
-                        blocked: currentUser.social.blocked.filter(id => id !== profileUser.uid)
-                    }
-                })
-                setIsBlocked(false)
-            } else {
-                await UserService.updateUser(currentUser.uid, {
-                    social: {
-                        ...currentUser.social,
-                        blocked: [...(currentUser.social.blocked || []), profileUser.uid]
-                    }
-                })
-                setIsBlocked(true)
-            }
-        } catch (error) {
-            console.error('Block toggle error:', error)
-            alert('오류가 발생했습니다.')
-        } finally {
-            setSocialLoading(false)
         }
     }
 

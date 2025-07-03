@@ -2,8 +2,7 @@ import {useEffect, useState} from 'react'
 import {CheckCircle} from 'lucide-react'
 import {Modal} from '@/components/ui/Modal'
 import {Button} from '@/components/ui/Button'
-import {UserService} from '@/lib/firebase/services'
-import {useAuth} from '@/contexts/AuthContext'
+import {useProfile} from '@/contexts/ProfileContext'
 import type {User} from '@/lib/firebase/types'
 
 interface SettingsModalProps {
@@ -21,7 +20,7 @@ export default function SettingsModal({
                                           browserNotificationPermission,
                                           onRequestPermission
                                       }: SettingsModalProps) {
-    const {updateUserProfile} = useAuth()
+    const {updateUserProfile} = useProfile()
     const [savingSettings, setSavingSettings] = useState(false)
     const [settingsSaved, setSettingsSaved] = useState(false)
     const [tempSettings, setTempSettings] = useState({
@@ -110,8 +109,9 @@ export default function SettingsModal({
                     soundEnabled: tempSettings.preferences.soundEnabled
                 }
             }
-            await UserService.updateUser(profileUser.id, {settings: updated})
+
             await updateUserProfile({settings: updated})
+
             setSettingsSaved(true)
             setTimeout(() => {
                 onClose()
@@ -119,6 +119,7 @@ export default function SettingsModal({
             }, 1500)
         } catch (e) {
             console.error(e)
+            alert('설정 저장에 실패했습니다.')
         } finally {
             setSavingSettings(false)
         }
