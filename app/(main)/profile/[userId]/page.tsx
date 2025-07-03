@@ -214,6 +214,11 @@ function ProfilePageContent() {
         return n.category === notificationFilter
     })
 
+    // 친구 요청 개수 계산
+    const friendRequestCount = notifications.filter(n =>
+        n.type === 'friend_request' && !n.read
+    ).length
+
     // 로딩 상태
     if (loading) {
         return (
@@ -247,6 +252,7 @@ function ProfilePageContent() {
                     hasPendingRequest={hasPendingRequest}
                     receivedRequest={receivedRequest}
                     socialLoading={socialLoading}
+                    friendRequestCount={friendRequestCount}
                     onShowUsernameModal={() => setShowUsernameModal(true)}
                     onShowSettingsModal={() => setShowSettingsModal(true)}
                     onShowFriendRequests={() => setShowFriendRequestsModal(true)}
