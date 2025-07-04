@@ -9,9 +9,9 @@ import {Input} from '@/components/ui/Input'
 import {Skeleton} from '@/components/ui/Skeleton'
 import {MapCard} from '@/components/ui/MapCard'
 import {RoomService} from '@/lib/firebase/services/room.service'
-import {Clock, Search, Star, TrendingUp, Users} from 'lucide-react'
+import {Clock, Heart, Search, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
-import {RoomCard} from "@/lib/firebase/types";
+import {RoomCard} from "@/lib/firebase/types/room.types";
 
 export default function CommunityMapsPage() {
     const router = useRouter()
@@ -20,7 +20,7 @@ export default function CommunityMapsPage() {
     const [filteredMaps, setFilteredMaps] = useState<RoomCard[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
-    const [filter, setFilter] = useState<'featured' | 'popular' | 'new'>('featured')
+    const [filter, setFilter] = useState<'popular' | 'liked' | 'recent'>('popular')
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
     const [selectedTheme, setSelectedTheme] = useState<string>('')
     const [currentLimit, setCurrentLimit] = useState(24)
@@ -57,23 +57,23 @@ export default function CommunityMapsPage() {
 
             // 필터 조합이 있는 경우
             if (selectedDifficulty || selectedTheme) {
-                loadedMaps = await RoomService.getFilteredMaps({
-                    difficulty: selectedDifficulty,
+                loadedMaps = await RoomService.getFilteredRooms({
+                    difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard' | 'extreme',
                     theme: selectedTheme,
-                    sortBy: filter === 'popular' ? 'popular' : filter === 'new' ? 'recent' : 'popular',
+                    sortBy: filter,
                     limit: currentLimit
                 })
             } else {
                 // 기본 필터만 사용
                 switch (filter) {
-                    case 'featured':
-                        loadedMaps = await RoomService.getFeaturedMaps(currentLimit)
-                        break
                     case 'popular':
-                        loadedMaps = await RoomService.getPopularMaps(currentLimit)
+                        loadedMaps = await RoomService.getPopularRooms(currentLimit)
                         break
-                    case 'new':
-                        loadedMaps = await RoomService.getRecentMaps(currentLimit)
+                    case 'liked':
+                        loadedMaps = await RoomService.getLikedRooms(currentLimit)
+                        break
+                    case 'recent':
+                        loadedMaps = await RoomService.getRecentRooms(currentLimit)
                         break
                 }
             }
@@ -101,7 +101,7 @@ export default function CommunityMapsPage() {
             setLoading(true)
             setCurrentLimit(24) // 검색 시 limit 초기화
             try {
-                const searchResults = await RoomService.searchMaps(searchTerm)
+                const searchResults = await RoomService.searchRooms(searchTerm)
                 setMaps(searchResults)
                 setFilteredMaps(searchResults)
             } catch (error) {
@@ -118,11 +118,11 @@ export default function CommunityMapsPage() {
         }
     }
 
-    // 난이도 옵션
+    // 난이도 옵션 (RoomService와 일치)
     const difficulties = [
         {value: '', label: '모든 난이도'},
         {value: 'easy', label: '쉬움'},
-        {value: 'medium', label: '보통'},
+        {value: 'normal', label: '보통'},
         {value: 'hard', label: '어려움'},
         {value: 'extreme', label: '극악'}
     ]
@@ -131,9 +131,11 @@ export default function CommunityMapsPage() {
     const themes = [
         {value: '', label: '모든 테마'},
         {value: '연구소', label: '연구소'},
-        {value: 'horror', label: '공포'},
-        {value: 'fantasy', label: '판타지'},
-        {value: 'scifi', label: 'SF'}
+        {value: '공포', label: '공포'},
+        {value: '판타지', label: '판타지'},
+        {value: 'SF', label: 'SF'},
+        {value: '미스터리', label: '미스터리'},
+        {value: '어드벤처', label: '어드벤처'}
     ]
 
     return (
@@ -151,7 +153,7 @@ export default function CommunityMapsPage() {
                     {/* 검색바 */}
                     <div className="flex gap-2">
                         <Input
-                            placeholder="맵 이름, 제작자, 태그로 검색..."
+                            placeholder="맵 이름, 제작자, 태그, 테마로 검색..."
                             icon={<Search className="w-5 h-5"/>}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -168,24 +170,24 @@ export default function CommunityMapsPage() {
                         {/* 정렬 필터 */}
                         <div className="flex gap-2">
                             <Button
-                                variant={filter === 'featured' ? 'primary' : 'secondary'}
-                                onClick={() => setFilter('featured')}
-                                size="sm"
-                            >
-                                <TrendingUp className="w-4 h-4"/>
-                                추천
-                            </Button>
-                            <Button
                                 variant={filter === 'popular' ? 'primary' : 'secondary'}
                                 onClick={() => setFilter('popular')}
                                 size="sm"
                             >
-                                <Star className="w-4 h-4"/>
+                                <TrendingUp className="w-4 h-4"/>
                                 인기
                             </Button>
                             <Button
-                                variant={filter === 'new' ? 'primary' : 'secondary'}
-                                onClick={() => setFilter('new')}
+                                variant={filter === 'liked' ? 'primary' : 'secondary'}
+                                onClick={() => setFilter('liked')}
+                                size="sm"
+                            >
+                                <Heart className="w-4 h-4"/>
+                                좋아요
+                            </Button>
+                            <Button
+                                variant={filter === 'recent' ? 'primary' : 'secondary'}
+                                onClick={() => setFilter('recent')}
                                 size="sm"
                             >
                                 <Clock className="w-4 h-4"/>
