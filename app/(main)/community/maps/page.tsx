@@ -9,15 +9,15 @@ import {Input} from '@/components/ui/Input'
 import {Skeleton} from '@/components/ui/Skeleton'
 import {MapCard} from '@/components/ui/MapCard'
 import {MapService} from '@/lib/firebase/services/map.service'
-import type {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
 import {Clock, Search, Star, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
+import {RoomCard} from "@/lib/firebase/types";
 
 export default function CommunityMapsPage() {
     const router = useRouter()
     const {user} = useAuth()
-    const [maps, setMaps] = useState<GameMapCard[]>([])
-    const [filteredMaps, setFilteredMaps] = useState<GameMapCard[]>([])
+    const [maps, setMaps] = useState<RoomCard[]>([])
+    const [filteredMaps, setFilteredMaps] = useState<RoomCard[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [filter, setFilter] = useState<'featured' | 'popular' | 'new'>('featured')
@@ -39,7 +39,7 @@ export default function CommunityMapsPage() {
     useEffect(() => {
         if (searchTerm) {
             const filtered = maps.filter(map =>
-                map.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                map.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 map.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 map.creator.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 map.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -53,7 +53,7 @@ export default function CommunityMapsPage() {
     const loadMaps = async () => {
         setLoading(true)
         try {
-            let loadedMaps: GameMapCard[] = []
+            let loadedMaps: RoomCard[] = []
 
             // 필터 조합이 있는 경우
             if (selectedDifficulty || selectedTheme) {
@@ -91,7 +91,7 @@ export default function CommunityMapsPage() {
         setCurrentLimit(prev => prev + 24)
     }
 
-    const handleMapClick = (map: GameMapCard) => {
+    const handleMapClick = (map: RoomCard) => {
         // 맵 상세 페이지로 이동 (또는 다운로드 페이지)
         router.push(`/main/games/eroom?mapId=${map.id}`)
     }

@@ -22,13 +22,13 @@ export default function RankingsPage() {
     const router = useRouter()
     const [users, setUsers] = useState<UserWithStats[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'level' | 'playCount' | 'mapsCreated' | 'avgRating'>('level')
+    const [activeTab, setActiveTab] = useState<'level' | 'playCount' | 'createdRooms' | 'avgRating'>('level')
 
     useEffect(() => {
         loadUsers(activeTab)
     }, [activeTab])
 
-    const loadUsers = async (type: 'level' | 'playCount' | 'mapsCreated' | 'avgRating') => {
+    const loadUsers = async (type: 'level' | 'playCount' | 'createdRooms' | 'avgRating') => {
         setLoading(true)
         try {
             let userData: User[]
@@ -42,7 +42,7 @@ export default function RankingsPage() {
                     let totalMapPlays = 0
                     let avgMapRating = 0
 
-                    if (user.stats.mapsCreated > 0) {
+                    if (user.stats.createdRooms > 0) {
                         // 유저가 만든 맵들의 통계 가져오기
                         const userMaps = await MapService.getMapsByCreator(user.uid)
 
@@ -87,10 +87,10 @@ export default function RankingsPage() {
                         return a.displayName.localeCompare(b.displayName)
                     })
                     break
-                case 'mapsCreated':
+                case 'createdRooms':
                     sortedUsers.sort((a, b) => {
                         // 1. 제작한 맵 수로 정렬
-                        if (b.stats.mapsCreated !== a.stats.mapsCreated) return b.stats.mapsCreated - a.stats.mapsCreated
+                        if (b.stats.createdRooms !== a.stats.createdRooms) return b.stats.createdRooms - a.stats.createdRooms
                         // 2. 맵 수가 같으면 레벨로 정렬
                         if (b.level !== a.level) return b.level - a.level
                         // 3. 레벨도 같으면 포인트로 정렬
@@ -179,7 +179,7 @@ export default function RankingsPage() {
             case 'playCount':
                 return formatCount(user.totalMapPlays || 0)
             case 'mapsCreated':
-                return formatCount(user.stats.mapsCreated)
+                return formatCount(user.stats.createdRooms)
             case 'avgRating':
                 return (user.avgMapRating || 0).toFixed(1) + ' ⭐'
             default:
@@ -194,8 +194,15 @@ export default function RankingsPage() {
         return 'success'
     }
 
-    const handleUserClick = (username: string) => {
-        router.push(`/profile/${username}`)
+    const handleUserClick = (username: string | undefined) => {
+        if (username) {
+            router.push(`/profile/${username}`)
+        }
+    }
+
+    // Get unique identifier for each user (uid or username)
+    const getUserKey = (user: UserWithStats) => {
+        return user.uid || user.username || Math.random().toString()
     }
 
     return (
@@ -210,7 +217,7 @@ export default function RankingsPage() {
             <Container className="py-12">
                 {/* 탭 메뉴 - 여백 추가 */}
                 <div className="mb-12">
-                    <Tabs<'level' | 'playCount' | 'mapsCreated' | 'avgRating'>
+                    <Tabs<'level' | 'playCount' | 'createdRooms' | 'avgRating'>
                         value={activeTab}
                         onValueChange={(val) => setActiveTab(val)}
                         defaultValue="level"
@@ -252,7 +259,7 @@ export default function RankingsPage() {
                                 const rank = index + 1
                                 return (
                                     <Card
-                                        key={user.id}
+                                        key={getUserKey(user)}
                                         className={`p-6 ${getRankStyle(rank)} hover:scale-105 transition-transform cursor-pointer`}
                                         onClick={() => handleUserClick(user.username)}
                                     >
@@ -324,7 +331,7 @@ export default function RankingsPage() {
                                     <tbody className="divide-y divide-gray-800">
                                     {users.map((user, index) => (
                                         <tr
-                                            key={user.id}
+                                            key={getUserKey(user)}
                                             className="hover:bg-gray-900/30 transition-colors cursor-pointer"
                                             onClick={() => handleUserClick(user.username)}
                                         >
@@ -364,7 +371,7 @@ export default function RankingsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="text-sm">{user.stats.winRate}%</span>
+                                                <span className="text-sm">{user.stats.successRate}%</span>
                                             </td>
                                         </tr>
                                     ))}
