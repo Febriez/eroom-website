@@ -75,18 +75,25 @@ export default function MessageThread({
     // 상대방 정보
     const otherParticipant = participants.find(p => p.id !== currentUserId)
 
-    // 날짜별 그룹화 (UI에서 한 번만 reverse)
+    // 날짜별 그룹화 (메시지는 이미 오래된 것부터 정렬되어 있어야 함)
     const messageGroups = useMemo(() => {
-        const ordered = [...messages].reverse()  // 오름차순 쿼리 결과를 역순으로
         const groups: Record<string, FirestoreMessage[]> = {}
-        ordered.forEach(msg => {
+
+        // messages가 이미 시간순(오래된 것부터)으로 정렬되어 있다고 가정
+        messages.forEach(msg => {
             const d = safeToDate(msg.createdAt) || new Date()
             const key = d.toDateString()
             if (!groups[key]) groups[key] = []
             groups[key].push(msg)
         })
+
         return groups
     }, [messages])
+
+    // 날짜 순서대로 정렬 (오래된 날짜부터)
+    const sortedDateKeys = Object.keys(messageGroups).sort((a, b) => {
+        return new Date(a).getTime() - new Date(b).getTime()
+    })
 
     return (
         <div className="h-full flex flex-col bg-gray-900">
@@ -121,7 +128,8 @@ export default function MessageThread({
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {Object.entries(messageGroups).map(([dateKey, msgs]) => {
+                        {sortedDateKeys.map((dateKey) => {
+                            const msgs = messageGroups[dateKey]
                             const date = new Date(dateKey)
                             const today = new Date()
                             const yesterday = new Date(today)
