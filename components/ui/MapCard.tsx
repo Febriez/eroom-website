@@ -13,12 +13,10 @@ export function MapCard({map, onClick}: MapCardProps) {
         switch (difficulty.toLowerCase()) {
             case 'easy':
                 return 'success'
-            case 'medium':
+            case 'normal':
                 return 'info'
             case 'hard':
                 return 'warning'
-            case 'extreme':
-                return 'danger'
             default:
                 return 'default'
         }
@@ -28,12 +26,10 @@ export function MapCard({map, onClick}: MapCardProps) {
         switch (difficulty.toLowerCase()) {
             case 'easy':
                 return '쉬움'
-            case 'medium':
+            case 'normal':
                 return '보통'
             case 'hard':
                 return '어려움'
-            case 'extreme':
-                return '극악'
             default:
                 return difficulty
         }
