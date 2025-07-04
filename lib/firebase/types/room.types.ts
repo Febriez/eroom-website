@@ -16,8 +16,7 @@ export interface Room {
     Keywords: string[]                  // 태그/키워드
 
     // 미디어
-    Thumbnail: string                   // URL (빈 문자열 가능)
-    RoomPrefabUrl: string              // URL (빈 문자열 가능)
+    Thumbnail: string               // URL (빈 문자열 가능)
 
     // 통계 (랭킹/프로필용)
     PlayCount: number
