@@ -295,7 +295,6 @@ export default function CommunityRoomsPage() {
                             <div
                                 key={room.id}
                                 className="cursor-pointer transform transition-transform hover:scale-105"
-                                onClick={() => handleRoomClick(room)}
                             >
                                 <RoomCard
                                     room={room}

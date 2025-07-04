@@ -1,6 +1,7 @@
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Heart, MessageSquare, Play, Users} from 'lucide-react'
+import {useRouter} from 'next/navigation'
 import type {RoomCard} from "@/lib/firebase/types/room.types"
 
 interface RoomCardProps {
@@ -9,6 +10,8 @@ interface RoomCardProps {
 }
 
 export function RoomCard({room, onClick}: RoomCardProps) {
+    const router = useRouter()
+
     const getDifficultyVariant = (difficulty: string) => {
         switch (difficulty.toLowerCase()) {
             case 'easy':
@@ -44,11 +47,43 @@ export function RoomCard({room, onClick}: RoomCardProps) {
         return count.toString()
     }
 
+    // 개선된 클릭 핸들러 - 에러 처리 강화
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        // 디버깅용 로그
+        console.log('RoomCard clicked:', {
+            roomId: room.id,
+            roomTitle: room.title,
+            hasOnClick: !!onClick
+        })
+
+        if (onClick) {
+            onClick()
+        } else {
+            // ID 유효성 검사
+            if (!room.id) {
+                console.error('Room ID is missing:', room)
+                return
+            }
+
+            try {
+                console.log('Navigating to:', `/community/rooms/${room.id}`)
+                router.push(`/community/rooms/${room.id}`)
+            } catch (error) {
+                console.error('Navigation error:', error)
+                // 대안 방법
+                window.location.href = `/community/rooms/${room.id}`
+            }
+        }
+    }
+
     return (
         <Card
             hover
             className="overflow-hidden group cursor-pointer"
-            onClick={onClick}
+            onClick={handleClick}
         >
             {/* 썸네일 */}
             <div className="aspect-video bg-gradient-to-br from-green-600 to-green-800 relative">
