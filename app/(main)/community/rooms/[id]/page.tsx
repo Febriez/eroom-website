@@ -74,8 +74,7 @@ export default function RoomDetailPage() {
             const creatorData = await UserService.getUserById(roomData.CreatorId)
             setCreator(creatorData)
 
-            // 조회수 증가
-            await RoomService.incrementPlayCount(roomId)
+            // 플레이 횟수 증가 로직 제거 - 게임 클라이언트에서 처리
         } catch (error) {
             console.error('Error loading room:', error)
             router.push('/community/rooms')

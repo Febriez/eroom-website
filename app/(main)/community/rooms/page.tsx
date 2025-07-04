@@ -7,17 +7,24 @@ import {Container} from '@/components/ui/Container'
 import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
 import {Skeleton} from '@/components/ui/Skeleton'
-import {MapCard} from '@/components/ui/MapCard'
 import {RoomService} from '@/lib/firebase/services/room.service'
 import {Clock, Heart, Search, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
-import {RoomCard} from "@/lib/firebase/types/room.types";
+import {Room} from "@/lib/firebase/types/room.types";
+import {RoomCard} from "@/components/ui/RoomCard";
+import type {RoomCard as RoomCardType} from "@/lib/firebase/types";
+
+// Use the imported RoomCard type instead of defining our own
+// If you need a custom interface, make sure it includes all required properties
+interface RoomCardData extends RoomCardType {
+    // Add any additional properties if needed
+}
 
 export default function CommunityRoomsPage() {
     const router = useRouter()
     const {user} = useAuth()
-    const [rooms, setRooms] = useState<RoomCard[]>([])
-    const [filteredRooms, setFilteredRooms] = useState<RoomCard[]>([])
+    const [rooms, setRooms] = useState<RoomCardData[]>([])
+    const [filteredRooms, setFilteredRooms] = useState<RoomCardData[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [filter, setFilter] = useState<'popular' | 'liked' | 'recent'>('popular')
@@ -25,15 +32,40 @@ export default function CommunityRoomsPage() {
     const [selectedTheme, setSelectedTheme] = useState<string>('')
     const [currentLimit, setCurrentLimit] = useState(24)
 
-    // 난이도 변환 함수 추가
+    // 난이도 변환 함수
     const getDifficultyLabel = (difficulty: string) => {
         const difficultyMap: Record<string, string> = {
             'easy': '쉬움',
             'normal': '보통',
-            'hard': '어려움',
-            'extreme': '극악'
+            'hard': '어려움'
         }
         return difficultyMap[difficulty.toLowerCase()] || difficulty
+    }
+
+    // DB Room 데이터를 RoomCardData로 변환하는 함수
+    const convertRoomToCardData = async (room: Room): Promise<RoomCardData> => {
+        // 제작자 정보 가져오기 (실제 구현에서는 UserService 사용)
+        const creatorUsername = room.CreatorId; // 임시로 CreatorId 사용
+
+        return {
+            id: room.RoomId, // DB의 RoomId 필드 사용
+            title: room.RoomTitle,
+            description: room.RoomDescription,
+            thumbnail: room.Thumbnail || '',
+            difficulty: room.Difficulty,
+            theme: room.Theme,
+            creator: {
+                id: room.CreatorId,      // 추가: creator.id 필드
+                username: creatorUsername
+            },
+            stats: {
+                playCount: room.PlayCount,
+                likeCount: room.LikeCount,
+                commentCount: room.CommentAuthorIds?.length || 0  // 추가: commentCount 필드
+            },
+            tags: room.Keywords || [],
+            createdAt: room.CreatedDate || new Date()
+        };
     }
 
     // 필터 변경 시 limit 초기화
@@ -64,33 +96,27 @@ export default function CommunityRoomsPage() {
     const loadRooms = async () => {
         setLoading(true)
         try {
-            let loadedRooms: RoomCard[] = []
+            let loadedRooms: Room[] = [] // 실제 DB Room 타입 사용
 
-            // 필터 조합이 있는 경우
-            if (selectedDifficulty || selectedTheme) {
-                loadedRooms = await RoomService.getFilteredRooms({
-                    difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard',
-                    theme: selectedTheme,
-                    sortBy: filter,
-                    limit: currentLimit
-                })
-            } else {
-                // 기본 필터만 사용
-                switch (filter) {
-                    case 'popular':
-                        loadedRooms = await RoomService.getPopularRooms(currentLimit)
-                        break
-                    case 'liked':
-                        loadedRooms = await RoomService.getLikedRooms(currentLimit)
-                        break
-                    case 'recent':
-                        loadedRooms = await RoomService.getRecentRooms(currentLimit)
-                        break
-                }
+            // Use the appropriate service method based on filter
+            switch (filter) {
+                case 'popular':
+                    loadedRooms = await RoomService.getPopularRooms(currentLimit)
+                    break
+                case 'liked':
+                    loadedRooms = await RoomService.getLikedRooms(currentLimit)
+                    break
+                case 'recent':
+                    loadedRooms = await RoomService.getRecentRooms(currentLimit)
+                    break
             }
 
-            // 로드된 방들의 난이도 표시를 한국어로 변환
-            const roomsWithKoreanDifficulty = loadedRooms.map(room => ({
+            // DB 데이터를 카드 데이터로 변환
+            const cardDataPromises = loadedRooms.map(room => convertRoomToCardData(room))
+            const cardData = await Promise.all(cardDataPromises)
+
+            // 한국어 난이도 적용
+            const roomsWithKoreanDifficulty = cardData.map(room => ({
                 ...room,
                 difficulty: getDifficultyLabel(room.difficulty)
             }))
@@ -108,14 +134,22 @@ export default function CommunityRoomsPage() {
         setCurrentLimit(prev => prev + 24)
     }
 
-    const handleRoomClick = (room: RoomCard) => {
-        // 룸 상세 페이지로 이동 - 정확한 경로 확인
-        console.log('Navigating to room:', room.id) // 디버깅용
+    const handleRoomClick = (room: RoomCardData) => {
+        // 정확한 경로로 네비게이션
+        console.log('Navigating to room:', room.id)
+
+        // 먼저 정확한 ID 값 확인
+        if (!room.id) {
+            console.error('Room ID is missing:', room)
+            return
+        }
+
         try {
+            // Next.js 라우터 사용
             router.push(`/community/rooms/${room.id}`)
         } catch (error) {
             console.error('Navigation error:', error)
-            // 대안적 방법 시도
+            // 대안으로 window.location 사용
             window.location.href = `/community/rooms/${room.id}`
         }
     }
@@ -123,14 +157,18 @@ export default function CommunityRoomsPage() {
     const handleSearch = async () => {
         if (searchTerm.trim()) {
             setLoading(true)
-            setCurrentLimit(24) // 검색 시 limit 초기화
+            setCurrentLimit(24)
             try {
+                // 검색 기능 구현 필요
                 const searchResults = await RoomService.searchRooms(searchTerm)
-                // 검색 결과도 한국어 난이도로 변환
-                const resultsWithKoreanDifficulty = searchResults.map(room => ({
+                const cardDataPromises = searchResults.map(room => convertRoomToCardData(room))
+                const cardData = await Promise.all(cardDataPromises)
+
+                const resultsWithKoreanDifficulty = cardData.map(room => ({
                     ...room,
                     difficulty: getDifficultyLabel(room.difficulty)
                 }))
+
                 setRooms(resultsWithKoreanDifficulty)
                 setFilteredRooms(resultsWithKoreanDifficulty)
             } catch (error) {
@@ -147,7 +185,7 @@ export default function CommunityRoomsPage() {
         }
     }
 
-    // 난이도 옵션 (RoomService와 일치)
+    // 난이도 옵션
     const difficulties = [
         {value: '', label: '모든 난이도'},
         {value: 'easy', label: '쉬움'},
@@ -155,15 +193,16 @@ export default function CommunityRoomsPage() {
         {value: 'hard', label: '어려움'}
     ]
 
-    // 테마 옵션 (실제 데이터에 맞게 조정 필요)
+    // 테마 옵션
     const themes = [
         {value: '', label: '모든 테마'},
-        {value: '연구소', label: '연구소'},
-        {value: '공포', label: '공포'},
-        {value: '판타지', label: '판타지'},
-        {value: 'SF', label: 'SF'},
-        {value: '미스터리', label: '미스터리'},
-        {value: '어드벤처', label: '어드벤처'}
+        {value: 'asylum', label: '정신병동'},
+        {value: 'lab', label: '연구소'},
+        {value: 'horror', label: '공포'},
+        {value: 'fantasy', label: '판타지'},
+        {value: 'sf', label: 'SF'},
+        {value: 'mystery', label: '미스터리'},
+        {value: 'adventure', label: '어드벤처'}
     ]
 
     return (
@@ -278,8 +317,8 @@ export default function CommunityRoomsPage() {
                                 className="cursor-pointer transform transition-transform hover:scale-105"
                                 onClick={() => handleRoomClick(room)}
                             >
-                                <MapCard
-                                    map={room}
+                                <RoomCard
+                                    room={room}
                                     onClick={() => handleRoomClick(room)}
                                 />
                             </div>

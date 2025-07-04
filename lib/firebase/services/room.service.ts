@@ -1,59 +1,11 @@
-import {addDoc, collection, doc, getDoc, orderBy, serverTimestamp, updateDoc, where} from 'firebase/firestore'
+import {collection, doc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where} from 'firebase/firestore'
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import {db} from '../config'
-import type {
-    CreateRoomData,
-    Room,
-    RoomCard,
-    RoomFilters,
-    UpdateRoomData,
-    UpdateRoomStats
-} from '@/lib/firebase/types/room.types'
+import type {Room, RoomCard, RoomFilters, UpdateRoomStats} from '@/lib/firebase/types/room.types'
 import {roomToCard} from '@/lib/firebase/types/room.types'
 
 export class RoomService extends BaseService {
-    /**
-     * 인기 룸 가져오기
-     */
-    static async getPopularRooms(limit: number = 20): Promise<RoomCard[]> {
-        const rooms = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                orderBy('PlayCount', 'desc')
-            ],
-            {limit}
-        )
-        return rooms.map(roomToCard)
-    }
-
-    /**
-     * 최신 룸 가져오기
-     */
-    static async getRecentRooms(limit: number = 20): Promise<RoomCard[]> {
-        const rooms = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                orderBy('CreatedDate', 'desc')
-            ],
-            {limit}
-        )
-        return rooms.map(roomToCard)
-    }
-
-    /**
-     * 좋아요 많은 룸 가져오기
-     */
-    static async getLikedRooms(limit: number = 20): Promise<RoomCard[]> {
-        const rooms = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                orderBy('LikeCount', 'desc')
-            ],
-            {limit}
-        )
-        return rooms.map(roomToCard)
-    }
 
     /**
      * 필터링된 룸 가져오기
@@ -118,19 +70,6 @@ export class RoomService extends BaseService {
     }
 
     /**
-     * 단일 룸 가져오기
-     */
-    static async getRoom(roomId: string): Promise<Room | null> {
-        const docRef = doc(db, COLLECTIONS.ROOMS, roomId)
-        const docSnap = await getDoc(docRef)
-
-        if (docSnap.exists()) {
-            return {id: docSnap.id, ...docSnap.data()} as Room
-        }
-        return null
-    }
-
-    /**
      * 단일 룸 카드 가져오기
      */
     static async getRoomCard(roomId: string): Promise<RoomCard | null> {
@@ -138,46 +77,6 @@ export class RoomService extends BaseService {
         return room ? roomToCard(room) : null
     }
 
-    /**
-     * 룸 생성
-     */
-    static async createRoom(roomData: CreateRoomData): Promise<string> {
-        const docRef = await addDoc(collection(db, COLLECTIONS.ROOMS), {
-            ...roomData,
-            RoomId: crypto.randomUUID(), // 게임 내부 UUID 생성
-            PlayCount: 0,
-            LikeCount: 0,
-            CommentAuthorIds: [],
-            Version: 1,
-            CreatedDate: serverTimestamp(),
-            LastUpdated: serverTimestamp()
-        })
-
-        return docRef.id
-    }
-
-    /**
-     * 룸 업데이트
-     */
-    static async updateRoom(roomId: string, updates: UpdateRoomData): Promise<void> {
-        const updateData: any = {
-            ...updates,
-            LastUpdated: serverTimestamp()
-        }
-
-        // 버전 업데이트
-        if (updates.Version) {
-            updateData.Version = updates.Version
-        } else {
-            // 버전이 명시되지 않은 경우 자동 증가
-            const currentRoom = await this.getRoom(roomId)
-            if (currentRoom) {
-                updateData.Version = currentRoom.Version + 1
-            }
-        }
-
-        await updateDoc(doc(db, COLLECTIONS.ROOMS, roomId), updateData)
-    }
 
     /**
      * 룸 통계 업데이트
@@ -205,17 +104,6 @@ export class RoomService extends BaseService {
         await updateDoc(doc(db, COLLECTIONS.ROOMS, roomId), updates)
     }
 
-    /**
-     * 플레이 카운트 증가
-     */
-    static async incrementPlayCount(roomId: string): Promise<void> {
-        const room = await this.getRoom(roomId)
-        if (room) {
-            await this.updateRoomStats(roomId, {
-                PlayCount: room.PlayCount + 1
-            })
-        }
-    }
 
     /**
      * 좋아요 카운트 증가
@@ -269,56 +157,6 @@ export class RoomService extends BaseService {
                 CommentAuthorIds: updatedIds
             })
         }
-    }
-
-    /**
-     * 룸 검색
-     */
-    static async searchRooms(searchTerm: string): Promise<RoomCard[]> {
-        const lowerSearch = searchTerm.toLowerCase()
-
-        // 제목으로 검색
-        const titleResults = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                where('RoomTitle', '>=', searchTerm),
-                where('RoomTitle', '<=', searchTerm + '\uf8ff')
-            ],
-            {limit: 20}
-        )
-
-        // 키워드로 검색
-        const keywordResults = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                where('Keywords', 'array-contains', lowerSearch)
-            ],
-            {limit: 20}
-        )
-
-        // 테마로 검색
-        const themeResults = await this.queryDocuments<Room>(
-            COLLECTIONS.ROOMS,
-            [
-                where('Theme', '>=', searchTerm),
-                where('Theme', '<=', searchTerm + '\uf8ff')
-            ],
-            {limit: 20}
-        )
-
-        // 중복 제거
-        const roomIds = new Set<string>()
-        const results: Room[] = []
-        const allResults = [...titleResults, ...keywordResults, ...themeResults]
-
-        allResults.forEach(room => {
-            if (!roomIds.has(room.id)) {
-                roomIds.add(room.id)
-                results.push(room)
-            }
-        })
-
-        return results.map(roomToCard)
     }
 
     /**
@@ -386,5 +224,170 @@ export class RoomService extends BaseService {
             {limit: 1}
         )
         return rooms.length > 0 ? rooms[0] : null
+    }
+
+    // 모든 룸 가져오기
+    static async getAllRooms(limitCount: number = 24): Promise<Room[]> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+            const q = query(
+                roomsRef,
+                orderBy('CreatedDate', 'desc'),
+                limit(limitCount)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const rooms: Room[] = [];
+
+            querySnapshot.forEach((doc) => {
+                rooms.push({
+                    id: doc.id,
+                    ...doc.data()
+                } as Room);
+            });
+
+            return rooms;
+        } catch (error) {
+            console.error('Error getting all rooms:', error);
+            throw error;
+        }
+    }
+
+    // 인기 룸 가져오기 (플레이 카운트 기준)
+    static async getPopularRooms(limitCount: number = 24): Promise<Room[]> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+            const q = query(
+                roomsRef,
+                orderBy('PlayCount', 'desc'),
+                limit(limitCount)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const rooms: Room[] = [];
+
+            querySnapshot.forEach((doc) => {
+                rooms.push({
+                    id: doc.id,
+                    ...doc.data()
+                } as Room);
+            });
+
+            return rooms;
+        } catch (error) {
+            console.error('Error getting popular rooms:', error);
+            throw error;
+        }
+    }
+
+    // 좋아요 많은 룸 가져오기
+    static async getLikedRooms(limitCount: number = 24): Promise<Room[]> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+            const q = query(
+                roomsRef,
+                orderBy('LikeCount', 'desc'),
+                limit(limitCount)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const rooms: Room[] = [];
+
+            querySnapshot.forEach((doc) => {
+                rooms.push({
+                    id: doc.id,
+                    ...doc.data()
+                } as Room);
+            });
+
+            return rooms;
+        } catch (error) {
+            console.error('Error getting liked rooms:', error);
+            throw error;
+        }
+    }
+
+    // 최신 룸 가져오기
+    static async getRecentRooms(limitCount: number = 24): Promise<Room[]> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+            const q = query(
+                roomsRef,
+                orderBy('CreatedDate', 'desc'),
+                limit(limitCount)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const rooms: Room[] = [];
+
+            querySnapshot.forEach((doc) => {
+                rooms.push({
+                    id: doc.id,
+                    ...doc.data()
+                } as Room);
+            });
+
+            return rooms;
+        } catch (error) {
+            console.error('Error getting recent rooms:', error);
+            throw error;
+        }
+    }
+
+    // 룸 검색
+    static async searchRooms(searchTerm: string): Promise<Room[]> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+
+            // Firestore는 복잡한 텍스트 검색을 지원하지 않으므로,
+            // 모든 룸을 가져온 후 클라이언트에서 필터링
+            const q = query(roomsRef, orderBy('CreatedDate', 'desc'));
+            const querySnapshot = await getDocs(q);
+
+            const rooms: Room[] = [];
+            querySnapshot.forEach((doc) => {
+                const roomData = {id: doc.id, ...doc.data()} as Room;
+
+                // 검색 조건 확인
+                const searchLower = searchTerm.toLowerCase();
+                const matchesTitle = roomData.RoomTitle.toLowerCase().includes(searchLower);
+                const matchesDescription = roomData.RoomDescription.toLowerCase().includes(searchLower);
+                const matchesTheme = roomData.Theme.toLowerCase().includes(searchLower);
+                const matchesKeywords = roomData.Keywords?.some(keyword =>
+                    keyword.toLowerCase().includes(searchLower)
+                );
+
+                if (matchesTitle || matchesDescription || matchesTheme || matchesKeywords) {
+                    rooms.push(roomData);
+                }
+            });
+
+            return rooms;
+        } catch (error) {
+            console.error('Error searching rooms:', error);
+            throw error;
+        }
+    }
+
+    // 특정 룸 가져오기 (상세 페이지용)
+    static async getRoom(roomId: string): Promise<Room | null> {
+        try {
+            const roomsRef = collection(db, 'rooms');
+            const q = query(roomsRef, where('RoomId', '==', roomId));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                return null;
+            }
+
+            const doc = querySnapshot.docs[0];
+            return {
+                id: doc.id,
+                ...doc.data()
+            } as Room;
+        } catch (error) {
+            console.error('Error getting room:', error);
+            throw error;
+        }
     }
 }

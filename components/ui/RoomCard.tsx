@@ -1,14 +1,14 @@
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Heart, Play, Users} from 'lucide-react'
-import {RoomCard} from "@/lib/firebase/types";
+import type {RoomCard} from "@/lib/firebase/types";
 
-interface MapCardProps {
-    map: RoomCard
+interface RoomCardProps {
+    room: RoomCard
     onClick?: () => void
 }
 
-export function MapCard({map, onClick}: MapCardProps) {
+export function RoomCard({room, onClick}: RoomCardProps) {
     const getDifficultyVariant = (difficulty: string) => {
         switch (difficulty.toLowerCase()) {
             case 'easy':
@@ -52,10 +52,10 @@ export function MapCard({map, onClick}: MapCardProps) {
         >
             {/* 썸네일 */}
             <div className="aspect-video bg-gradient-to-br from-green-600 to-green-800 relative">
-                {map.thumbnail && (
+                {room.thumbnail && (
                     <img
-                        src={map.thumbnail}
-                        alt={map.title}
+                        src={room.thumbnail}
+                        alt={room.title}
                         className="absolute inset-0 w-full h-full object-cover"
                     />
                 )}
@@ -74,41 +74,41 @@ export function MapCard({map, onClick}: MapCardProps) {
             {/* 카드 내용 */}
             <div className="p-4">
                 <h3 className="text-lg font-bold mb-2 line-clamp-1 break-keep">
-                    {map.title}
+                    {room.title}
                 </h3>
 
                 <p className="text-sm text-gray-400 mb-3 line-clamp-2 break-keep">
-                    {map.description}
+                    {room.description}
                 </p>
 
                 {/* 난이도 및 통계 */}
                 <div className="flex items-center justify-between mb-3">
-                    <Badge variant={getDifficultyVariant(map.difficulty) as any}>
-                        {getDifficultyLabel(map.difficulty)}
+                    <Badge variant={getDifficultyVariant(room.difficulty) as any}>
+                        {getDifficultyLabel(room.difficulty)}
                     </Badge>
 
                     <div className="flex items-center gap-3 text-sm text-gray-400">
                         <div className="flex items-center gap-1">
                             <Users className="w-4 h-4"/>
-                            {formatCount(map.stats.playCount)}
+                            {formatCount(room.stats.playCount)}
                         </div>
                         <div className="flex items-center gap-1">
                             <Heart className="w-4 h-4 text-red-400"/>
-                            {formatCount(map.stats.likeCount)}
+                            {formatCount(room.stats.likeCount)}
                         </div>
                     </div>
                 </div>
 
                 {/* 제작자 및 테마 */}
                 <div className="flex items-center justify-between text-sm text-gray-400">
-                    <span className="truncate">by @{map.creator.username}</span>
-                    <span>{map.theme}</span>
+                    <span className="truncate">by @{room.creator.username}</span>
+                    <span>{room.theme}</span>
                 </div>
 
                 {/* 태그 */}
-                {map.tags.length > 0 && (
+                {room.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
-                        {map.tags.slice(0, 3).map((tag, index) => (
+                        {room.tags.slice(0, 3).map((tag, index) => (
                             <span
                                 key={index}
                                 className="text-xs px-2 py-1 bg-gray-800 rounded-full text-gray-400"
@@ -116,9 +116,9 @@ export function MapCard({map, onClick}: MapCardProps) {
                                 #{tag}
                             </span>
                         ))}
-                        {map.tags.length > 3 && (
+                        {room.tags.length > 3 && (
                             <span className="text-xs px-2 py-1 text-gray-500">
-                                +{map.tags.length - 3}
+                                +{room.tags.length - 3}
                             </span>
                         )}
                     </div>
