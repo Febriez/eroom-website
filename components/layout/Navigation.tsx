@@ -74,14 +74,35 @@ export default function Navigation() {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
+    // 모바일 메뉴 스크롤 제어 개선
     useEffect(() => {
         if (mobileMenuOpen) {
-            document.body.style.overflow = 'hidden'
+            // 현재 스크롤 위치 저장
+            const scrollY = window.scrollY;
+
+            // body에 스타일 적용
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
         } else {
-            document.body.style.overflow = 'unset'
+            // 스크롤 위치 복원
+            const scrollY = document.body.style.top;
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+            }
         }
+
         return () => {
-            document.body.style.overflow = 'unset'
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
         }
     }, [mobileMenuOpen])
 
@@ -219,7 +240,7 @@ export default function Navigation() {
 
     return (
         <>
-            <nav className={`fixed w-full z-40 transition-all duration-300 safe-top ${
+            <nav className={`fixed w-full z-50 transition-all duration-300 safe-top ${
                 scrolled ? 'bg-black/90 backdrop-blur-xl shadow-lg shadow-black/50' : 'bg-gradient-to-b from-black to-transparent'
             }`}>
                 <div className="container-custom">
@@ -242,7 +263,7 @@ export default function Navigation() {
                             </div>
                         </Link>
 
-                        {/* Desktop Menu with Hover - 스크롤 위치 관계없이 항상 작동하도록 수정 */}
+                        {/* Desktop Menu with Hover */}
                         <div className="hidden lg:flex items-center h-full">
                             {menuItems.map((item, index) => (
                                 <div
@@ -259,14 +280,14 @@ export default function Navigation() {
                                         }`}/>
                                     </button>
 
-                                    {/* Dropdown Menu - z-index와 포지셔닝 개선 */}
+                                    {/* Dropdown Menu */}
                                     <div
                                         className={`absolute top-full left-0 w-80 bg-gray-950 rounded-xl shadow-2xl border border-gray-800 transition-all duration-200 ${
                                             activeMenu === index
-                                                ? 'opacity-100 visible translate-y-0 z-50'
-                                                : 'opacity-0 invisible -translate-y-2 z-40'
+                                                ? 'opacity-100 visible translate-y-0'
+                                                : 'opacity-0 invisible -translate-y-2'
                                         }`}
-                                        style={{marginTop: '0px'}} // 드롭다운이 네비게이션 바에 바로 붙도록
+                                        style={{marginTop: '0px'}}
                                     >
                                         <div className="p-2">
                                             {item.submenu.map((subitem, subIndex) => (
@@ -585,12 +606,28 @@ export default function Navigation() {
                     </div>
                 </div>
 
-                {/* Mobile Menu */}
+                {/* Mobile Menu - 수정된 구조 */}
                 <div
-                    className={`lg:hidden fixed inset-0 top-16 bg-gray-950 transition-all duration-300 ${
-                        mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+                    className={`lg:hidden fixed inset-0 bg-black/50 transition-all duration-300 ${
+                        mobileMenuOpen ? 'opacity-100 visible z-[60]' : 'opacity-0 invisible pointer-events-none'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+                <div
+                    className={`lg:hidden fixed top-0 right-0 h-full w-[280px] bg-gray-950 transition-transform duration-300 z-[70] ${
+                        mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}>
-                    <div className="container-custom py-6 h-full overflow-y-auto scrollbar-thin">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-800">
+                        <h2 className="text-lg font-bold">메뉴</h2>
+                        <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                        >
+                            <X className="w-5 h-5"/>
+                        </button>
+                    </div>
+
+                    <div className="p-4 h-[calc(100%-64px)] overflow-y-auto">
                         {!user && (
                             <div className="flex gap-4 mb-6">
                                 <Button variant="outline" fullWidth onClick={() => {

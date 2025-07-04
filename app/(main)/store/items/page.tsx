@@ -1,6 +1,6 @@
 'use client'
 
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
 import {useAuth} from '@/contexts/AuthContext'
 import {PageHeader} from '@/components/layout/PageHeader'
@@ -33,27 +33,10 @@ import {
     X,
     Zap
 } from 'lucide-react'
-import {UserService} from "@/lib/firebase/services";
+import {ItemService} from "@/lib/firebase/services/item.service"
+import {ItemDefinition} from "@/lib/firebase/types/item.types"
 
-interface ShopItem {
-    id: string
-    name: string
-    description: string
-    category: 'themes' | 'boosts' | 'tools' | 'bundles' | 'special'
-    price: number
-    originalPrice?: number
-    rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
-    icon: React.ReactNode
-    iconBg: string
-    features?: string[]
-    duration?: string
-    quantity?: number
-    popular?: boolean
-    limitedTime?: boolean
-    discount?: number
-}
-
-interface CartItem extends ShopItem {
+interface CartItem extends ItemDefinition {
     cartQuantity: number
 }
 
@@ -66,166 +49,69 @@ export default function StoreItemsPage() {
     const [showCart, setShowCart] = useState(false)
     const [cart, setCart] = useState<CartItem[]>([])
     const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-    const [purchasedItems, setPurchasedItems] = useState<string[]>([]) // 구매한 아이템 ID 목록
-    const [animatingItems, setAnimatingItems] = useState<string[]>([]) // 애니메이션 중인 아이템들
+    const [purchasedItems, setPurchasedItems] = useState<{ [itemId: string]: boolean }>({})
+    const [animatingItems, setAnimatingItems] = useState<string[]>([])
+    const [items, setItems] = useState<ItemDefinition[]>([])
+    const [loading, setLoading] = useState(true)
 
     const userCredits = user?.credits || 0
 
-    const items: ShopItem[] = [
-        // 테마 카테고리
-        {
-            id: 'theme-ancient',
-            name: '고대 신전 테마',
-            description: '신비로운 고대 문명의 비밀을 담은 프리미엄 테마',
-            category: 'themes',
-            price: 2500,
-            originalPrice: 3000,
-            rarity: 'epic',
-            icon: <Palette className="w-6 h-6"/>,
-            iconBg: 'from-purple-500 to-pink-500',
-            features: ['10개의 독특한 퍼즐', '몰입감 있는 사운드', '히든 엔딩 포함'],
-            popular: true,
-            discount: 17
-        },
-        {
-            id: 'theme-cyber',
-            name: '사이버펑크 2099',
-            description: '네온 빛 미래 도시를 배경으로 한 SF 테마',
-            category: 'themes',
-            price: 3000,
-            rarity: 'legendary',
-            icon: <Zap className="w-6 h-6"/>,
-            iconBg: 'from-cyan-500 to-blue-500',
-            features: ['AR 퍼즐 시스템', '동적 환경 변화', '멀티 엔딩'],
-            limitedTime: true
-        },
-        {
-            id: 'theme-horror',
-            name: '저주받은 저택',
-            description: '공포 애호가를 위한 호러 테마',
-            category: 'themes',
-            price: 2000,
-            rarity: 'rare',
-            icon: <Eye className="w-6 h-6"/>,
-            iconBg: 'from-red-600 to-red-800',
-            features: ['심리적 공포 요소', '랜덤 이벤트', '생존 모드']
-        },
-
-        // 부스터 카테고리
-        {
-            id: 'boost-exp',
-            name: '경험치 부스터 (7일)',
-            description: '획득 경험치 200% 증가',
-            category: 'boosts',
-            price: 500,
-            rarity: 'common',
-            icon: <TrendingUp className="w-6 h-6"/>,
-            iconBg: 'from-green-500 to-emerald-500',
-            duration: '7일',
-            popular: true
-        },
-        {
-            id: 'boost-credit',
-            name: '크레딧 부스터 (30일)',
-            description: '게임 클리어 시 크레딧 150% 추가 획득',
-            category: 'boosts',
-            price: 1200,
-            rarity: 'rare',
-            icon: <Gem className="w-6 h-6"/>,
-            iconBg: 'from-yellow-500 to-orange-500',
-            duration: '30일'
-        },
-
-        // 도구 카테고리
-        {
-            id: 'tool-hints',
-            name: '힌트 묶음 (5개)',
-            description: '막힐 때 사용하는 힌트 아이템',
-            category: 'tools',
-            price: 300,
-            rarity: 'common',
-            icon: <Brain className="w-6 h-6"/>,
-            iconBg: 'from-indigo-500 to-purple-500',
-            quantity: 5,
-            popular: true
-        },
-        {
-            id: 'tool-time',
-            name: '시간 조작기',
-            description: '제한 시간을 30분 연장',
-            category: 'tools',
-            price: 800,
-            rarity: 'rare',
-            icon: <Timer className="w-6 h-6"/>,
-            iconBg: 'from-blue-500 to-cyan-500',
-            quantity: 1
-        },
-        {
-            id: 'tool-master-key',
-            name: '마스터 키',
-            description: '한 번에 하나의 잠금을 해제',
-            category: 'tools',
-            price: 1000,
-            rarity: 'epic',
-            icon: <Key className="w-6 h-6"/>,
-            iconBg: 'from-amber-500 to-yellow-500',
-            quantity: 1
-        },
-
-        // 번들 카테고리
-        {
-            id: 'bundle-starter',
-            name: '초보자 스타터 팩',
-            description: '게임 시작을 위한 완벽한 세트',
-            category: 'bundles',
-            price: 1500,
-            originalPrice: 2200,
-            rarity: 'rare',
-            icon: <Gift className="w-6 h-6"/>,
-            iconBg: 'from-pink-500 to-rose-500',
-            features: ['힌트 10개', '시간 조작기 2개', '7일 경험치 부스터'],
-            discount: 32
-        },
-        {
-            id: 'bundle-pro',
-            name: '프로 게이머 번들',
-            description: '진정한 방탈출 마스터를 위한 패키지',
-            category: 'bundles',
-            price: 5000,
-            originalPrice: 7500,
-            rarity: 'legendary',
-            icon: <Crown className="w-6 h-6"/>,
-            iconBg: 'from-purple-600 to-indigo-600',
-            features: ['모든 테마 1개월 이용권', '힌트 30개', '마스터 키 3개', '30일 크레딧 부스터'],
-            popular: true,
-            discount: 33
-        },
-
-        // 특별 카테고리
-        {
-            id: 'special-private',
-            name: '비공개방 이용권',
-            description: '친구들과 프라이빗 게임 생성',
-            category: 'special',
-            price: 1500,
-            rarity: 'epic',
-            icon: <Lock className="w-6 h-6"/>,
-            iconBg: 'from-slate-600 to-gray-700',
-            duration: '1회'
-        },
-        {
-            id: 'special-vip',
-            name: 'VIP 멤버십 (30일)',
-            description: '모든 콘텐츠 무제한 이용',
-            category: 'special',
-            price: 9900,
-            rarity: 'mythic',
-            icon: <Sparkles className="w-6 h-6"/>,
-            iconBg: 'from-gradient-start to-gradient-end',
-            features: ['모든 테마 이용', '무제한 힌트', '전용 배지', '우선 매칭'],
-            limitedTime: true
+    // 아이템 목록 로드
+    useEffect(() => {
+        loadItems()
+        if (user?.uid) {
+            loadUserInventory()
         }
-    ]
+    }, [user])
+
+    const loadItems = async () => {
+        try {
+            const activeItems = await ItemService.getActiveItems()
+            setItems(activeItems)
+        } catch (error) {
+            console.error('아이템 로드 실패:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const loadUserInventory = async () => {
+        if (!user?.uid) return
+
+        try {
+            const inventory = await ItemService.getUserInventory(user.uid)
+            const purchased: { [itemId: string]: boolean } = {}
+
+            Object.entries(inventory).forEach(([itemId, item]) => {
+                if (item.quantity > 0) {
+                    purchased[itemId] = true
+                }
+            })
+
+            setPurchasedItems(purchased)
+        } catch (error) {
+            console.error('인벤토리 로드 실패:', error)
+        }
+    }
+
+    // 아이콘 매핑
+    const getIcon = (iconName: string) => {
+        const iconMap: { [key: string]: React.ReactNode } = {
+            'Palette': <Palette className="w-6 h-6"/>,
+            'Zap': <Zap className="w-6 h-6"/>,
+            'Eye': <Eye className="w-6 h-6"/>,
+            'TrendingUp': <TrendingUp className="w-6 h-6"/>,
+            'Gem': <Gem className="w-6 h-6"/>,
+            'Brain': <Brain className="w-6 h-6"/>,
+            'Timer': <Timer className="w-6 h-6"/>,
+            'Key': <Key className="w-6 h-6"/>,
+            'Gift': <Gift className="w-6 h-6"/>,
+            'Crown': <Crown className="w-6 h-6"/>,
+            'Lock': <Lock className="w-6 h-6"/>,
+            'Sparkles': <Sparkles className="w-6 h-6"/>
+        }
+        return iconMap[iconName] || <Star className="w-6 h-6"/>
+    }
 
     const categories = [
         {id: 'all', name: '전체', icon: <ShoppingBag className="w-4 h-4"/>},
@@ -279,10 +165,10 @@ export default function StoreItemsPage() {
         }
     }
 
-    const isPurchased = (item: ShopItem) => {
+    const isPurchased = (item: ItemDefinition) => {
         // 테마나 번들, 특별 아이템은 한 번만 구매 가능
         if (['themes', 'bundles', 'special'].includes(item.category)) {
-            return purchasedItems.includes(item.id)
+            return purchasedItems[item.id] || false
         }
         return false
     }
@@ -295,7 +181,7 @@ export default function StoreItemsPage() {
         return matchesSearch && matchesCategory && matchesRarity
     })
 
-    const addToCart = (item: ShopItem) => {
+    const addToCart = (item: ItemDefinition) => {
         // 애니메이션 시작
         setAnimatingItems(prev => [...prev, item.id])
 
@@ -340,7 +226,12 @@ export default function StoreItemsPage() {
         return cart.reduce((total, item) => total + (item.price * item.cartQuantity), 0)
     }
 
-    const handleDirectPurchase = (item: ShopItem) => {
+    const handleDirectPurchase = async (item: ItemDefinition) => {
+        if (!user?.uid) {
+            alert('로그인이 필요합니다.')
+            return
+        }
+
         const remainingCredits = userCredits - item.price
 
         if (remainingCredits < 0) {
@@ -349,22 +240,25 @@ export default function StoreItemsPage() {
         }
 
         if (confirm(`"${item.name}"을(를) 구매하시겠습니까?\n\n가격: ${item.price.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
-            // 구매 완료 처리
-            if (['themes', 'bundles', 'special'].includes(item.category)) {
-                setPurchasedItems(prev => [...prev, item.id])
+            try {
+                await ItemService.purchaseItems(user.uid, [{item, quantity: 1}])
+                alert('구매가 완료되었습니다!')
+
+                // 구매 완료 후 인벤토리 다시 로드
+                await loadUserInventory()
+            } catch (error: any) {
+                console.error('구매 실패:', error)
+                alert(error.message || '구매 처리 중 오류가 발생했습니다.')
             }
-            UserService.deductCredits(user!.uid, item.price)
-                .then(_ => {
-                    alert('구매가 완료되었습니다!')
-                })
-                .catch(error => {
-                    console.error('구매 실패:', error)
-                    alert(error.message || '구매 처리 중 오류가 발생했습니다.')
-                });
         }
     }
 
-    const handleCartPurchase = () => {
+    const handleCartPurchase = async () => {
+        if (!user?.uid) {
+            alert('로그인이 필요합니다.')
+            return
+        }
+
         const totalPrice = getTotalPrice()
         const remainingCredits = userCredits - totalPrice
 
@@ -376,22 +270,39 @@ export default function StoreItemsPage() {
         const itemList = cart.map(item => `- ${item.name} x${item.cartQuantity}`).join('\n')
 
         if (confirm(`장바구니 아이템을 구매하시겠습니까?\n\n${itemList}\n\n총 가격: ${totalPrice.toLocaleString()} 크레딧\n현재 크레딧: ${userCredits.toLocaleString()}\n구매 후 잔액: ${remainingCredits.toLocaleString()} 크레딧`)) {
-            // 구매 완료 처리
-            const purchasedThemeItems = cart.filter(item => ['themes', 'bundles', 'special'].includes(item.category))
-            if (purchasedThemeItems.length > 0) {
-                setPurchasedItems(prev => [...prev, ...purchasedThemeItems.map(item => item.id)])
+            try {
+                const purchaseItems = cart.map(item => ({
+                    item: items.find(i => i.id === item.id)!,
+                    quantity: item.cartQuantity
+                }))
+
+                await ItemService.purchaseItems(user.uid, purchaseItems)
+                alert('구매가 완료되었습니다!')
+                setCart([])
+                setShowCart(false)
+
+                // 구매 완료 후 인벤토리 다시 로드
+                await loadUserInventory()
+            } catch (error: any) {
+                console.error('구매 실패:', error)
+                alert(error.message || '구매 처리 중 오류가 발생했습니다.')
             }
-            UserService.deductCredits(user!.uid, totalPrice)
-                .then(_ => {
-                    alert('구매가 완료되었습니다!')
-                    setCart([])
-                    setShowCart(false)
-                })
-                .catch(error => {
-                    console.error('구매 실패:', error)
-                    alert(error.message || '구매 처리 중 오류가 발생했습니다.')
-                });
         }
+    }
+
+    if (loading) {
+        return (
+            <>
+                <PageHeader
+                    title="아이템 상점"
+                    description="당신의 방탈출 경험을 업그레이드하세요"
+                    icon={<ShoppingCart className="w-5 h-5"/>}
+                />
+                <Container className="py-8 text-center">
+                    <p>아이템을 불러오는 중...</p>
+                </Container>
+            </>
+        )
     }
 
     return (
@@ -498,11 +409,11 @@ export default function StoreItemsPage() {
                                     onMouseEnter={() => setHoveredItem(item.id)}
                                     onMouseLeave={() => setHoveredItem(null)}
                                 >
-                                    {/* 배경 효과 수정 - 버튼 제외 */}
+                                    {/* 배경 효과 */}
                                     <div
                                         className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-0"/>
 
-                                    {/* 할인 배지 - 카드 왼쪽 위에 튀어나오도록 */}
+                                    {/* 할인 배지 */}
                                     {item.discount && (
                                         <div
                                             className="absolute -top-2 -left-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full z-20 shadow-lg border-2 border-red-400">
@@ -510,7 +421,7 @@ export default function StoreItemsPage() {
                                         </div>
                                     )}
 
-                                    {/* 인기/한정 배지 위치 수정 */}
+                                    {/* 인기/한정 배지 */}
                                     <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
                                         {item.popular && (
                                             <Badge variant="success" size="sm">인기</Badge>
@@ -520,12 +431,12 @@ export default function StoreItemsPage() {
                                         )}
                                     </div>
 
-                                    {/* 카드 내용 - z-index 추가 */}
+                                    {/* 카드 내용 */}
                                     <div className="relative z-10 p-6">
                                         {/* 아이콘 */}
                                         <div
                                             className={`w-16 h-16 bg-gradient-to-br ${item.iconBg} rounded-2xl flex items-center justify-center mb-4 shadow-lg transform group-hover:rotate-12 transition-transform`}>
-                                            {item.icon}
+                                            {getIcon(item.iconName)}
                                         </div>
 
                                         {/* 제목과 설명 */}
@@ -577,7 +488,7 @@ export default function StoreItemsPage() {
                                             </div>
                                         </div>
 
-                                        {/* 버튼 - 조건부 렌더링 및 애니메이션 추가 */}
+                                        {/* 버튼 */}
                                         {!isPurchased(item) && (
                                             <div className="flex gap-2 relative z-20">
                                                 <Button
@@ -588,9 +499,6 @@ export default function StoreItemsPage() {
                                                 >
                                                     <ShoppingBag className="w-4 h-4"/>
                                                     담기
-                                                    {/* 클릭 효과 */}
-                                                    <div
-                                                        className="absolute inset-0 bg-white/20 opacity-0 hover:opacity-100 transition-opacity"/>
                                                 </Button>
                                                 <Button
                                                     variant="primary"
@@ -600,9 +508,6 @@ export default function StoreItemsPage() {
                                                 >
                                                     <Zap className="w-4 h-4"/>
                                                     바로 구매
-                                                    {/* 클릭 효과 */}
-                                                    <div
-                                                        className="absolute inset-0 bg-white/20 opacity-0 hover:opacity-100 transition-opacity"/>
                                                 </Button>
                                             </div>
                                         )}
@@ -640,8 +545,8 @@ export default function StoreItemsPage() {
                 {cart.length > 0 && (
                     <span
                         className="absolute -top-2 -right-2 bg-red-500 text-white text-sm w-7 h-7 rounded-full flex items-center justify-center font-bold animate-pulse">
-            {cart.reduce((total, item) => total + item.cartQuantity, 0)}
-        </span>
+                        {cart.reduce((total, item) => total + item.cartQuantity, 0)}
+                    </span>
                 )}
 
                 {/* 장바구니 툴팁 */}
@@ -682,7 +587,7 @@ export default function StoreItemsPage() {
                                              className="bg-gray-800 rounded-xl p-4 flex items-center gap-4">
                                             <div
                                                 className={`w-12 h-12 bg-gradient-to-br ${item.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                                {item.icon}
+                                                {getIcon(item.iconName)}
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-semibold">{item.name}</h4>
@@ -691,7 +596,6 @@ export default function StoreItemsPage() {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                {/* 테마, 번들, 특별 아이템은 수량 조절 불가 */}
                                                 {['themes', 'bundles', 'special'].includes(item.category) ? (
                                                     <div className="w-20 text-center">
                                                         <span className="text-gray-400">1개</span>
@@ -709,17 +613,14 @@ export default function StoreItemsPage() {
                                                             value={item.cartQuantity}
                                                             onChange={(e) => {
                                                                 const value = e.target.value;
-                                                                // 숫자만 허용하고, 빈 문자열도 허용 (입력 중에)
                                                                 if (value === '' || /^\d+$/.test(value)) {
                                                                     const numValue = value === '' ? 1 : parseInt(value);
-                                                                    // 자연수만 허용 (1 이상)
                                                                     if (numValue >= 1) {
                                                                         updateCartQuantity(item.id, numValue);
                                                                     }
                                                                 }
                                                             }}
                                                             onBlur={(e) => {
-                                                                // 포커스를 잃을 때 빈 값이면 1로 설정
                                                                 if (e.target.value === '') {
                                                                     updateCartQuantity(item.id, 1);
                                                                 }

@@ -43,6 +43,24 @@ export interface User {
     // 설정
     settings: UserSettings
 
+    // 인벤토리
+    inventory?: {
+        items: {
+            [itemId: string]: {
+                quantity: number
+                purchasedAt: Timestamp
+                lastUsedAt?: Timestamp
+                expiresAt?: Timestamp    // 부스터의 경우
+                isActive?: boolean       // 부스터의 경우
+                itemName?: string        // 아이템 이름
+                category?: string        // 아이템 카테고리
+                duration?: string        // 부스터 지속시간
+            }
+        }
+        activeBoosts: string[]          // 활성화된 부스터 아이템 ID
+        activeThemes: string[]          // 활성화된 테마 아이템 ID
+    }
+
     // 메타데이터
     role: UserRole
     createdAt: Timestamp

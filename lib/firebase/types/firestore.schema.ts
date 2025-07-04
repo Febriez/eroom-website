@@ -1,8 +1,9 @@
-// lib/types/firestore.schema.ts
+// lib/firebase/types/firestore.schema.ts
 
 // 사용자 프로필
 import {GamePreferences, NotificationSettings, PrivacySettings} from "@/lib/firebase/types/index";
 import {Timestamp} from "firebase/firestore";
+import {ItemDefinition, ItemPurchase, UserInventory, UserItem} from './item.types';
 
 export interface UserSchema {
     // 식별자
@@ -44,6 +45,21 @@ export interface UserSchema {
         privacy: PrivacySettings
         preferences: GamePreferences
         notifications: NotificationSettings
+    }
+
+    // 인벤토리 (User 문서에 직접 저장)
+    inventory: {
+        items: {
+            [itemId: string]: {
+                quantity: number
+                purchasedAt: Timestamp
+                lastUsedAt?: Timestamp
+                expiresAt?: Timestamp  // 부스터의 경우
+                isActive?: boolean     // 부스터의 경우
+            }
+        }
+        activeBoosts: string[]  // 활성화된 부스터 아이템 ID
+        activeThemes: string[]  // 활성화된 테마 아이템 ID
     }
 
     // 메타데이터
@@ -191,4 +207,30 @@ export interface NotificationSchema {
 
     read: boolean
     createdAt: Timestamp
+}
+
+// ==================== 아이템 관련 스키마 ====================
+
+// 아이템 정의 (Store 컬렉션)
+export interface ItemDefinitionSchema extends ItemDefinition {
+    // ItemDefinition 타입을 그대로 사용
+    // Store 컬렉션에 저장되는 아이템 정의
+}
+
+// 사용자 아이템 (User 서브컬렉션)
+export interface UserItemSchema extends UserItem {
+    // UserItem 타입을 그대로 사용
+    // users/{userId}/inventory 서브컬렉션에 저장
+}
+
+// 사용자 인벤토리 메타데이터 (User 서브컬렉션)
+export interface UserInventorySchema extends UserInventory {
+    // UserInventory 타입을 그대로 사용
+    // users/{userId}/metadata/inventory 문서에 저장
+}
+
+// 구매 내역 (Purchases 컬렉션)
+export interface PurchaseSchema extends ItemPurchase {
+    // ItemPurchase 타입을 그대로 사용
+    // Purchase 컬렉션에 저장
 }
