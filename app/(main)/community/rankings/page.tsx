@@ -11,7 +11,7 @@ import {UserService} from '@/lib/firebase/services/user.service'
 import {RoomService} from '@/lib/firebase/services/room.service'
 import type {User} from '@/lib/firebase/types'
 import {Avatar} from '@/components/ui/Avatar'
-import {Crown, MapPin, Medal, Star, Trophy, Users, Zap} from 'lucide-react'
+import {Crown, MapPin, Medal, Trophy, Users, Zap} from 'lucide-react'
 
 interface UserWithStats extends User {
     totalMapPlays?: number
@@ -22,19 +22,34 @@ export default function RankingsPage() {
     const router = useRouter()
     const [users, setUsers] = useState<UserWithStats[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'level' | 'playCount' | 'createdRooms' | 'avgRating'>('level')
+    const [activeTab, setActiveTab] = useState<'level' | 'totalPlays' | 'createdRooms' | 'points'>('level')
 
     useEffect(() => {
         loadUsers(activeTab)
     }, [activeTab])
 
-    const loadUsers = async (type: 'level' | 'playCount' | 'createdRooms' | 'avgRating') => {
+    const loadUsers = async (type: 'level' | 'totalPlays' | 'createdRooms' | 'points') => {
         setLoading(true)
         try {
             let userData: User[]
 
-            // 모든 유저 가져오기
-            userData = await UserService.getAllUsers()
+            // 유저 서비스의 getRankings 메서드 사용
+            switch (type) {
+                case 'level':
+                    userData = await UserService.getRankings('level', 100)
+                    break
+                case 'totalPlays':
+                    userData = await UserService.getRankings('totalPlays', 100)
+                    break
+                case 'createdRooms':
+                    userData = await UserService.getRankings('createdRooms', 100)
+                    break
+                case 'points':
+                    userData = await UserService.getRankings('points', 100)
+                    break
+                default:
+                    userData = await UserService.getRankings('level', 100)
+            }
 
             // 추가 통계 계산
             const usersWithStats: UserWithStats[] = await Promise.all(
@@ -43,14 +58,19 @@ export default function RankingsPage() {
                     let avgMapRating = 0
 
                     if (user.stats.createdRooms > 0) {
-                        // 유저가 만든 맵들의 통계 가져오기
-                        const userMaps = await RoomService.getMapsByCreator(user.uid)
+                        try {
+                            // 유저가 만든 룸들의 통계 가져오기 (메서드명 수정)
+                            const userRooms = await RoomService.getRoomsByCreator(user.uid)
 
-                        totalMapPlays = userMaps.reduce((sum: number, map) => sum + map.stats.playCount, 0)
+                            totalMapPlays = userRooms.reduce((sum: number, room) => sum + (room.PlayCount || 0), 0)
 
-                        const totalRating = userMaps.reduce((sum: number, map) => sum + ((map.stats.avgRating || 0) * map.stats.playCount), 0)
-                        const totalRatingCount = userMaps.reduce((sum: number, map) => sum + map.stats.playCount, 0)
-                        avgMapRating = totalRatingCount > 0 ? totalRating / totalRatingCount : 0
+                            // 평균 평점 계산 (PlayCount가 있는 경우에만)
+                            const totalRating = userRooms.reduce((sum: number, room) => sum + ((room.avgRating || 0) * (room.PlayCount || 0)), 0)
+                            const totalRatingCount = userRooms.reduce((sum: number, room) => sum + (room.PlayCount || 0), 0)
+                            avgMapRating = totalRatingCount > 0 ? totalRating / totalRatingCount : 0
+                        } catch (error) {
+                            console.error('Error fetching user rooms:', error)
+                        }
                     }
 
                     return {
@@ -74,11 +94,11 @@ export default function RankingsPage() {
                         return a.displayName.localeCompare(b.displayName)
                     })
                     break
-                case 'playCount':
+                case 'totalPlays':
                     sortedUsers.sort((a, b) => {
-                        // 1. 플레이 횟수로 정렬
-                        const playCountDiff = (b.totalMapPlays || 0) - (a.totalMapPlays || 0)
-                        if (playCountDiff !== 0) return playCountDiff
+                        // 1. 총 플레이 횟수로 정렬
+                        const totalPlaysDiff = (b.stats?.totalPlays || 0) - (a.stats?.totalPlays || 0)
+                        if (totalPlaysDiff !== 0) return totalPlaysDiff
                         // 2. 플레이 횟수가 같으면 레벨로 정렬
                         if (b.level !== a.level) return b.level - a.level
                         // 3. 레벨도 같으면 포인트로 정렬
@@ -89,9 +109,9 @@ export default function RankingsPage() {
                     break
                 case 'createdRooms':
                     sortedUsers.sort((a, b) => {
-                        // 1. 제작한 맵 수로 정렬
+                        // 1. 제작한 룸 수로 정렬
                         if (b.stats.createdRooms !== a.stats.createdRooms) return b.stats.createdRooms - a.stats.createdRooms
-                        // 2. 맵 수가 같으면 레벨로 정렬
+                        // 2. 룸 수가 같으면 레벨로 정렬
                         if (b.level !== a.level) return b.level - a.level
                         // 3. 레벨도 같으면 포인트로 정렬
                         if (b.points !== a.points) return b.points - a.points
@@ -99,22 +119,19 @@ export default function RankingsPage() {
                         return a.displayName.localeCompare(b.displayName)
                     })
                     break
-                case 'avgRating':
+                case 'points':
                     sortedUsers.sort((a, b) => {
-                        // 1. 평균 평점으로 정렬
-                        const ratingDiff = (b.avgMapRating || 0) - (a.avgMapRating || 0)
-                        if (ratingDiff !== 0) return ratingDiff
-                        // 2. 평점이 같으면 레벨로 정렬
-                        if (b.level !== a.level) return b.level - a.level
-                        // 3. 레벨도 같으면 포인트로 정렬
+                        // 1. 포인트로 정렬
                         if (b.points !== a.points) return b.points - a.points
-                        // 4. 포인트도 같으면 이름순
+                        // 2. 포인트가 같으면 레벨로 정렬
+                        if (b.level !== a.level) return b.level - a.level
+                        // 3. 레벨도 같으면 이름순
                         return a.displayName.localeCompare(b.displayName)
                     })
                     break
             }
 
-            setUsers(sortedUsers) // 모든 유저 표시
+            setUsers(sortedUsers)
         } catch (error) {
             console.error('Error loading users:', error)
         } finally {
@@ -129,7 +146,7 @@ export default function RankingsPage() {
             case 2:
                 return <Medal className="w-6 h-6 text-gray-300"/>
             case 3:
-                return <Medal className="w-6 h-6 text-amber-700"/> // 어두운 갈색으로 변경
+                return <Medal className="w-6 h-6 text-amber-700"/>
             default:
                 return null
         }
@@ -142,7 +159,7 @@ export default function RankingsPage() {
             case 2:
                 return 'bg-gradient-to-r from-gray-800/20 to-gray-700/20 border-gray-600/50'
             case 3:
-                return 'bg-gradient-to-r from-amber-900/20 to-amber-800/20 border-amber-700/50' // 어두운 갈색으로 변경
+                return 'bg-gradient-to-r from-amber-900/20 to-amber-800/20 border-amber-700/50'
             default:
                 return ''
         }
@@ -161,12 +178,12 @@ export default function RankingsPage() {
         switch (type) {
             case 'level':
                 return '레벨'
-            case 'playCount':
-                return '플레이 횟수'
-            case 'mapsCreated':
-                return '제작한 맵'
-            case 'avgRating':
-                return '평균 평점'
+            case 'totalPlays':
+                return '총 플레이'
+            case 'createdRooms':
+                return '제작한 룸'
+            case 'points':
+                return '포인트'
             default:
                 return ''
         }
@@ -176,12 +193,12 @@ export default function RankingsPage() {
         switch (type) {
             case 'level':
                 return `Lv.${user.level}`
-            case 'playCount':
-                return formatCount(user.totalMapPlays || 0)
-            case 'mapsCreated':
+            case 'totalPlays':
+                return formatCount(user.stats?.totalPlays || 0)
+            case 'createdRooms':
                 return formatCount(user.stats.createdRooms)
-            case 'avgRating':
-                return (user.avgMapRating || 0).toFixed(1) + ' ⭐'
+            case 'points':
+                return formatCount(user.points)
             default:
                 return '0'
         }
@@ -215,9 +232,9 @@ export default function RankingsPage() {
             />
 
             <Container className="py-12">
-                {/* 탭 메뉴 - 여백 추가 */}
+                {/* 탭 메뉴 */}
                 <div className="mb-12">
-                    <Tabs<'level' | 'playCount' | 'createdRooms' | 'avgRating'>
+                    <Tabs<'level' | 'totalPlays' | 'createdRooms' | 'points'>
                         value={activeTab}
                         onValueChange={(val) => setActiveTab(val)}
                         defaultValue="level"
@@ -227,17 +244,17 @@ export default function RankingsPage() {
                                 <Trophy className="w-4 h-4"/>
                                 레벨
                             </TabsTrigger>
-                            <TabsTrigger value="playCount">
+                            <TabsTrigger value="totalPlays">
                                 <Users className="w-4 h-4"/>
-                                플레이 횟수
+                                총 플레이
                             </TabsTrigger>
-                            <TabsTrigger value="mapsCreated">
+                            <TabsTrigger value="createdRooms">
                                 <MapPin className="w-4 h-4"/>
-                                맵 제작
+                                룸 제작
                             </TabsTrigger>
-                            <TabsTrigger value="avgRating">
-                                <Star className="w-4 h-4"/>
-                                평균 평점
+                            <TabsTrigger value="points">
+                                <Zap className="w-4 h-4"/>
+                                포인트
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -371,7 +388,7 @@ export default function RankingsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="text-sm">{user.stats.successRate}%</span>
+                                                <span className="text-sm">{user.stats?.successRate || 0}%</span>
                                             </td>
                                         </tr>
                                     ))}
