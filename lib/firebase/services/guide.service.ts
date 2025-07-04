@@ -207,7 +207,7 @@ export class GuideService extends BaseService {
                         uid: 'system',
                         username: 'eroom_master',
                         displayName: 'eroom 운영',
-                        avatarUrl: '/images/avatars/eroom-master.png'
+                        avatarUrl: '/icon.png'
                     },
                     stats: {
                         views: 1523,
@@ -234,7 +234,7 @@ export class GuideService extends BaseService {
                         uid: 'system',
                         username: 'eroom_master',
                         displayName: 'eroom 운영',
-                        avatarUrl: '/images/avatars/eroom-master.png'
+                        avatarUrl: '/icon.png'
                     },
                     stats: {
                         views: 892,
