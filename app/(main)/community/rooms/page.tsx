@@ -13,11 +13,11 @@ import {Clock, Heart, Search, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {RoomCard} from "@/lib/firebase/types/room.types";
 
-export default function CommunityMapsPage() {
+export default function CommunityRoomsPage() {
     const router = useRouter()
     const {user} = useAuth()
-    const [maps, setMaps] = useState<RoomCard[]>([])
-    const [filteredMaps, setFilteredMaps] = useState<RoomCard[]>([])
+    const [rooms, setRooms] = useState<RoomCard[]>([])
+    const [filteredRooms, setFilteredRooms] = useState<RoomCard[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [filter, setFilter] = useState<'popular' | 'liked' | 'recent'>('popular')
@@ -32,32 +32,32 @@ export default function CommunityMapsPage() {
 
     // 초기 데이터 로드
     useEffect(() => {
-        loadMaps()
+        loadRooms()
     }, [filter, selectedDifficulty, selectedTheme, currentLimit])
 
     // 검색어 변경 시 필터링
     useEffect(() => {
         if (searchTerm) {
-            const filtered = maps.filter(map =>
-                map.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                map.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                map.creator.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                map.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+            const filtered = rooms.filter(room =>
+                room.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                room.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                room.creator.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                room.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
             )
-            setFilteredMaps(filtered)
+            setFilteredRooms(filtered)
         } else {
-            setFilteredMaps(maps)
+            setFilteredRooms(rooms)
         }
-    }, [searchTerm, maps])
+    }, [searchTerm, rooms])
 
-    const loadMaps = async () => {
+    const loadRooms = async () => {
         setLoading(true)
         try {
-            let loadedMaps: RoomCard[] = []
+            let loadedRooms: RoomCard[] = []
 
             // 필터 조합이 있는 경우
             if (selectedDifficulty || selectedTheme) {
-                loadedMaps = await RoomService.getFilteredRooms({
+                loadedRooms = await RoomService.getFilteredRooms({
                     difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard' | 'extreme',
                     theme: selectedTheme,
                     sortBy: filter,
@@ -67,33 +67,33 @@ export default function CommunityMapsPage() {
                 // 기본 필터만 사용
                 switch (filter) {
                     case 'popular':
-                        loadedMaps = await RoomService.getPopularRooms(currentLimit)
+                        loadedRooms = await RoomService.getPopularRooms(currentLimit)
                         break
                     case 'liked':
-                        loadedMaps = await RoomService.getLikedRooms(currentLimit)
+                        loadedRooms = await RoomService.getLikedRooms(currentLimit)
                         break
                     case 'recent':
-                        loadedMaps = await RoomService.getRecentRooms(currentLimit)
+                        loadedRooms = await RoomService.getRecentRooms(currentLimit)
                         break
                 }
             }
 
-            setMaps(loadedMaps)
-            setFilteredMaps(loadedMaps)
+            setRooms(loadedRooms)
+            setFilteredRooms(loadedRooms)
         } catch (error) {
-            console.error('Error loading maps:', error)
+            console.error('Error loading rooms:', error)
         } finally {
             setLoading(false)
         }
     }
 
-    const loadMoreMaps = () => {
+    const loadMoreRooms = () => {
         setCurrentLimit(prev => prev + 24)
     }
 
-    const handleMapClick = (map: RoomCard) => {
-        // 맵 상세 페이지로 이동 (또는 다운로드 페이지)
-        router.push(`/main/games/eroom?mapId=${map.id}`)
+    const handleRoomClick = (room: RoomCard) => {
+        // 룸 상세 페이지로 이동
+        router.push(`/community/rooms/${room.id}`)
     }
 
     const handleSearch = async () => {
@@ -102,10 +102,10 @@ export default function CommunityMapsPage() {
             setCurrentLimit(24) // 검색 시 limit 초기화
             try {
                 const searchResults = await RoomService.searchRooms(searchTerm)
-                setMaps(searchResults)
-                setFilteredMaps(searchResults)
+                setRooms(searchResults)
+                setFilteredRooms(searchResults)
             } catch (error) {
-                console.error('Error searching maps:', error)
+                console.error('Error searching rooms:', error)
             } finally {
                 setLoading(false)
             }
@@ -141,9 +141,9 @@ export default function CommunityMapsPage() {
     return (
         <>
             <PageHeader
-                title="커뮤니티 맵"
-                description="전 세계 플레이어들이 만든 창의적인 방탈출 맵을 플레이해보세요"
-                badge={`${filteredMaps.length}개의 맵`}
+                title="커뮤니티 룸"
+                description="전 세계 플레이어들이 만든 창의적인 방탈출 룸을 플레이해보세요"
+                badge={`${filteredRooms.length}개의 룸`}
                 icon={<Users className="w-5 h-5"/>}
             />
 
@@ -153,7 +153,7 @@ export default function CommunityMapsPage() {
                     {/* 검색바 */}
                     <div className="flex gap-2">
                         <Input
-                            placeholder="맵 이름, 제작자, 태그, 테마로 검색..."
+                            placeholder="룸 이름, 제작자, 태그, 테마로 검색..."
                             icon={<Search className="w-5 h-5"/>}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -241,29 +241,29 @@ export default function CommunityMapsPage() {
                     </div>
                 )}
 
-                {/* 맵 그리드 */}
-                {!loading && filteredMaps.length > 0 && (
+                {/* 룸 그리드 */}
+                {!loading && filteredRooms.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {filteredMaps.map((map) => (
+                        {filteredRooms.map((room) => (
                             <MapCard
-                                key={map.id}
-                                map={map}
-                                onClick={() => handleMapClick(map)}
+                                key={room.id}
+                                map={room}
+                                onClick={() => handleRoomClick(room)}
                             />
                         ))}
                     </div>
                 )}
 
                 {/* 빈 상태 */}
-                {!loading && filteredMaps.length === 0 && (
+                {!loading && filteredRooms.length === 0 && (
                     <div className="text-center py-20">
                         <div
                             className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Search className="w-10 h-10 text-gray-600"/>
                         </div>
-                        <h3 className="text-xl font-bold mb-2">맵을 찾을 수 없습니다</h3>
+                        <h3 className="text-xl font-bold mb-2">룸을 찾을 수 없습니다</h3>
                         <p className="text-gray-400">
-                            {searchTerm ? '다른 검색어를 시도해보세요' : '아직 등록된 맵이 없습니다'}
+                            {searchTerm ? '다른 검색어를 시도해보세요' : '아직 등록된 룸이 없습니다'}
                         </p>
                         {!searchTerm && user && (
                             <Button
@@ -271,17 +271,17 @@ export default function CommunityMapsPage() {
                                 className="mt-4"
                                 onClick={() => router.push('/support/download')}
                             >
-                                첫 번째 맵 만들기
+                                첫 번째 룸 만들기
                             </Button>
                         )}
                     </div>
                 )}
 
                 {/* 더 보기 버튼 */}
-                {!loading && maps.length >= currentLimit && filteredMaps.length === maps.length && (
+                {!loading && rooms.length >= currentLimit && filteredRooms.length === rooms.length && (
                     <div className="text-center mt-8">
-                        <Button variant="outline" onClick={loadMoreMaps}>
-                            더 많은 맵 보기
+                        <Button variant="outline" onClick={loadMoreRooms}>
+                            더 많은 룸 보기
                         </Button>
                     </div>
                 )}

@@ -1,6 +1,6 @@
 export const COLLECTIONS = {
     USERS: 'User',
-    ROOMS: 'Room',  // Room 컬렉션 사용
+    ROOMS: 'Room',
     CONVERSATIONS: 'Conversation',
     MESSAGES: 'Message',
     NOTIFICATIONS: 'Notification',
@@ -11,5 +11,7 @@ export const COLLECTIONS = {
     STORE: 'Store',
     PURCHASES: 'Purchase',
     GUIDES: 'Guide',
-    SYSTEM: 'System'
+    SYSTEM: 'System',
+    COMMENTS: 'Comment',
+    RATINGS: 'Rating'
 } as const

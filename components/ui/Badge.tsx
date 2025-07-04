@@ -1,14 +1,16 @@
 interface BadgeProps {
     children: React.ReactNode
-    variant?: 'default' | 'success' | 'warning' | 'danger' | 'info'
+    variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'secondary' | 'outline'
     size?: 'sm' | 'md'
     className?: string
-    onClick?: () => void // Add this line
+    onClick?: () => void
 }
 
 export function Badge({children, variant = 'default', size = 'md', className = '', onClick}: BadgeProps) {
     const variants = {
         default: 'bg-gray-800 text-gray-300',
+        secondary: 'bg-gray-700 text-gray-300',
+        outline: 'bg-transparent border border-gray-600 text-gray-300',
         success: 'bg-green-900/30 text-green-400',
         warning: 'bg-yellow-900/30 text-yellow-400',
         danger: 'bg-red-900/30 text-red-400',
@@ -27,8 +29,9 @@ export function Badge({children, variant = 'default', size = 'md', className = '
                 ${variants[variant]}
                 ${sizes[size]}
                 ${className}
+                ${onClick ? 'cursor-pointer hover:opacity-80' : ''}
             `}
-            onClick={onClick} // Add this line
+            onClick={onClick}
         >
             {children}
         </span>
