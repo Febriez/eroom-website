@@ -88,7 +88,7 @@ export default function SocialListModal({
 
         switch (sortBy) {
             case 'username':
-                compareValue = a.username.localeCompare(b.username)
+                compareValue = a.username!.localeCompare(b.username!)
                 break
             case 'followers':
                 compareValue = a.social.followers.length - b.social.followers.length
@@ -112,7 +112,7 @@ export default function SocialListModal({
         setMessageLoading(user.uid)
         try {
             const conversationId = await createConversation(user.uid, {
-                username: user.username,
+                username: user.username!,
                 displayName: user.displayName,
                 avatarUrl: user.avatarUrl
             })
@@ -244,7 +244,7 @@ export default function SocialListModal({
                                         <div className="flex items-center justify-between">
                                             <div
                                                 className="flex items-center gap-3 flex-1 cursor-pointer"
-                                                onClick={() => handleProfileClick(user.username)}
+                                                onClick={() => handleProfileClick(user.username!)}
                                             >
                                                 <Avatar
                                                     src={user.avatarUrl}
