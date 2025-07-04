@@ -1,4 +1,3 @@
-// lib/firebase/services/guide.service.ts
 import {
     addDoc,
     collection,
@@ -98,6 +97,44 @@ export class GuideService extends BaseService {
             return {id: docSnap.id, ...docSnap.data()} as Guide
         }
         return null
+    }
+
+    // 조회수 증가
+    static async incrementViews(guideId: string): Promise<void> {
+        const guideRef = doc(db, COLLECTIONS.GUIDES, guideId)
+        await updateDoc(guideRef, {
+            'stats.views': increment(1)
+        })
+    }
+
+// 관련 가이드 가져오기
+    static async getRelatedGuides(category: string, excludeId: string): Promise<Guide[]> {
+        return await this.queryDocuments<Guide>(
+            COLLECTIONS.GUIDES,
+            [
+                where('category', '==', category),
+                where('__name__', '!=', excludeId)
+            ],
+            {
+                limit: 5,
+                orderBy: 'stats.views',
+                direction: 'desc'
+            }
+        )
+    }
+
+// 사용자가 좋아요 했는지 확인
+    static async hasUserLiked(guideId: string, userId: string): Promise<boolean> {
+        // 실제 구현은 likes 서브컬렉션이나 User 문서의 likedGuides 배열 확인
+        // 현재는 임시로 false 반환
+        return false
+    }
+
+// 사용자가 북마크 했는지 확인
+    static async hasUserBookmarked(guideId: string, userId: string): Promise<boolean> {
+        // 실제 구현은 bookmarks 서브컬렉션이나 User 문서의 bookmarkedGuides 배열 확인
+        // 현재는 임시로 false 반환
+        return false
     }
 
     /**

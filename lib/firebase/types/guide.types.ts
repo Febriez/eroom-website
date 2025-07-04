@@ -15,6 +15,7 @@ export interface Guide {
         username: string
         displayName: string
         avatarUrl?: string
+        bio?: string;
     }
     stats: {
         views: number

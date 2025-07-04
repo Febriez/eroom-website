@@ -1,116 +1,92 @@
 'use client'
 
-import {useEffect, useState} from 'react'
+import React, {useCallback, useEffect, useState} from 'react'
+import {useParams, useRouter} from 'next/navigation'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
 import {Card} from '@/components/ui/Card'
-import {Input} from '@/components/ui/Input'
+import {Button} from '@/components/ui/Button'
 import {Badge} from '@/components/ui/Badge'
-import {Skeleton} from '@/components/ui/Skeleton'
-import {BookOpen, Brain, ChevronRight, Clock, Eye, Search, Shield, Sparkles, Zap} from 'lucide-react'
-import Link from 'next/link'
+import {Avatar} from '@/components/ui/Avatar'
+import {Book, Bookmark, BookmarkCheck, ChevronLeft, Clock, Eye, Heart, Share2} from 'lucide-react'
 import {GuideService} from '@/lib/firebase/services/guide.service'
+import {useAuth} from '@/contexts/AuthContext'
 import type {Guide} from '@/lib/firebase/types/guide.types'
+import ReactMarkdown from 'react-markdown'
 
-export default function GuidesPage() {
-    const [guides, setGuides] = useState<Guide[]>([])
-    const [filteredGuides, setFilteredGuides] = useState<Guide[]>([])
+
+export default function GuideDetailPage() {
+    const params = useParams()
+    const router = useRouter()
+    const {user} = useAuth()
+    const [guide, setGuide] = useState<Guide | null>(null)
     const [loading, setLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [isLiked, setIsLiked] = useState(false)
+    const [isBookmarked, setIsBookmarked] = useState(false)
 
-    useEffect(() => {
-        loadGuides()
-    }, [])
+    const guideId = params.id as string
 
-    useEffect(() => {
-        filterGuides()
-    }, [searchTerm, selectedCategory, guides])
-
-    const loadGuides = async () => {
+    // 가이드 데이터를 로드하는 공통 함수
+    const loadGuideData = useCallback(async (showLoading = true) => {
         try {
-            setLoading(true)
-            // 초기 데이터 시딩 (필요한 경우)
-            await GuideService.seedGuides()
-
-            // 모든 가이드 가져오기
-            const allGuides = await GuideService.getAllGuides()
-            setGuides(allGuides)
-            setFilteredGuides(allGuides)
+            if (showLoading) setLoading(true)
+            const guideData = await GuideService.getGuide(guideId)
+            if (guideData) {
+                setGuide(guideData)
+                // TODO: 실제로는 유저의 좋아요/북마크 상태를 확인해야 함
+                // 현재는 임시로 false로 설정
+            } else {
+                // 가이드를 찾을 수 없는 경우
+                router.push('/guides')
+            }
         } catch (error) {
-            console.error('Error loading guides:', error)
+            console.error('Error loading guide:', error)
+            router.push('/guides')
         } finally {
-            setLoading(false)
+            if (showLoading) setLoading(false)
         }
+    }, [guideId, router])
+
+    useEffect(() => {
+        if (guideId) {
+            loadGuideData()
+        }
+    }, [guideId, loadGuideData])
+
+    const handleLike = async () => {
+        if (!user) {
+            router.push('/login')
+            return
+        }
+
+        setIsLiked(!isLiked)
+        await GuideService.toggleLike(guideId, !isLiked)
+        await loadGuideData(false) // 로딩 표시 없이 데이터만 새로고침
     }
 
-    const filterGuides = () => {
-        let filtered = guides
-
-        // 검색어 필터
-        if (searchTerm) {
-            filtered = filtered.filter(guide =>
-                guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                guide.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                guide.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
+    const handleBookmark = async () => {
+        if (!user) {
+            router.push('/login')
+            return
         }
 
-        // 카테고리 필터
-        if (selectedCategory) {
-            filtered = filtered.filter(guide => guide.category === selectedCategory)
-        }
-
-        setFilteredGuides(filtered)
+        setIsBookmarked(!isBookmarked)
+        await GuideService.toggleBookmark(guideId, !isBookmarked)
+        await loadGuideData(false) // 로딩 표시 없이 데이터만 새로고침
     }
 
-    const categories = [
-        {id: 'beginner', name: '초보자', icon: <Shield className="w-4 h-4"/>, color: 'success'},
-        {id: 'advanced', name: '고급', icon: <Zap className="w-4 h-4"/>, color: 'danger'},
-        {id: 'map-creation', name: '맵 제작', icon: <Brain className="w-4 h-4"/>, color: 'info'},
-        {id: 'tips', name: '팁', icon: <Sparkles className="w-4 h-4"/>, color: 'warning'}
-    ]
-
-    const getCategoryIcon = (category: string) => {
-        switch (category) {
-            case 'beginner':
-                return <Shield className="w-6 h-6"/>
-            case 'advanced':
-                return <Zap className="w-6 h-6"/>
-            case 'map-creation':
-                return <Brain className="w-6 h-6"/>
-            case 'tips':
-                return <Sparkles className="w-6 h-6"/>
-            default:
-                return <BookOpen className="w-6 h-6"/>
-        }
-    }
-
-    const getCategoryGradient = (category: string) => {
-        switch (category) {
-            case 'beginner':
-                return 'from-green-600 to-green-700'
-            case 'advanced':
-                return 'from-red-600 to-red-700'
-            case 'map-creation':
-                return 'from-blue-600 to-blue-700'
-            case 'tips':
-                return 'from-yellow-600 to-yellow-700'
-            default:
-                return 'from-gray-600 to-gray-700'
-        }
-    }
-
-    const getDifficultyLabel = (difficulty: string) => {
-        switch (difficulty) {
-            case 'easy':
-                return '쉬움'
-            case 'medium':
-                return '보통'
-            case 'hard':
-                return '어려움'
-            default:
-                return difficulty
+    const handleShare = () => {
+        if (navigator.share) {
+            navigator.share({
+                title: guide?.title,
+                text: guide?.description,
+                url: window.location.href
+            })
+        } else {
+            // 클립보드에 복사
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('링크가 클립보드에 복사되었습니다!')
+            })
         }
     }
 
@@ -127,242 +103,229 @@ export default function GuidesPage() {
         }
     }
 
+    const getDifficultyLabel = (difficulty: string) => {
+        switch (difficulty) {
+            case 'easy':
+                return '초급'
+            case 'medium':
+                return '중급'
+            case 'hard':
+                return '고급'
+            default:
+                return difficulty
+        }
+    }
+
+    const getCategoryLabel = (category: string) => {
+        switch (category) {
+            case 'beginner':
+                return '초보자 가이드'
+            case 'map-creation':
+                return '맵 제작'
+            case 'advanced':
+                return '고급 전략'
+            case 'tips':
+                return '팁 & 트릭'
+            default:
+                return category
+        }
+    }
+
+    const formatDate = (timestamp: any) => {
+        if (!timestamp) return ''
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+        return new Intl.DateTimeFormat('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(date)
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+            </div>
+        )
+    }
+
+    if (!guide) {
+        return null
+    }
+
     return (
         <>
             <PageHeader
-                title="게임 가이드"
-                description="전문가들이 작성한 상세한 게임 가이드로 실력을 향상시키세요"
-                badge={`${guides.length}개의 가이드`}
-                icon={<BookOpen className="w-5 h-5"/>}
+                title={guide.title}
+                description={guide.description}
+                badge={getCategoryLabel(guide.category)}
+                icon={<Book className="w-5 h-5"/>}
             />
 
             <Container className="py-12">
-                {/* 검색 및 카테고리 필터 */}
-                <div className="mb-8">
-                    <div className="flex flex-col md:flex-row gap-4 mb-6">
-                        <div className="flex-1">
-                            <Input
-                                placeholder="가이드 검색..."
-                                icon={<Search className="w-5 h-5"/>}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
+                {/* 뒤로가기 버튼 */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.back()}
+                    className="mb-6"
+                >
+                    <ChevronLeft className="w-4 h-4"/>
+                    뒤로가기
+                </Button>
 
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setSelectedCategory(null)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                !selectedCategory
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                            }`}
-                        >
-                            전체
-                        </button>
-                        {categories.map(category => (
-                            <button
-                                key={category.id}
-                                onClick={() => setSelectedCategory(category.id)}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                                    selectedCategory === category.id
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
-                            >
-                                {category.icon}
-                                {category.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 로딩 상태 */}
-                {loading && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[...Array(6)].map((_, i) => (
-                            <Card key={i} className="p-6">
-                                <div className="flex items-start justify-between mb-4">
-                                    <Skeleton className="w-12 h-12 rounded-lg"/>
-                                    <Skeleton className="w-16 h-6 rounded-full"/>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* 메인 콘텐츠 */}
+                    <div className="lg:col-span-3">
+                        <Card className="p-8">
+                            {/* 메타 정보 */}
+                            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-gray-400">
+                                <div className="flex items-center gap-2">
+                                    <Avatar src={guide.author.avatarUrl} size="sm"/>
+                                    <span>{guide.author.displayName}</span>
                                 </div>
-                                <Skeleton className="h-6 w-3/4 mb-2"/>
-                                <Skeleton className="h-4 w-full mb-1"/>
-                                <Skeleton className="h-4 w-2/3 mb-4"/>
-                                <div className="flex justify-between">
-                                    <Skeleton className="h-4 w-20"/>
-                                    <Skeleton className="h-4 w-16"/>
+                                <span>•</span>
+                                <div className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4"/>
+                                    {guide.readTime}분 읽기
                                 </div>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-
-                {/* 가이드 그리드 */}
-                {!loading && filteredGuides.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredGuides.map(guide => {
-                            const category = categories.find(c => c.id === guide.category)
-
-                            return (
-                                <Link key={guide.id} href={`/guides/${guide.id}`}>
-                                    <Card hover className="h-full p-6 group">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div
-                                                className={`w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(guide.category)}`}
-                                            >
-                                                {getCategoryIcon(guide.category)}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant={getDifficultyColor(guide.difficulty) as any} size="sm">
-                                                    {getDifficultyLabel(guide.difficulty)}
-                                                </Badge>
-                                                {guide.metadata.featured && (
-                                                    <Badge variant="warning" size="sm">
-                                                        추천
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <h3 className="text-lg font-bold mb-2 group-hover:text-green-400 transition-colors">
-                                            {guide.title}
-                                        </h3>
-
-                                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                                            {guide.description}
-                                        </p>
-
-                                        {/* 태그 */}
-                                        {guide.tags.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mb-3">
-                                                {guide.tags.slice(0, 3).map((tag, index) => (
-                                                    <span key={index}
-                                                          className="text-xs px-2 py-1 bg-gray-800 rounded-full text-gray-400">
-                                                        #{tag}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center justify-between text-xs text-gray-500">
-                                            <div className="flex items-center gap-3">
-                                                <span className="flex items-center gap-1">
-                                                    <Clock className="w-3 h-3"/>
-                                                    {guide.readTime}분
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Eye className="w-3 h-3"/>
-                                                    {guide.stats.views.toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <ChevronRight
-                                                className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
-                                        </div>
-
-                                        <div className="mt-2 pt-2 border-t border-gray-800 text-xs text-gray-500">
-                                            by {guide.author.displayName}
-                                        </div>
-                                    </Card>
-                                </Link>
-                            )
-                        })}
-                    </div>
-                )}
-
-                {/* 빈 상태 */}
-                {!loading && filteredGuides.length === 0 && (
-                    <div className="text-center py-20">
-                        <BookOpen className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
-                        <h3 className="text-xl font-bold mb-2">가이드를 찾을 수 없습니다</h3>
-                        <p className="text-gray-400">
-                            {searchTerm || selectedCategory
-                                ? '다른 검색어나 카테고리를 시도해보세요'
-                                : '아직 등록된 가이드가 없습니다'}
-                        </p>
-                    </div>
-                )}
-
-                {/* 인기 가이드 섹션 */}
-                {!loading && guides.length > 0 && (
-                    <div className="mt-12">
-                        <h2 className="text-2xl font-bold mb-6">인기 가이드</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Card
-                                className="p-6 bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/50">
-                                <div className="flex items-start gap-4">
-                                    <div
-                                        className="w-16 h-16 bg-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                                        <BookOpen className="w-8 h-8"/>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-bold mb-2">완벽 공략집</h3>
-                                        <p className="text-gray-400 mb-3">
-                                            초보자부터 고수까지, 모든 레벨의 플레이어를 위한 종합 가이드
-                                        </p>
-                                        <Link
-                                            href="complete"
-                                            className="text-green-400 hover:text-green-300 font-medium inline-flex items-center gap-1"
-                                        >
-                                            지금 읽기 <ChevronRight className="w-4 h-4"/>
-                                        </Link>
-                                    </div>
+                                <span>•</span>
+                                <div className="flex items-center gap-1">
+                                    <Eye className="w-4 h-4"/>
+                                    {guide.stats.views.toLocaleString()}회 조회
                                 </div>
-                            </Card>
+                                <span>•</span>
+                                <span>{formatDate(guide.createdAt)}</span>
+                            </div>
 
-                            <Card
-                                className="p-6 bg-gradient-to-br from-purple-900/20 to-purple-800/20 border-purple-700/50">
-                                <div className="flex items-start gap-4">
-                                    <div
-                                        className="w-16 h-16 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                                        <Sparkles className="w-8 h-8"/>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-bold mb-2">맵 제작 가이드</h3>
-                                        <p className="text-gray-400 mb-3">
-                                            나만의 창의적인 방탈출 맵을 만드는 방법을 배워보세요
-                                        </p>
-                                        <Link
-                                            href="map-creation"
-                                            className="text-purple-400 hover:text-purple-300 font-medium inline-flex items-center gap-1"
-                                        >
-                                            지금 읽기 <ChevronRight className="w-4 h-4"/>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
+                            {/* 태그 */}
+                            <div className="flex flex-wrap gap-2 mb-8">
+                                <Badge variant={getDifficultyColor(guide.difficulty) as any}>
+                                    {getDifficultyLabel(guide.difficulty)}
+                                </Badge>
+                                {guide.tags.map((tag, index) => (
+                                    <Badge key={index} variant="default">
+                                        #{tag}
+                                    </Badge>
+                                ))}
+                            </div>
 
-                        {/* 추천 가이드 */}
-                        {guides.filter(g => g.metadata.featured).length > 0 && (
-                            <div className="mt-8">
-                                <h3 className="text-lg font-bold mb-4">추천 가이드</h3>
-                                <div className="space-y-3">
-                                    {guides.filter(g => g.metadata.featured).slice(0, 3).map(guide => (
-                                        <Link key={guide.id} href={`/guides/${guide.id}`}>
-                                            <Card hover className="p-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div
-                                                        className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(guide.category)} flex-shrink-0`}>
-                                                        {getCategoryIcon(guide.category)}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold">{guide.title}</h4>
-                                                        <p className="text-sm text-gray-400">{guide.description}</p>
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {guide.readTime}분 읽기
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        </Link>
-                                    ))}
+                            {/* 콘텐츠 */}
+                            <div className="prose prose-invert max-w-none">
+                                <ReactMarkdown
+                                    components={{
+                                        h1: ({children}) => <h1
+                                            className="text-3xl font-bold mb-6 mt-8">{children}</h1>,
+                                        h2: ({children}) => <h2
+                                            className="text-2xl font-bold mb-4 mt-6">{children}</h2>,
+                                        h3: ({children}) => <h3
+                                            className="text-xl font-bold mb-3 mt-4">{children}</h3>,
+                                        p: ({children}) => <p
+                                            className="mb-4 leading-relaxed">{children}</p>,
+                                        ul: ({children}) => <ul
+                                            className="list-disc pl-6 mb-4 space-y-2">{children}</ul>,
+                                        ol: ({children}) => <ol
+                                            className="list-decimal pl-6 mb-4 space-y-2">{children}</ol>,
+                                        li: ({children}) => <li
+                                            className="text-gray-300">{children}</li>,
+                                        code: ({className, children}) => {
+                                            const match = /language-\w+/.exec(className || '');
+                                            const isInline = !match;
+                                            return isInline
+                                                ? <code
+                                                    className="bg-gray-800 px-1 py-0.5 rounded text-green-400">{children}</code>
+                                                : <pre
+                                                    className="bg-gray-900 p-4 rounded-lg overflow-x-auto mb-4"><code>{children}</code></pre>;
+                                        },
+                                        blockquote: ({children}) =>
+                                            <blockquote
+                                                className="border-l-4 border-green-600 pl-4 italic text-gray-400 my-4">
+                                                {children}
+                                            </blockquote>,
+                                        hr: () => <hr className="border-gray-700 my-8"/>,
+                                        a: ({href, children}) =>
+                                            <a href={href} className="text-green-400 hover:text-green-300 underline"
+                                               target="_blank" rel="noopener noreferrer">
+                                                {children}
+                                            </a>,
+                                    }}
+                                >
+                                    {guide.content}
+                                </ReactMarkdown>
+                            </div>
+
+                            {/* 액션 버튼 */}
+                            <div className="flex items-center gap-4 mt-8 pt-8 border-t border-gray-800">
+                                <Button
+                                    variant={isLiked ? "primary" : "outline"}
+                                    onClick={handleLike}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`}/>
+                                    {guide.stats.likes} 좋아요
+                                </Button>
+                                <Button
+                                    variant={isBookmarked ? "primary" : "outline"}
+                                    onClick={handleBookmark}
+                                    className="flex items-center gap-2"
+                                >
+                                    {isBookmarked ? <BookmarkCheck className="w-4 h-4"/> :
+                                        <Bookmark className="w-4 h-4"/>}
+                                    북마크
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleShare}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Share2 className="w-4 h-4"/>
+                                    공유
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* 사이드바 */}
+                    <div className="lg:col-span-1">
+                        {/* 작성자 정보 */}
+                        <Card className="p-6 mb-6 sticky top-24">
+                            <h3 className="font-bold mb-4">작성자</h3>
+                            <div className="flex items-center gap-3 mb-4">
+                                <Avatar src={guide.author.avatarUrl} size="md"/>
+                                <div>
+                                    <p className="font-medium">{guide.author.displayName}</p>
+                                    <p className="text-sm text-gray-400">@{guide.author.username}</p>
                                 </div>
                             </div>
-                        )}
+                            <Button
+                                variant="outline"
+                                fullWidth
+                                size="sm"
+                                onClick={() => router.push(`/profile/${guide.author.username}`)}
+                            >
+                                프로필 보기
+                            </Button>
+                        </Card>
+
+                        {/* 관련 가이드 추천 */}
+                        <Card className="p-6">
+                            <h3 className="font-bold mb-4">추천 가이드</h3>
+                            <div className="space-y-3">
+                                <p className="text-sm text-gray-400">
+                                    비슷한 주제의 다른 가이드들을 확인해보세요
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    fullWidth
+                                    size="sm"
+                                    onClick={() => router.push('/guides')}
+                                >
+                                    더 많은 가이드 보기
+                                </Button>
+                            </div>
+                        </Card>
                     </div>
-                )}
+                </div>
             </Container>
         </>
     )
