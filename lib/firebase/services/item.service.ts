@@ -7,9 +7,11 @@ import {
     getDoc,
     runTransaction,
     serverTimestamp,
+    setDoc,
     Timestamp,
     updateDoc,
-    where
+    where,
+    writeBatch
 } from 'firebase/firestore'
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
@@ -389,5 +391,234 @@ export class ItemService extends BaseService {
         })
 
         return result
+    }
+
+    /**
+     * 초기 아이템 데이터
+     */
+    private static getInitialItems(): Omit<ItemDefinition, 'id' | 'createdAt' | 'updatedAt'>[] {
+        return [
+            // 테마 아이템
+            {
+                name: '다크 네온 테마',
+                description: '사이버펑크 스타일의 네온 테마로 프로필을 꾸며보세요',
+                category: 'themes',
+                rarity: 'rare',
+                price: 500,
+                iconName: 'Palette',
+                iconBg: 'from-purple-500 to-pink-500',
+                features: ['프로필 배경 변경', '네온 효과 추가', '애니메이션 효과'],
+                popular: true,
+                active: true
+            },
+            {
+                name: '황금빛 럭셔리 테마',
+                description: '고급스러운 황금색 테마로 품격을 높이세요',
+                category: 'themes',
+                rarity: 'epic',
+                price: 800,
+                originalPrice: 1000,
+                discount: 20,
+                iconName: 'Crown',
+                iconBg: 'from-yellow-500 to-orange-500',
+                features: ['황금 프레임', '반짝임 효과', 'VIP 뱃지'],
+                active: true
+            },
+            {
+                name: '우주 탐험가 테마',
+                description: '신비로운 우주 테마로 프로필을 꾸며보세요',
+                category: 'themes',
+                rarity: 'legendary',
+                price: 1200,
+                iconName: 'Sparkles',
+                iconBg: 'from-indigo-500 to-purple-500',
+                features: ['우주 배경', '별똥별 애니메이션', '행성 장식'],
+                limitedTime: true,
+                active: true
+            },
+
+            // 부스터 아이템
+            {
+                name: '경험치 부스터',
+                description: '7일간 획득 경험치가 2배로 증가합니다',
+                category: 'boosts',
+                rarity: 'common',
+                price: 300,
+                duration: '7일',
+                iconName: 'TrendingUp',
+                iconBg: 'from-green-500 to-emerald-500',
+                features: ['경험치 2배', '레벨업 속도 증가'],
+                popular: true,
+                active: true
+            },
+            {
+                name: '크레딧 부스터',
+                description: '7일간 획득 크레딧이 1.5배로 증가합니다',
+                category: 'boosts',
+                rarity: 'rare',
+                price: 500,
+                duration: '7일',
+                iconName: 'Gem',
+                iconBg: 'from-blue-500 to-cyan-500',
+                features: ['크레딧 1.5배', '보너스 크레딧 지급'],
+                active: true
+            },
+            {
+                name: '힌트 부스터',
+                description: '14일간 힌트 사용 시 포인트 차감 50% 감소',
+                category: 'boosts',
+                rarity: 'epic',
+                price: 700,
+                duration: '14일',
+                iconName: 'Brain',
+                iconBg: 'from-purple-500 to-pink-500',
+                features: ['힌트 비용 50% 감소', '추가 힌트 제공'],
+                active: true
+            },
+
+            // 도구 아이템
+            {
+                name: '긴급 탈출권',
+                description: '방탈출 중 즉시 탈출할 수 있는 아이템',
+                category: 'tools',
+                rarity: 'common',
+                price: 100,
+                quantity: 1,
+                iconName: 'Key',
+                iconBg: 'from-gray-500 to-gray-600',
+                features: ['즉시 탈출', '포인트 보존'],
+                active: true
+            },
+            {
+                name: '시간 연장권',
+                description: '방탈출 제한 시간을 10분 연장합니다',
+                category: 'tools',
+                rarity: 'rare',
+                price: 200,
+                quantity: 1,
+                iconName: 'Timer',
+                iconBg: 'from-orange-500 to-red-500',
+                features: ['시간 10분 추가', '1회용'],
+                active: true
+            },
+            {
+                name: '힌트 토큰',
+                description: '무료로 힌트를 사용할 수 있는 토큰',
+                category: 'tools',
+                rarity: 'common',
+                price: 150,
+                quantity: 3,
+                iconName: 'Eye',
+                iconBg: 'from-teal-500 to-green-500',
+                features: ['무료 힌트 3회', '포인트 차감 없음'],
+                popular: true,
+                active: true
+            },
+
+            // 번들 아이템
+            {
+                name: '스타터 팩',
+                description: '방탈출 초보자를 위한 기본 패키지',
+                category: 'bundles',
+                rarity: 'rare',
+                price: 800,
+                originalPrice: 1200,
+                discount: 33,
+                iconName: 'Gift',
+                iconBg: 'from-pink-500 to-rose-500',
+                features: ['경험치 부스터 7일', '힌트 토큰 5개', '시간 연장권 2개', '보너스 500 크레딧'],
+                popular: true,
+                active: true
+            },
+            {
+                name: 'VIP 패키지',
+                description: '프리미엄 사용자를 위한 특별 패키지',
+                category: 'bundles',
+                rarity: 'legendary',
+                price: 2500,
+                iconName: 'Crown',
+                iconBg: 'from-yellow-500 to-amber-500',
+                features: ['모든 부스터 14일', '프리미엄 테마 1개', '힌트 토큰 10개', '보너스 1000 크레딧'],
+                limitedTime: true,
+                active: true
+            },
+
+            // 특별 아이템
+            {
+                name: '미스터리 박스',
+                description: '무엇이 나올지 모르는 랜덤 박스',
+                category: 'special',
+                rarity: 'mythic',
+                price: 1000,
+                iconName: 'Lock',
+                iconBg: 'from-purple-600 to-pink-600',
+                features: ['랜덤 아이템 3-5개', '레어 이상 보장', '한정판 아이템 확률'],
+                active: true
+            }
+        ];
+    }
+
+    /**
+     * Store 컬렉션 초기화
+     */
+    static async initializeStore(): Promise<void> {
+        try {
+            // 기존 아이템이 있는지 확인
+            const existingItems = await this.queryDocuments<ItemDefinition>(
+                COLLECTIONS.STORE,
+                []
+            );
+
+            if (existingItems.length > 0) {
+                console.log('Store already initialized with', existingItems.length, 'items');
+                return;
+            }
+
+            console.log('Initializing store with default items...');
+
+            const batch = writeBatch(db);
+            const initialItems = this.getInitialItems();
+
+            initialItems.forEach(item => {
+                const docRef = doc(collection(db, COLLECTIONS.STORE));
+                batch.set(docRef, {
+                    ...item,
+                    id: docRef.id,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            });
+
+            await batch.commit();
+            console.log('Store initialized with', initialItems.length, 'items');
+        } catch (error) {
+            console.error('Failed to initialize store:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 특정 아이템이 존재하는지 확인하고 없으면 생성
+     */
+    static async ensureItemExists(itemData: Omit<ItemDefinition, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
+        try {
+            const existingItems = await this.queryDocuments<ItemDefinition>(
+                COLLECTIONS.STORE,
+                [where('name', '==', itemData.name)]
+            );
+
+            if (existingItems.length === 0) {
+                const docRef = doc(collection(db, COLLECTIONS.STORE));
+                await setDoc(docRef, {
+                    ...itemData,
+                    id: docRef.id,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                console.log('Created new item:', itemData.name);
+            }
+        } catch (error) {
+            console.error('Failed to ensure item exists:', error);
+        }
     }
 }

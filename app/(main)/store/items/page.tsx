@@ -66,6 +66,10 @@ export default function StoreItemsPage() {
 
     const loadItems = async () => {
         try {
+            // Store 초기화 (첫 실행 시)
+            await ItemService.initializeStore()
+
+            // 활성 아이템 로드
             const activeItems = await ItemService.getActiveItems()
             setItems(activeItems)
         } catch (error) {

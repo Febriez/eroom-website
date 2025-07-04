@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {Avatar} from '@/components/ui/Avatar'
 import {Button} from '@/components/ui/Button'
-import {Check, Edit, MessageSquare, Settings, Shield, Users, X} from 'lucide-react'
+import {Check, Edit, MessageSquare, Package, Settings, Shield, Users, X} from 'lucide-react'
 import {useProfile} from '@/contexts/ProfileContext'
 import {validateDisplayName} from '@/lib/utils/validators'
 import type {User} from '@/lib/firebase/types'
@@ -52,7 +52,8 @@ export default function ProfileHeader({
                                           onBlockToggle,
                                           onShowFollowers,
                                           onShowFollowing,
-                                          onShowFriends
+                                          onShowFriends,
+                                          onShowInventory
                                       }: ProfileHeaderProps) {
     const {updateUserProfile} = useProfile()
     const [isEditingDisplayName, setIsEditingDisplayName] = useState(false)
@@ -299,6 +300,11 @@ export default function ProfileHeader({
                                     className="flex items-center gap-2">
                                 <Settings className="w-4 h-4"/>
                                 환경설정
+                            </Button>
+                            <Button variant="outline" onClick={onShowInventory}
+                                    className="flex items-center gap-2">
+                                <Package className="w-4 h-4"/>
+                                인벤토리
                             </Button>
                             <Button variant="outline" onClick={onShowFriendRequests}
                                     className="flex items-center gap-2 relative">

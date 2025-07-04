@@ -30,43 +30,6 @@ export interface ItemDefinition {
     updatedAt: Timestamp
 }
 
-// 사용자가 보유한 아이템 인스턴스
-export interface UserItem {
-    id: string // 고유 인스턴스 ID
-    itemId: string // ItemDefinition의 ID 참조
-    userId: string
-
-    // 보유 정보
-    quantity: number // 보유 수량
-
-    // 부스터의 경우 활성화 정보
-    activatedAt?: Timestamp
-    expiresAt?: Timestamp
-    isActive?: boolean
-
-    // 구매 정보
-    purchasedAt: Timestamp
-    purchasePrice: number
-    transactionId: string // Purchase 문서 ID 참조
-}
-
-// 사용자 인벤토리 (서브컬렉션으로 관리)
-export interface UserInventory {
-    userId: string
-    items: {
-        [itemId: string]: {
-            quantity: number
-            instances: string[] // UserItem 문서 ID 배열
-        }
-    }
-
-    // 활성화된 부스터/테마
-    activeBoosts: string[] // UserItem ID 배열
-    activeThemes: string[] // UserItem ID 배열
-
-    updatedAt: Timestamp
-}
-
 // 구매 트랜잭션
 export interface ItemPurchase {
     id: string
