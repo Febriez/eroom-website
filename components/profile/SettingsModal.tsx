@@ -205,17 +205,17 @@ export default function SettingsModal({
                                 </div>
 
                                 {/* 기타 개인정보 설정 */}
-                                {Object.entries({
-                                    showOnlineStatus: '온라인 상태 표시',
-                                    allowFriendRequests: '친구 요청 받기 허용',
-                                    allowMessages: '메시지 받기 허용'
-                                }).map(([key, label]) => (
+                                {[
+                                    {key: 'showOnlineStatus', label: '온라인 상태 표시'},
+                                    {key: 'allowFriendRequests', label: '친구 요청 받기 허용'},
+                                    {key: 'allowMessages', label: '메시지 받기 허용'}
+                                ].map(({key, label}) => (
                                     <label key={key}
                                            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                         <span className="text-gray-300">{label}</span>
                                         <input
                                             type="checkbox"
-                                            checked={tempSettings.privacy[key as keyof Omit<typeof tempSettings.privacy, 'profileVisibility'>]}
+                                            checked={tempSettings.privacy[key as 'showOnlineStatus' | 'allowFriendRequests' | 'allowMessages']}
                                             onChange={e => setTempSettings({
                                                 ...tempSettings,
                                                 privacy: {...tempSettings.privacy, [key]: e.target.checked}
@@ -334,18 +334,18 @@ export default function SettingsModal({
                             </div>
 
                             {/* 기타 알림 설정 */}
-                            {Object.entries({
-                                email: '이메일 알림',
-                                friendRequests: '친구 요청 알림',
-                                messages: '메시지 알림',
-                                achievements: '업적 달성 알림'
-                            }).map(([key, label]) => (
+                            {[
+                                {key: 'email', label: '이메일 알림'},
+                                {key: 'friendRequests', label: '친구 요청 알림'},
+                                {key: 'messages', label: '메시지 알림'},
+                                {key: 'achievements', label: '업적 달성 알림'}
+                            ].map(({key, label}) => (
                                 <label key={key}
                                        className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg cursor-pointer">
                                     <span className="text-gray-300">{label}</span>
                                     <input
                                         type="checkbox"
-                                        checked={tempSettings.notifications[key as keyof typeof tempSettings.notifications]}
+                                        checked={tempSettings.notifications[key as 'email' | 'friendRequests' | 'messages' | 'achievements']}
                                         onChange={e => setTempSettings({
                                             ...tempSettings,
                                             notifications: {...tempSettings.notifications, [key]: e.target.checked}
