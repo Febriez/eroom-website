@@ -126,13 +126,13 @@ function ProfilePageContent() {
         }
 
         const existing = await UserService.getUserByUsername(newUsername)
-        if (existing && existing.id !== profileUser.id) {
+        if (existing && existing.username !== profileUser.username) {
             setUsernameError('이미 사용중인 사용자명입니다')
             return
         }
 
         try {
-            await updateDoc(doc(db, COLLECTIONS.USERS, profileUser.id), {
+            await updateDoc(doc(db, COLLECTIONS.USERS, profileUser.username!), {
                 username: newUsername,
                 canChangeUsername: false,
                 usernameChangedAt: serverTimestamp()
@@ -168,7 +168,7 @@ function ProfilePageContent() {
 
             try {
                 const id = await createConversation(profileUser.uid, {
-                    username: profileUser.username,
+                    username: profileUser.username!,
                     displayName: profileUser.displayName,
                     avatarUrl: profileUser.avatarUrl
                 })
