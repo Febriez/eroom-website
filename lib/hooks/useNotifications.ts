@@ -49,15 +49,15 @@ export function useNotifications() {
             return
         }
 
-        // 사용자 설정 확인
+        // 사용자 설정 확인 (최신 타입 구조에 맞춰 수정)
         const userSettings = (user as User).settings
-        const shouldShowBrowserNotification = userSettings?.notifications?.browserNotifications ?? true
+        const shouldShowBrowserNotification = userSettings?.notifications?.browser ?? true
 
         if (!shouldShowBrowserNotification) {
             return
         }
 
-        // 알림 타입별 브라우저 알림 설정 확인
+        // 알림 타입별 브라우저 알림 설정 확인 (최신 타입에 맞춰 수정)
         const notificationSettings = userSettings?.notifications
         let shouldShow = false
 
@@ -66,16 +66,18 @@ export function useNotifications() {
                 shouldShow = notificationSettings?.messages ?? true
                 break
             case 'friend_request':
+            case 'friend_request_accepted':
                 shouldShow = notificationSettings?.friendRequests ?? true
                 break
             case 'game_invite':
-                shouldShow = notificationSettings?.gameInvites ?? true
+                shouldShow = true // 게임 초대는 기본적으로 표시
                 break
             case 'achievement':
                 shouldShow = notificationSettings?.achievements ?? true
                 break
             case 'system':
-                shouldShow = notificationSettings?.updates ?? true
+            case 'follow':
+                shouldShow = true // 시스템 알림과 팔로우는 기본적으로 표시
                 break
         }
 
@@ -151,7 +153,8 @@ export function useNotifications() {
                 }
 
                 previousNotificationIds = currentNotificationIds
-                const blockedIds = (user as User).social.blocked || []
+                // 차단된 사용자 ID 목록 (최신 타입에 맞춰 수정)
+                const blockedIds = (user as User).social.blockedUsers || []
                 // 차단된 사용자가 보낸 알림 제외
                 const filtered = notificationList.filter(n =>
                     !(n.data?.senderId && blockedIds.includes(n.data.senderId))

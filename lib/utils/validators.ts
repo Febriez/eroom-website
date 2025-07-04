@@ -1,4 +1,3 @@
-// lib/utils/validators.ts
 import {VALIDATION_RULES} from '@/lib/firebase/types'
 
 /**

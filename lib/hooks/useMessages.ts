@@ -22,7 +22,8 @@ export function useMessages(conversationId: string | null) {
         const unsubscribe = MessageService.subscribeToMessages(
             conversationId,
             (messageList) => {
-                const blockedIds = user.social.blocked || []
+                // 차단된 사용자 ID 목록 (최신 타입에 맞춰 수정)
+                const blockedIds = user.social.blockedUsers || []
                 // 역순 처리 **없음**: MessageThread 에서 한 번만 reverse
                 const filtered = messageList.filter(
                     (msg) => !blockedIds.includes(msg.sender.uid)

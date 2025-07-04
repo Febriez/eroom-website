@@ -10,7 +10,7 @@ import {COLLECTIONS} from '@/lib/firebase/collections'
 
 interface ParticipantInfo {
     uid?: string
-    username: string
+    username?: string
     displayName: string
     avatarUrl?: string
     level?: number
@@ -85,8 +85,8 @@ export function useConversations() {
                                 }
                             }
 
-                            // 차단 상태 확인
-                            const isBlocked = currentUser.social.blocked?.includes(otherParticipantId) || false
+                            // 차단 상태 확인 (새로운 User 타입의 social.blockedUsers 사용)
+                            const isBlocked = currentUser.social.blockedUsers?.includes(otherParticipantId) || false
 
                             return {
                                 ...conv,
@@ -137,7 +137,7 @@ export function useConversations() {
     const createConversation = async (
         targetUserId: string,
         targetUserInfo: {
-            username: string
+            username?: string
             displayName: string
             avatarUrl?: string
         }
