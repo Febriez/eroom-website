@@ -62,12 +62,11 @@ export default function RankingsPage() {
                             // 유저가 만든 룸들의 통계 가져오기 (메서드명 수정)
                             const userRooms = await RoomService.getRoomsByCreator(user.uid)
 
-                            totalMapPlays = userRooms.reduce((sum: number, room) => sum + (room.PlayCount || 0), 0)
+                            totalMapPlays = userRooms.reduce((sum: number, room) => sum + (room.stats.playCount || 0), 0)
 
-                            // 평균 평점 계산 (PlayCount가 있는 경우에만)
-                            const totalRating = userRooms.reduce((sum: number, room) => sum + ((room.avgRating || 0) * (room.PlayCount || 0)), 0)
-                            const totalRatingCount = userRooms.reduce((sum: number, room) => sum + (room.PlayCount || 0), 0)
-                            avgMapRating = totalRatingCount > 0 ? totalRating / totalRatingCount : 0
+                            // 평균 평점 계산 로직 제거 (RoomCard에 avgRating 필드 없음)
+                            // 필요시 별도 서비스에서 평점 데이터를 가져와야 함
+                            avgMapRating = 0
                         } catch (error) {
                             console.error('Error fetching user rooms:', error)
                         }
