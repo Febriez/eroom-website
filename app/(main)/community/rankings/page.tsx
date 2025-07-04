@@ -8,7 +8,7 @@ import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/Tabs'
 import {UserService} from '@/lib/firebase/services/user.service'
-import {MapService} from '@/lib/firebase/services/map.service'
+import {RoomService} from '@/lib/firebase/services/room.service'
 import type {User} from '@/lib/firebase/types'
 import {Avatar} from '@/components/ui/Avatar'
 import {Crown, MapPin, Medal, Star, Trophy, Users, Zap} from 'lucide-react'
@@ -44,7 +44,7 @@ export default function RankingsPage() {
 
                     if (user.stats.createdRooms > 0) {
                         // 유저가 만든 맵들의 통계 가져오기
-                        const userMaps = await MapService.getMapsByCreator(user.uid)
+                        const userMaps = await RoomService.getMapsByCreator(user.uid)
 
                         totalMapPlays = userMaps.reduce((sum: number, map) => sum + map.stats.playCount, 0)
 

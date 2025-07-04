@@ -32,13 +32,19 @@ export class SocialService extends BaseService {
     static async blockUser(blockerId: string, targetId: string): Promise<void> {
         const batch = writeBatch(db)
 
-        // 1. 차단자의 blocked 목록에 추가
+        // 1. 차단자의 blockedUsers 목록에 추가
         const blockerRef = doc(db, COLLECTIONS.USERS, blockerId)
         batch.update(blockerRef, {
-            'social.blocked': arrayUnion(targetId)
+            'social.blockedUsers': arrayUnion(targetId)
         })
 
-        // 2. 친구 관계가 있다면 해제
+        // 2. 대상자의 blockedBy 목록에 추가
+        const targetRef = doc(db, COLLECTIONS.USERS, targetId)
+        batch.update(targetRef, {
+            'social.blockedBy': arrayUnion(blockerId)
+        })
+
+        // 3. 친구 관계가 있다면 해제
         const blocker = await UserService.getUserById(blockerId)
         const target = await UserService.getUserById(targetId)
 
@@ -53,20 +59,18 @@ export class SocialService extends BaseService {
                 'social.friendCount': Math.max(0, blocker.social.friendCount - 1)
             })
 
-            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
             batch.update(targetRef, {
                 'social.friends': arrayRemove(blockerId),
                 'social.friendCount': Math.max(0, target.social.friendCount - 1)
             })
         }
 
-        // 3. 팔로우 관계 해제
+        // 4. 팔로우 관계 해제
         if (blocker.social.following.includes(targetId)) {
             batch.update(blockerRef, {
                 'social.following': arrayRemove(targetId)
             })
 
-            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
             batch.update(targetRef, {
                 'social.followers': arrayRemove(blockerId)
             })
@@ -74,7 +78,6 @@ export class SocialService extends BaseService {
 
         // 상대방이 나를 팔로우하고 있다면 해제
         if (target.social.following.includes(blockerId)) {
-            const targetRef = doc(db, COLLECTIONS.USERS, targetId)
             batch.update(targetRef, {
                 'social.following': arrayRemove(blockerId)
             })
@@ -84,13 +87,13 @@ export class SocialService extends BaseService {
             })
         }
 
-        // 4. 대기 중인 친구 요청 취소
+        // 5. 대기 중인 친구 요청 취소
         const pendingRequests = await this.getPendingRequestsBetweenUsers(blockerId, targetId)
         pendingRequests.forEach(request => {
             batch.delete(doc(db, COLLECTIONS.FRIEND_REQUESTS, request.id))
         })
 
-        // 5. 대화 차단 상태 업데이트
+        // 6. 대화 차단 상태 업데이트
         const conversationsQuery = query(
             collection(db, COLLECTIONS.CONVERSATIONS),
             where('participants', 'array-contains', blockerId)
@@ -116,13 +119,19 @@ export class SocialService extends BaseService {
     static async unblockUser(blockerId: string, targetId: string): Promise<void> {
         const batch = writeBatch(db)
 
-        // 1. 차단 목록에서 제거
+        // 1. 차단자의 blockedUsers 목록에서 제거
         const blockerRef = doc(db, COLLECTIONS.USERS, blockerId)
         batch.update(blockerRef, {
-            'social.blocked': arrayRemove(targetId)
+            'social.blockedUsers': arrayRemove(targetId)
         })
 
-        // 2. 대화 차단 상태 해제
+        // 2. 대상자의 blockedBy 목록에서 제거
+        const targetRef = doc(db, COLLECTIONS.USERS, targetId)
+        batch.update(targetRef, {
+            'social.blockedBy': arrayRemove(blockerId)
+        })
+
+        // 3. 대화 차단 상태 해제
         const conversationsQuery = query(
             collection(db, COLLECTIONS.CONVERSATIONS),
             where('participants', 'array-contains', blockerId)
@@ -336,7 +345,7 @@ export class SocialService extends BaseService {
         from: { uid: string; username: string; displayName: string },
         to: { uid: string; username: string; displayName: string }
     ): Promise<void> {
-        // 차단 확인
+        // 사용자 정보 가져오기
         const fromUser = await UserService.getUserById(from.uid)
         const toUser = await UserService.getUserById(to.uid)
 
@@ -344,9 +353,14 @@ export class SocialService extends BaseService {
             throw new Error('User not found')
         }
 
-        // 차단 상태 확인
-        if (fromUser.social.blocked?.includes(to.uid) || toUser.social.blocked?.includes(from.uid)) {
+        // 차단 상태 확인 (업데이트된 필드명 사용)
+        if (fromUser.social.blockedUsers?.includes(to.uid) || toUser.social.blockedUsers?.includes(from.uid)) {
             throw new Error('Cannot send friend request to blocked user')
+        }
+
+        // 친구 요청 제한 확인 (설정이 있는 경우)
+        if (toUser.settings?.privacy?.allowFriendRequests === false) {
+            throw new Error('User does not allow friend requests')
         }
 
         if (fromUser.social.friends.includes(to.uid)) {
@@ -367,19 +381,23 @@ export class SocialService extends BaseService {
             createdAt: serverTimestamp()
         })
 
-        // 알림 생성
-        await this.createNotification({
-            recipientId: to.uid,
-            type: 'friend_request',
-            category: 'friend',
-            title: '새로운 친구 요청',
-            body: `${from.displayName}님이 친구 요청을 보냈습니다.`,
-            data: {
-                senderId: from.uid,
-                senderName: from.displayName,
-                requestId: requestRef.id
-            }
-        })
+        // 알림 생성 (알림 설정 확인)
+        const shouldSendNotification = toUser.settings?.notifications?.friendRequests !== false
+
+        if (shouldSendNotification) {
+            await this.createNotification({
+                recipientId: to.uid,
+                type: 'friend_request',
+                category: 'friend',
+                title: '새로운 친구 요청',
+                body: `${from.displayName}님이 친구 요청을 보냈습니다.`,
+                data: {
+                    senderId: from.uid,
+                    senderName: from.displayName,
+                    requestId: requestRef.id
+                }
+            })
+        }
     }
 
     /**
@@ -394,11 +412,11 @@ export class SocialService extends BaseService {
         }
 
         await Promise.all([
-            updateDoc(doc(db, COLLECTIONS.USERS, user.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, user.uid), {
                 'social.friends': arrayRemove(friendId),
                 'social.friendCount': Math.max(0, user.social.friendCount - 1)
             }),
-            updateDoc(doc(db, COLLECTIONS.USERS, friend.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, friend.uid), {
                 'social.friends': arrayRemove(userId),
                 'social.friendCount': Math.max(0, friend.social.friendCount - 1)
             })
@@ -416,16 +434,16 @@ export class SocialService extends BaseService {
             throw new Error('User not found')
         }
 
-        // 차단 상태 확인
-        if (follower.social.blocked?.includes(targetId) || target.social.blocked?.includes(followerId)) {
+        // 차단 상태 확인 (업데이트된 필드명 사용)
+        if (follower.social.blockedUsers?.includes(targetId) || target.social.blockedUsers?.includes(followerId)) {
             throw new Error('Cannot follow blocked user')
         }
 
         await Promise.all([
-            updateDoc(doc(db, COLLECTIONS.USERS, follower.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, follower.uid), {
                 'social.following': arrayUnion(targetId)
             }),
-            updateDoc(doc(db, COLLECTIONS.USERS, target.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, target.uid), {
                 'social.followers': arrayUnion(followerId)
             })
         ])
@@ -439,7 +457,7 @@ export class SocialService extends BaseService {
             body: `${follower.displayName}님이 회원님을 팔로우하기 시작했습니다.`,
             data: {
                 senderId: followerId,
-                senderName: follower.username
+                senderName: follower.username || follower.displayName
             }
         })
     }
@@ -456,10 +474,10 @@ export class SocialService extends BaseService {
         }
 
         await Promise.all([
-            updateDoc(doc(db, COLLECTIONS.USERS, follower.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, follower.uid), {
                 'social.following': arrayRemove(targetId)
             }),
-            updateDoc(doc(db, COLLECTIONS.USERS, target.id), {
+            updateDoc(doc(db, COLLECTIONS.USERS, target.uid), {
                 'social.followers': arrayRemove(followerId)
             })
         ])
@@ -469,9 +487,15 @@ export class SocialService extends BaseService {
      * 알림 생성
      */
     static async createNotification(notification: Omit<Notification, 'id' | 'read' | 'createdAt'>): Promise<void> {
-        // 차단된 사용자에게는 알림을 보내지 않음
+        // 차단된 사용자에게는 알림을 보내지 않음 (업데이트된 필드명 사용)
         const recipient = await UserService.getUserById(notification.recipientId)
-        if (recipient?.social.blocked?.includes(notification.data?.senderId || '')) {
+        if (recipient?.social.blockedUsers?.includes(notification.data?.senderId || '')) {
+            return
+        }
+
+        // 알림 설정 확인
+        const notificationSettings = recipient?.settings?.notifications
+        if (notificationSettings?.browser === false) {
             return
         }
 

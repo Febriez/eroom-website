@@ -8,7 +8,7 @@ import {Button} from '@/components/ui/Button'
 import {Input} from '@/components/ui/Input'
 import {Skeleton} from '@/components/ui/Skeleton'
 import {MapCard} from '@/components/ui/MapCard'
-import {MapService} from '@/lib/firebase/services/map.service'
+import {RoomService} from '@/lib/firebase/services/room.service'
 import {Clock, Search, Star, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {RoomCard} from "@/lib/firebase/types";
@@ -57,7 +57,7 @@ export default function CommunityMapsPage() {
 
             // 필터 조합이 있는 경우
             if (selectedDifficulty || selectedTheme) {
-                loadedMaps = await MapService.getFilteredMaps({
+                loadedMaps = await RoomService.getFilteredMaps({
                     difficulty: selectedDifficulty,
                     theme: selectedTheme,
                     sortBy: filter === 'popular' ? 'popular' : filter === 'new' ? 'recent' : 'popular',
@@ -67,13 +67,13 @@ export default function CommunityMapsPage() {
                 // 기본 필터만 사용
                 switch (filter) {
                     case 'featured':
-                        loadedMaps = await MapService.getFeaturedMaps(currentLimit)
+                        loadedMaps = await RoomService.getFeaturedMaps(currentLimit)
                         break
                     case 'popular':
-                        loadedMaps = await MapService.getPopularMaps(currentLimit)
+                        loadedMaps = await RoomService.getPopularMaps(currentLimit)
                         break
                     case 'new':
-                        loadedMaps = await MapService.getRecentMaps(currentLimit)
+                        loadedMaps = await RoomService.getRecentMaps(currentLimit)
                         break
                 }
             }
@@ -101,7 +101,7 @@ export default function CommunityMapsPage() {
             setLoading(true)
             setCurrentLimit(24) // 검색 시 limit 초기화
             try {
-                const searchResults = await MapService.searchMaps(searchTerm)
+                const searchResults = await RoomService.searchMaps(searchTerm)
                 setMaps(searchResults)
                 setFilteredMaps(searchResults)
             } catch (error) {
