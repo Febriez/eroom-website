@@ -3,18 +3,18 @@
 import {useEffect, useState} from 'react'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {Container} from '@/components/ui/Container'
-import {Card} from '@/components/ui/Card'
-import {Badge} from '@/components/ui/Badge'
 import {Button} from '@/components/ui/Button'
-import {Book, ChevronRight, Clock, Eye, Heart, Search, Star, TrendingUp} from 'lucide-react'
+import {Book, Search, Star, TrendingUp} from 'lucide-react'
 import {GuideService} from '@/lib/firebase/services/guide.service'
 import type {Guide} from '@/lib/firebase/types/guide.types'
 import {useRouter} from 'next/navigation'
+import {GuideCard} from '@/components/ui/GuideCard'
 
 export default function CompleteGuidePage() {
     const router = useRouter()
     const [guides, setGuides] = useState<Guide[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
 
@@ -25,58 +25,35 @@ export default function CompleteGuidePage() {
     const loadGuides = async () => {
         try {
             setLoading(true)
-            // 초기 데이터 시딩
-            await GuideService.seedGuides()
+            setError(null)
 
+            // 가이드 목록 불러오기
             const allGuides = await GuideService.getAllGuides()
-            setGuides(allGuides)
+
+            // 가이드가 없으면 시딩 시도 (한 번만)
+            if (allGuides.length === 0) {
+                console.log('No guides found, attempting to seed...')
+                const seedSuccess = await GuideService.seedGuides()
+
+                if (seedSuccess) {
+                    // 시딩 성공 후 다시 불러오기
+                    const seededGuides = await GuideService.getAllGuides()
+                    setGuides(seededGuides)
+                } else {
+                    setGuides([])
+                }
+            } else {
+                setGuides(allGuides)
+            }
         } catch (error) {
             console.error('Error loading guides:', error)
+            setError('가이드를 불러오는 중 오류가 발생했습니다.')
+            setGuides([])
         } finally {
             setLoading(false)
         }
     }
 
-    const getDifficultyColor = (difficulty: string) => {
-        switch (difficulty) {
-            case 'easy':
-                return 'success'
-            case 'medium':
-                return 'warning'
-            case 'hard':
-                return 'danger'
-            default:
-                return 'default'
-        }
-    }
-
-    const getDifficultyLabel = (difficulty: string) => {
-        switch (difficulty) {
-            case 'easy':
-                return '초급'
-            case 'medium':
-                return '중급'
-            case 'hard':
-                return '고급'
-            default:
-                return difficulty
-        }
-    }
-
-    const getCategoryLabel = (category: string) => {
-        switch (category) {
-            case 'beginner':
-                return '초보자 가이드'
-            case 'map-creation':
-                return '맵 제작'
-            case 'advanced':
-                return '고급 전략'
-            case 'tips':
-                return '팁 & 트릭'
-            default:
-                return category
-        }
-    }
 
     const filteredGuides = guides.filter(guide => {
         const matchesSearch = !searchTerm ||
@@ -89,12 +66,12 @@ export default function CompleteGuidePage() {
         return matchesSearch && matchesDifficulty
     })
 
-    const featuredGuides = guides.filter(g => g.metadata.featured)
-    const beginnerGuides = guides.filter(g => g.category === 'beginner')
-    const advancedGuides = guides.filter(g => g.category === 'advanced')
+    const featuredGuides = filteredGuides.filter(g => g.metadata.featured)
+    const beginnerGuides = filteredGuides.filter(g => g.category === 'beginner')
+    const advancedGuides = filteredGuides.filter(g => g.category === 'advanced')
 
     const handleGuideClick = (guideId: string) => {
-        router.push(`/guides/${guideId}`)
+        router.push(`/community/guides/${guideId}`)
     }
 
     return (
@@ -113,7 +90,8 @@ export default function CompleteGuidePage() {
                         <div className="flex-1">
                             <div className="relative">
                                 <Search
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"/>
+                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                                />
                                 <input
                                     type="text"
                                     placeholder="가이드 검색..."
@@ -141,10 +119,25 @@ export default function CompleteGuidePage() {
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
                         <p className="mt-4 text-gray-400">가이드를 불러오는 중...</p>
                     </div>
+                ) : error ? (
+                    <div className="text-center py-20">
+                        <p className="text-red-400 mb-4">{error}</p>
+                        <Button onClick={loadGuides} variant="outline">
+                            다시 시도
+                        </Button>
+                    </div>
+                ) : filteredGuides.length === 0 ? (
+                    <div className="text-center py-20">
+                        <Search className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
+                        <h3 className="text-xl font-bold mb-2">가이드가 없습니다</h3>
+                        <p className="text-gray-400">
+                            {searchTerm ? '다른 검색어를 시도해보세요' : '아직 등록된 가이드가 없습니다'}
+                        </p>
+                    </div>
                 ) : (
                     <div className="space-y-12">
                         {/* 추천 가이드 */}
-                        {featuredGuides.length > 0 && (
+                        {featuredGuides.length > 0 && !searchTerm && !selectedDifficulty && (
                             <section>
                                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                                     <TrendingUp className="w-6 h-6 text-green-400"/>
@@ -152,38 +145,12 @@ export default function CompleteGuidePage() {
                                 </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {featuredGuides.map((guide) => (
-                                        <Card
+                                        <GuideCard
                                             key={guide.id}
-                                            hover
-                                            className="p-6 cursor-pointer"
-                                            onClick={() => handleGuideClick(guide.id)}
-                                        >
-                                            <div className="flex items-start justify-between mb-4">
-                                                <Badge variant={getDifficultyColor(guide.difficulty) as any}>
-                                                    {getDifficultyLabel(guide.difficulty)}
-                                                </Badge>
-                                                <span className="text-sm text-gray-400">
-                                                    {guide.readTime}분 읽기
-                                                </span>
-                                            </div>
-                                            <h3 className="text-xl font-bold mb-2">{guide.title}</h3>
-                                            <p className="text-gray-400 mb-4 line-clamp-2">
-                                                {guide.description}
-                                            </p>
-                                            <div className="flex items-center justify-between text-sm">
-                                                <div className="flex items-center gap-4 text-gray-400">
-                                                    <span className="flex items-center gap-1">
-                                                        <Eye className="w-4 h-4"/>
-                                                        {guide.stats.views.toLocaleString()}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Heart className="w-4 h-4"/>
-                                                        {guide.stats.likes}
-                                                    </span>
-                                                </div>
-                                                <ChevronRight className="w-5 h-5 text-green-400"/>
-                                            </div>
-                                        </Card>
+                                            guide={guide}
+                                            variant="grid"
+                                            onClick={handleGuideClick}
+                                        />
                                     ))}
                                 </div>
                             </section>
@@ -198,39 +165,12 @@ export default function CompleteGuidePage() {
                                 </h2>
                                 <div className="space-y-4">
                                     {beginnerGuides.map((guide) => (
-                                        <Card
+                                        <GuideCard
                                             key={guide.id}
-                                            hover
-                                            className="p-6 cursor-pointer"
-                                            onClick={() => handleGuideClick(guide.id)}
-                                        >
-                                            <div className="flex items-start gap-6">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="text-lg font-bold">{guide.title}</h3>
-                                                        <Badge variant={getDifficultyColor(guide.difficulty) as any}
-                                                               size="sm">
-                                                            {getDifficultyLabel(guide.difficulty)}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-gray-400 mb-3">{guide.description}</p>
-                                                    <div className="flex items-center gap-6 text-sm text-gray-400">
-                                                        <span className="flex items-center gap-1">
-                                                            <Clock className="w-4 h-4"/>
-                                                            {guide.readTime}분
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Eye className="w-4 h-4"/>
-                                                            {guide.stats.views.toLocaleString()}
-                                                        </span>
-                                                        <span>by {guide.author.displayName}</span>
-                                                    </div>
-                                                </div>
-                                                <Button variant="outline" size="sm">
-                                                    읽기
-                                                </Button>
-                                            </div>
-                                        </Card>
+                                            guide={guide}
+                                            variant="list"
+                                            onClick={handleGuideClick}
+                                        />
                                     ))}
                                 </div>
                             </section>
@@ -245,51 +185,15 @@ export default function CompleteGuidePage() {
                                 </h2>
                                 <div className="space-y-4">
                                     {advancedGuides.map((guide) => (
-                                        <Card
+                                        <GuideCard
                                             key={guide.id}
-                                            hover
-                                            className="p-6 cursor-pointer"
-                                            onClick={() => handleGuideClick(guide.id)}
-                                        >
-                                            <div className="flex items-start gap-6">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="text-lg font-bold">{guide.title}</h3>
-                                                        <Badge variant={getDifficultyColor(guide.difficulty) as any}
-                                                               size="sm">
-                                                            {getDifficultyLabel(guide.difficulty)}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-gray-400 mb-3">{guide.description}</p>
-                                                    <div className="flex items-center gap-6 text-sm text-gray-400">
-                                                        <span className="flex items-center gap-1">
-                                                            <Clock className="w-4 h-4"/>
-                                                            {guide.readTime}분
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Eye className="w-4 h-4"/>
-                                                            {guide.stats.views.toLocaleString()}
-                                                        </span>
-                                                        <span>by {guide.author.displayName}</span>
-                                                    </div>
-                                                </div>
-                                                <Button variant="outline" size="sm">
-                                                    읽기
-                                                </Button>
-                                            </div>
-                                        </Card>
+                                            guide={guide}
+                                            variant="list"
+                                            onClick={handleGuideClick}
+                                        />
                                     ))}
                                 </div>
                             </section>
-                        )}
-
-                        {/* 검색 결과 */}
-                        {searchTerm && filteredGuides.length === 0 && (
-                            <div className="text-center py-20">
-                                <Search className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
-                                <h3 className="text-xl font-bold mb-2">검색 결과가 없습니다</h3>
-                                <p className="text-gray-400">다른 검색어를 시도해보세요</p>
-                            </div>
                         )}
                     </div>
                 )}
