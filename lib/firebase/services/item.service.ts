@@ -247,7 +247,7 @@ export class ItemService extends BaseService {
     /**
      * 도구 아이템 사용
      */
-    static async useToolItem(userId: string, itemId: string, quantity: number = 1): Promise<void> {
+    static async consumeToolItem(userId: string, itemId: string, quantity: number = 1): Promise<void> {
         const userRef = doc(db, COLLECTIONS.USERS, userId)
 
         await runTransaction(db, async (transaction) => {

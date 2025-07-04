@@ -65,45 +65,42 @@ export default function InventoryPage() {
         }
     }, [user, router])
 
+    // 인벤토리 새로고침 함수
+    const refreshInventory = async () => {
+        if (!user?.uid) return
+
+        setLoading(true)
+        try {
+            const [storeItemsData, userInventory] = await Promise.all([
+                ItemService.getActiveItems(),
+                ItemService.getUserInventory(user.uid)
+            ])
+
+            setStoreItems(storeItemsData)
+
+            const userItems: InventoryItem[] = []
+            Object.entries(userInventory).forEach(([itemId, userData]) => {
+                const itemDef = storeItemsData.find(item => item.id === itemId)
+                if (itemDef && userData.quantity > 0) {
+                    userItems.push({
+                        ...itemDef,
+                        userData: userData as any
+                    })
+                }
+            })
+
+            setItems(userItems)
+        } catch (error) {
+            console.error('인벤토리 로드 실패:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     // 데이터 로드
     useEffect(() => {
-        const loadInventory = async () => {
-            try {
-                setLoading(true)
-
-                // 스토어 아이템 정의 가져오기
-                const [storeItemsData, userInventory] = await Promise.all([
-                    ItemService.getActiveItems(),
-                    ItemService.getUserInventory(user!.uid)
-                ])
-
-                setStoreItems(storeItemsData)
-
-                // 사용자가 보유한 아이템만 필터링
-                const userItems: InventoryItem[] = []
-
-                Object.entries(userInventory).forEach(([itemId, userData]) => {
-                    const itemDef = storeItemsData.find(item => item.id === itemId)
-                    if (itemDef && userData.quantity > 0) {
-                        userItems.push({
-                            ...itemDef,
-                            userData: userData as any
-                        })
-                    }
-                })
-
-                setItems(userItems)
-            } catch (error) {
-                console.error('인벤토리 로드 실패:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        if (user?.uid) {
-            loadInventory()
-        }
-    }, [user])
+        refreshInventory()
+    }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // 아이콘 매핑
     const getIcon = (iconName: string) => {
@@ -205,34 +202,7 @@ export default function InventoryPage() {
         try {
             await ItemService.activateBooster(user!.uid, itemId)
             alert('부스터가 활성화되었습니다!')
-
-            // 인벤토리 다시 로드
-            if (user?.uid) {
-                setLoading(true)
-                try {
-                    const [storeItemsData, userInventory] = await Promise.all([
-                        ItemService.getActiveItems(),
-                        ItemService.getUserInventory(user.uid)
-                    ])
-
-                    setStoreItems(storeItemsData)
-
-                    const userItems: InventoryItem[] = []
-                    Object.entries(userInventory).forEach(([itemId, userData]) => {
-                        const itemDef = storeItemsData.find(item => item.id === itemId)
-                        if (itemDef && userData.quantity > 0) {
-                            userItems.push({
-                                ...itemDef,
-                                userData: userData as any
-                            })
-                        }
-                    })
-
-                    setItems(userItems)
-                } finally {
-                    setLoading(false)
-                }
-            }
+            await refreshInventory()
         } catch (error: any) {
             alert(error.message || '부스터 활성화에 실패했습니다.')
         }
@@ -240,36 +210,9 @@ export default function InventoryPage() {
 
     const handleUseItem = async (itemId: string) => {
         try {
-            await ItemService.useToolItem(user!.uid, itemId, 1)
+            await ItemService.consumeToolItem(user!.uid, itemId, 1)
             alert('아이템을 사용했습니다!')
-
-            // 인벤토리 다시 로드
-            if (user?.uid) {
-                setLoading(true)
-                try {
-                    const [storeItemsData, userInventory] = await Promise.all([
-                        ItemService.getActiveItems(),
-                        ItemService.getUserInventory(user.uid)
-                    ])
-
-                    setStoreItems(storeItemsData)
-
-                    const userItems: InventoryItem[] = []
-                    Object.entries(userInventory).forEach(([itemId, userData]) => {
-                        const itemDef = storeItemsData.find(item => item.id === itemId)
-                        if (itemDef && userData.quantity > 0) {
-                            userItems.push({
-                                ...itemDef,
-                                userData: userData as any
-                            })
-                        }
-                    })
-
-                    setItems(userItems)
-                } finally {
-                    setLoading(false)
-                }
-            }
+            await refreshInventory()
         } catch (error: any) {
             alert(error.message || '아이템 사용에 실패했습니다.')
         }
