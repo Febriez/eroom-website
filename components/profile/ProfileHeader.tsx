@@ -28,6 +28,7 @@ interface ProfileHeaderProps {
     onShowFollowers: () => void
     onShowFollowing: () => void
     onShowFriends?: () => void
+    onShowInventory: () => void;
 }
 
 export default function ProfileHeader({
