@@ -1,5 +1,6 @@
 import {
     addDoc,
+    arrayRemove,
     arrayUnion,
     collection,
     doc,
@@ -9,6 +10,7 @@ import {
     orderBy,
     query,
     serverTimestamp,
+    updateDoc,
     where,
     writeBatch
 } from 'firebase/firestore'
@@ -71,10 +73,11 @@ export class MessageService extends BaseService {
         if (!user1 || !user2) {
             throw new Error('One or both users not found')
         }
+
         // 서로가 차단한 상태면 대화 생성 불가
         if (
-            user1.social.blocked?.includes(participant2Id) ||
-            user2.social.blocked?.includes(participant1Id)
+            user1.social.blockedUsers?.includes(participant2Id) ||
+            user2.social.blockedUsers?.includes(participant1Id)
         ) {
             throw new Error('Cannot create conversation with blocked user')
         }
@@ -99,15 +102,15 @@ export class MessageService extends BaseService {
                 participants: [participant1Id, participant2Id],
                 participantInfo: {
                     [participant1Id]: {
-                        username: user1.username,
+                        username: user1.username || user1.displayName,
                         displayName: user1.displayName,
-                        avatarUrl: user1.avatarUrl,
+                        avatarUrl: user1.avatarUrl || '',
                         level: user1.level || 1
                     },
                     [participant2Id]: {
-                        username: user2.username,
+                        username: user2.username || user2.displayName,
                         displayName: user2.displayName,
-                        avatarUrl: user2.avatarUrl,
+                        avatarUrl: user2.avatarUrl || '',
                         level: user2.level || 1
                     }
                 },
@@ -173,6 +176,7 @@ export class MessageService extends BaseService {
                     (data.unreadCount?.[otherId] || 0) + 1,
                 updatedAt: serverTimestamp()
             })
+
             batch.set(notificationRef, {
                 recipientId: otherId,
                 type: 'message',
@@ -182,7 +186,11 @@ export class MessageService extends BaseService {
                     content.length > 50
                         ? content.slice(0, 50) + '…'
                         : content,
-                data: {conversationId, senderId: sender.uid, senderName: sender.displayName},
+                data: {
+                    conversationId,
+                    senderId: sender.uid,
+                    senderName: sender.displayName
+                },
                 read: false,
                 createdAt: serverTimestamp()
             })
@@ -215,7 +223,7 @@ export class MessageService extends BaseService {
                 .map((d) => ({...(d.data() as Conversation), id: d.id}))
                 .filter((c) => {
                     const other = c.participants.find((p) => p !== userId)!
-                    return !user!.social.blocked?.includes(other)
+                    return !user?.social.blockedUsers?.includes(other)
                 })
             callback(convs)
         })
@@ -278,5 +286,135 @@ export class MessageService extends BaseService {
         }
 
         await batch.commit()
+    }
+
+    /**
+     * 대화 상대 차단 처리
+     */
+    static async blockUserInConversation(
+        conversationId: string,
+        blockerId: string,
+        blockedId: string
+    ): Promise<void> {
+        const conversationRef = doc(db, COLLECTIONS.CONVERSATIONS, conversationId)
+
+        await updateDoc(conversationRef, {
+            blockedBy: arrayUnion(blockerId),
+            updatedAt: serverTimestamp()
+        })
+    }
+
+    /**
+     * 대화 상대 차단 해제
+     */
+    static async unblockUserInConversation(
+        conversationId: string,
+        unblockerId: string,
+        unblockedId: string
+    ): Promise<void> {
+        const conversationRef = doc(db, COLLECTIONS.CONVERSATIONS, conversationId)
+
+        await updateDoc(conversationRef, {
+            blockedBy: arrayRemove(unblockerId),
+            updatedAt: serverTimestamp()
+        })
+    }
+
+    /**
+     * 대화 삭제 (개인적으로)
+     */
+    static async deleteConversationForUser(
+        conversationId: string,
+        userId: string
+    ): Promise<void> {
+        const conversationRef = doc(db, COLLECTIONS.CONVERSATIONS, conversationId)
+
+        await updateDoc(conversationRef, {
+            [`deletedBy.${userId}`]: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        })
+    }
+
+    /**
+     * 메시지 검색
+     */
+    static async searchMessages(
+        conversationId: string,
+        searchTerm: string,
+        limit: number = 20
+    ): Promise<Message[]> {
+        const messagesQuery = query(
+            collection(db, COLLECTIONS.MESSAGES),
+            where('conversationId', '==', conversationId),
+            orderBy('createdAt', 'desc')
+        )
+
+        const snapshot = await getDocs(messagesQuery)
+        const messages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as Message[]
+
+        // 클라이언트에서 텍스트 검색 (Firestore의 제한으로 인해)
+        return messages
+            .filter(msg =>
+                msg.content.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .slice(0, limit)
+    }
+
+    /**
+     * 읽지 않은 메시지 개수 가져오기
+     */
+    static async getUnreadMessageCount(userId: string): Promise<number> {
+        const conversationsQuery = query(
+            collection(db, COLLECTIONS.CONVERSATIONS),
+            where('participants', 'array-contains', userId)
+        )
+
+        const snapshot = await getDocs(conversationsQuery)
+        let totalUnread = 0
+
+        snapshot.docs.forEach(doc => {
+            const data = doc.data() as Conversation
+            totalUnread += data.unreadCount?.[userId] || 0
+        })
+
+        return totalUnread
+    }
+
+    /**
+     * 메시지 전달
+     */
+    static async forwardMessage(
+        messageId: string,
+        fromConversationId: string,
+        toConversationId: string,
+        forwarderId: string
+    ): Promise<string> {
+        const messageRef = doc(db, COLLECTIONS.MESSAGES, messageId)
+        const messageSnap = await getDoc(messageRef)
+
+        if (!messageSnap.exists()) {
+            throw new Error('Message not found')
+        }
+
+        const originalMessage = messageSnap.data() as Message
+        const forwarder = await UserService.getUserById(forwarderId)
+
+        if (!forwarder) {
+            throw new Error('Forwarder not found')
+        }
+
+        return await this.sendMessage(
+            toConversationId,
+            {
+                uid: forwarderId,
+                username: forwarder.username || forwarder.displayName,
+                displayName: forwarder.displayName
+            },
+            `[전달된 메시지] ${originalMessage.content}`,
+            'text'
+        )
     }
 }
