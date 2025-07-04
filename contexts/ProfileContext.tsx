@@ -60,7 +60,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         if (profileUser && currentUser && currentUser.uid !== profileUser.uid) {
             setIsFriend(profileUser.social.friends.includes(currentUser.uid))
             setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
-            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+            setIsBlocked(currentUser.social?.blockedUsers?.includes(profileUser.uid) || false)
 
             // 친구 요청 상태 확인
             checkFriendRequestStatus(currentUser.uid, profileUser.uid)
@@ -72,9 +72,9 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         if (profileUser && currentUser && !isOwnProfile) {
             // 현재 사용자의 following 목록이 변경되었을 때 isFollowing 상태 업데이트
             setIsFollowing(currentUser.social?.following?.includes(profileUser.uid) || false)
-            setIsBlocked(currentUser.social?.blocked?.includes(profileUser.uid) || false)
+            setIsBlocked(currentUser.social?.blockedUsers?.includes(profileUser.uid) || false)
         }
-    }, [currentUser?.social.following, currentUser?.social.blocked, profileUser?.uid, isOwnProfile])
+    }, [currentUser?.social.following, currentUser?.social.blockedUsers, profileUser?.uid, isOwnProfile])
 
     // 프로필 사용자 정보 구독
     const updateProfileUser = useCallback(async (username: string) => {
@@ -99,7 +99,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                         if (currentUser && currentUser.uid !== updatedUser.uid) {
                             setIsFriend(updatedUser.social.friends.includes(currentUser.uid))
                             setIsFollowing(currentUser.social?.following?.includes(updatedUser.uid) || false)
-                            setIsBlocked(currentUser.social?.blocked?.includes(updatedUser.uid) || false)
+                            setIsBlocked(currentUser.social?.blockedUsers?.includes(updatedUser.uid) || false)
 
                             // 친구 요청 상태 확인
                             checkFriendRequestStatus(currentUser.uid, updatedUser.uid)
@@ -133,7 +133,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
         if (!profileUser || !currentUser) return
 
         try {
-            await UserService.updateUser(profileUser.id, {
+            await UserService.updateUser(profileUser.uid, {
                 ...data,
                 updatedAt: serverTimestamp() as any
             })
@@ -262,7 +262,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
                     },
                     {
                         uid: profileUser.uid,
-                        username: profileUser.username,
+                        username: profileUser.username || '',
                         displayName: profileUser.displayName
                     }
                 )
@@ -291,14 +291,14 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
 
         setSocialLoading(true)
         try {
-            const updatedBlocked = isBlocked
-                ? currentUser.social.blocked.filter(id => id !== profileUser.uid)
-                : [...(currentUser.social.blocked || []), profileUser.uid]
+            const updatedBlockedUsers = isBlocked
+                ? currentUser.social.blockedUsers.filter(id => id !== profileUser.uid)
+                : [...(currentUser.social.blockedUsers || []), profileUser.uid]
 
             await UserService.updateUser(currentUser.uid, {
                 social: {
                     ...currentUser.social,
-                    blocked: updatedBlocked
+                    blockedUsers: updatedBlockedUsers
                 }
             })
 
@@ -309,7 +309,7 @@ export function ProfileProvider({children}: { children: React.ReactNode }) {
             await updateCurrentUserProfile({
                 social: {
                     ...currentUser.social,
-                    blocked: updatedBlocked
+                    blockedUsers: updatedBlockedUsers
                 }
             })
         } catch (error) {

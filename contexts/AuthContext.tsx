@@ -81,7 +81,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     // 로그인한 사용자에게 한 번만 알림 권한 요청
                     if (userData && !hasRequestedPermission) {
                         // 브라우저 알림이 활성화된 사용자만 권한 요청
-                        const browserNotificationsEnabled = userData.settings?.notifications?.browserNotifications !== false
+                        const browserNotificationsEnabled = userData.settings?.notifications?.browser !== false
 
                         if (browserNotificationsEnabled) {
                             // 3초 후에 권한 요청 (사용자가 페이지에 적응할 시간)
@@ -164,61 +164,59 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
             // Firestore에 사용자 정보 저장
             const userId = firebaseUser.uid
             const newUser: User = {
-                id: userId,
-                uid: firebaseUser.uid,
-                username,
+                uid: userId,
                 email: firebaseUser.email!,
                 displayName,
+                username,
                 level: 1,
+                exp: 0,
                 points: 0,
                 credits: 100,
                 stats: {
-                    mapsCompleted: 0,
-                    mapsCreated: 0,
-                    totalPlayTime: 0,
-                    winRate: 0,
-                    avgClearTime: 0,
-                    achievements: []
+                    totalPlays: 0,
+                    successRate: 0,
+                    fastestTime: 0,
+                    averageTime: 0,
+                    hintsUsed: 0,
+                    perfectClears: 0,
+                    achievements: 0,
+                    createdRooms: 0
                 },
                 social: {
                     followers: [],
                     following: [],
                     friends: [],
-                    blocked: [],
-                    friendCount: 0
+                    friendCount: 0,
+                    blockedUsers: [],
+                    blockedBy: []
                 },
                 settings: {
-                    privacy: {
-                        showProfile: true,
-                        showStats: true,
-                        showFriends: true,
-                        showActivity: true,
-                        allowMessages: true,
-                        allowFriendRequests: true
-                    },
-                    preferences: {
-                        soundEnabled: true,
-                        musicVolume: 0.5,
-                        effectsVolume: 0.7,
-                        mouseSensitivity: 1,
-                        language: 'ko',
-                        theme: 'dark'
-                    },
+                    theme: 'dark',
                     notifications: {
+                        browser: true,
+                        email: true,
                         friendRequests: true,
                         messages: true,
-                        gameInvites: true,
-                        achievements: true,
-                        updates: true,
-                        marketing: false,
-                        browserNotifications: true  // 신규 사용자는 기본값 true
+                        achievements: true
+                    },
+                    privacy: {
+                        profileVisibility: 'public',
+                        showOnlineStatus: true,
+                        allowFriendRequests: true,
+                        allowMessages: true
                     }
                 },
+                inventory: {
+                    items: {},
+                    activeBoosts: [],
+                    activeThemes: []
+                },
                 role: 'user',
+                status: 'active',
+                canChangeUsername: false,
                 createdAt: serverTimestamp() as any,
                 updatedAt: serverTimestamp() as any,
-                lastLoginAt: serverTimestamp() as any,
-                canChangeUsername: false
+                lastLoginAt: serverTimestamp() as any
             }
 
             await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
@@ -273,68 +271,66 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 }
 
                 const newUser: User = {
-                    id: userId,
-                    uid: firebaseUser.uid,
-                    username: username,
+                    uid: userId,
                     email: firebaseUser.email!,
                     displayName: displayName,
+                    username: username,
                     avatarUrl: firebaseUser.photoURL || undefined,
                     level: 1,
+                    exp: 0,
                     points: 0,
                     credits: 150,
                     stats: {
-                        mapsCompleted: 0,
-                        mapsCreated: 0,
-                        totalPlayTime: 0,
-                        winRate: 0,
-                        avgClearTime: 0,
-                        achievements: []
+                        totalPlays: 0,
+                        successRate: 0,
+                        fastestTime: 0,
+                        averageTime: 0,
+                        hintsUsed: 0,
+                        perfectClears: 0,
+                        achievements: 0,
+                        createdRooms: 0
                     },
                     social: {
                         followers: [],
                         following: [],
                         friends: [],
-                        blocked: [],
-                        friendCount: 0
+                        friendCount: 0,
+                        blockedUsers: [],
+                        blockedBy: []
                     },
                     settings: {
-                        privacy: {
-                            showProfile: true,
-                            showStats: true,
-                            showFriends: true,
-                            showActivity: true,
-                            allowMessages: true,
-                            allowFriendRequests: true
-                        },
-                        preferences: {
-                            soundEnabled: true,
-                            musicVolume: 0.5,
-                            effectsVolume: 0.7,
-                            mouseSensitivity: 1,
-                            language: 'ko',
-                            theme: 'dark'
-                        },
+                        theme: 'dark',
                         notifications: {
+                            browser: true,
+                            email: true,
                             friendRequests: true,
                             messages: true,
-                            gameInvites: true,
-                            achievements: true,
-                            updates: true,
-                            marketing: false,
-                            browserNotifications: true  // 신규 사용자는 기본값 true
+                            achievements: true
+                        },
+                        privacy: {
+                            profileVisibility: 'public',
+                            showOnlineStatus: true,
+                            allowFriendRequests: true,
+                            allowMessages: true
                         }
                     },
+                    inventory: {
+                        items: {},
+                        activeBoosts: [],
+                        activeThemes: []
+                    },
                     role: 'user',
+                    status: 'active',
+                    canChangeUsername: true,
                     createdAt: serverTimestamp() as any,
                     updatedAt: serverTimestamp() as any,
-                    lastLoginAt: serverTimestamp() as any,
-                    canChangeUsername: true
+                    lastLoginAt: serverTimestamp() as any
                 }
 
                 await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
             } else {
                 // 기존 사용자라면 로그인 시간만 업데이트
-                await UserService.updateUser(userData.id, {
+                await UserService.updateUser(userData.uid, {
                     lastLoginAt: serverTimestamp() as any
                 })
             }
@@ -399,7 +395,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 }
             }
 
-            await UserService.updateUser(user.id, {
+            await UserService.updateUser(user.uid, {
                 ...data,
                 updatedAt: serverTimestamp() as any
             })
