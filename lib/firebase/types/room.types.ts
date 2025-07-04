@@ -14,7 +14,7 @@ export interface Room {
     CreatorId: string
 
     // 게임 설정
-    Difficulty: 'Easy' | 'Normal' | 'Hard' | 'Extreme'
+    Difficulty: 'Easy' | 'Normal' | 'Hard'
     Theme: string
     Keywords: string[]                  // 태그/키워드
 
@@ -56,7 +56,7 @@ export interface RoomCard {
 
 // Room 필터링 옵션
 export interface RoomFilters {
-    difficulty?: 'easy' | 'normal' | 'hard' | 'extreme'
+    difficulty?: 'easy' | 'normal' | 'hard'
     theme?: string
     sortBy?: 'popular' | 'liked' | 'recent'
     limit?: number
@@ -91,7 +91,7 @@ export interface CreateRoomData {
     RoomTitle: string
     RoomDescription: string
     CreatorId: string
-    Difficulty: 'Easy' | 'Normal' | 'Hard' | 'Extreme'
+    Difficulty: 'Easy' | 'Normal' | 'Hard'
     Theme: string
     Keywords?: string[]
     Thumbnail?: string
@@ -102,7 +102,7 @@ export interface CreateRoomData {
 export interface UpdateRoomData {
     RoomTitle?: string
     RoomDescription?: string
-    Difficulty?: 'Easy' | 'Normal' | 'Hard' | 'Extreme'
+    Difficulty?: 'Easy' | 'Normal' | 'Hard'
     Theme?: string
     Keywords?: string[]
     Thumbnail?: string

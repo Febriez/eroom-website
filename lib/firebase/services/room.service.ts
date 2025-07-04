@@ -66,8 +66,7 @@ export class RoomService extends BaseService {
             const difficultyMap = {
                 'easy': 'Easy',
                 'normal': 'Normal',
-                'hard': 'Hard',
-                'extreme': 'Extreme'
+                'hard': 'Hard'
             }
             constraints.push(where('Difficulty', '==', difficultyMap[filters.difficulty]))
         }
@@ -340,7 +339,7 @@ export class RoomService extends BaseService {
     /**
      * 난이도별 룸 가져오기
      */
-    static async getRoomsByDifficulty(difficulty: 'Easy' | 'Normal' | 'Hard' | 'Extreme', limit: number = 20): Promise<RoomCard[]> {
+    static async getRoomsByDifficulty(difficulty: 'Easy' | 'Normal' | 'Hard', limit: number = 20): Promise<RoomCard[]> {
         const rooms = await this.queryDocuments<Room>(
             COLLECTIONS.ROOMS,
             [

@@ -25,6 +25,17 @@ export default function CommunityRoomsPage() {
     const [selectedTheme, setSelectedTheme] = useState<string>('')
     const [currentLimit, setCurrentLimit] = useState(24)
 
+    // 난이도 변환 함수 추가
+    const getDifficultyLabel = (difficulty: string) => {
+        const difficultyMap: Record<string, string> = {
+            'easy': '쉬움',
+            'normal': '보통',
+            'hard': '어려움',
+            'extreme': '극악'
+        }
+        return difficultyMap[difficulty.toLowerCase()] || difficulty
+    }
+
     // 필터 변경 시 limit 초기화
     useEffect(() => {
         setCurrentLimit(24)
@@ -58,7 +69,7 @@ export default function CommunityRoomsPage() {
             // 필터 조합이 있는 경우
             if (selectedDifficulty || selectedTheme) {
                 loadedRooms = await RoomService.getFilteredRooms({
-                    difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard' | 'extreme',
+                    difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard',
                     theme: selectedTheme,
                     sortBy: filter,
                     limit: currentLimit
@@ -78,8 +89,14 @@ export default function CommunityRoomsPage() {
                 }
             }
 
-            setRooms(loadedRooms)
-            setFilteredRooms(loadedRooms)
+            // 로드된 방들의 난이도 표시를 한국어로 변환
+            const roomsWithKoreanDifficulty = loadedRooms.map(room => ({
+                ...room,
+                difficulty: getDifficultyLabel(room.difficulty)
+            }))
+
+            setRooms(roomsWithKoreanDifficulty)
+            setFilteredRooms(roomsWithKoreanDifficulty)
         } catch (error) {
             console.error('Error loading rooms:', error)
         } finally {
@@ -92,8 +109,15 @@ export default function CommunityRoomsPage() {
     }
 
     const handleRoomClick = (room: RoomCard) => {
-        // 룸 상세 페이지로 이동
-        router.push(`/community/rooms/${room.id}`)
+        // 룸 상세 페이지로 이동 - 정확한 경로 확인
+        console.log('Navigating to room:', room.id) // 디버깅용
+        try {
+            router.push(`/community/rooms/${room.id}`)
+        } catch (error) {
+            console.error('Navigation error:', error)
+            // 대안적 방법 시도
+            window.location.href = `/community/rooms/${room.id}`
+        }
     }
 
     const handleSearch = async () => {
@@ -102,8 +126,13 @@ export default function CommunityRoomsPage() {
             setCurrentLimit(24) // 검색 시 limit 초기화
             try {
                 const searchResults = await RoomService.searchRooms(searchTerm)
-                setRooms(searchResults)
-                setFilteredRooms(searchResults)
+                // 검색 결과도 한국어 난이도로 변환
+                const resultsWithKoreanDifficulty = searchResults.map(room => ({
+                    ...room,
+                    difficulty: getDifficultyLabel(room.difficulty)
+                }))
+                setRooms(resultsWithKoreanDifficulty)
+                setFilteredRooms(resultsWithKoreanDifficulty)
             } catch (error) {
                 console.error('Error searching rooms:', error)
             } finally {
@@ -123,8 +152,7 @@ export default function CommunityRoomsPage() {
         {value: '', label: '모든 난이도'},
         {value: 'easy', label: '쉬움'},
         {value: 'normal', label: '보통'},
-        {value: 'hard', label: '어려움'},
-        {value: 'extreme', label: '극악'}
+        {value: 'hard', label: '어려움'}
     ]
 
     // 테마 옵션 (실제 데이터에 맞게 조정 필요)
@@ -245,11 +273,16 @@ export default function CommunityRoomsPage() {
                 {!loading && filteredRooms.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredRooms.map((room) => (
-                            <MapCard
+                            <div
                                 key={room.id}
-                                map={room}
+                                className="cursor-pointer transform transition-transform hover:scale-105"
                                 onClick={() => handleRoomClick(room)}
-                            />
+                            >
+                                <MapCard
+                                    map={room}
+                                    onClick={() => handleRoomClick(room)}
+                                />
+                            </div>
                         ))}
                     </div>
                 )}

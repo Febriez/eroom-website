@@ -123,18 +123,22 @@ export default function RoomDetailPage() {
         router.push(`/games/eroom?roomId=${roomId}`)
     }
 
-    const handleShare = () => {
-        // 공유 기능
-        if (navigator.share) {
-            navigator.share({
-                title: room?.RoomTitle,
-                text: room?.RoomDescription,
-                url: window.location.href
-            })
-        } else {
-            // 클립보드에 복사
-            navigator.clipboard.writeText(window.location.href)
-            alert('링크가 복사되었습니다!')
+    const handleShare = async () => {
+        try {
+            // 공유 기능
+            if (navigator.share) {
+                await navigator.share({
+                    title: room?.RoomTitle,
+                    text: room?.RoomDescription,
+                    url: window.location.href
+                })
+            } else {
+                // 클립보드에 복사
+                await navigator.clipboard.writeText(window.location.href)
+                alert('링크가 복사되었습니다!')
+            }
+        } catch (error) {
+            console.error('Error sharing:', error)
         }
     }
 
@@ -175,7 +179,17 @@ export default function RoomDetailPage() {
                 icon: '💀'
             }
         }
-        return configs[difficulty.toLowerCase()] || configs.normal
+        // 대소문자 구분 없이 처리하고, 기본값도 설정
+        const normalizedDifficulty = difficulty?.toLowerCase() || 'normal'
+        return configs[normalizedDifficulty] || configs['normal']
+    }
+
+    const handleCreatorClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (creator) {
+            router.push(`/profile/${creator.uid}`)
+        }
     }
 
     if (loading) {
@@ -379,7 +393,7 @@ export default function RoomDetailPage() {
                                     <h3 className="text-lg font-semibold mb-4">제작자</h3>
                                     <div
                                         className="flex items-center gap-4 cursor-pointer hover:bg-gray-700/30 rounded-lg p-3 -m-3 transition-colors"
-                                        onClick={() => router.push(`/profile/${creator.uid}`)}
+                                        onClick={handleCreatorClick}
                                     >
                                         <Avatar
                                             src={creator.avatarUrl}
