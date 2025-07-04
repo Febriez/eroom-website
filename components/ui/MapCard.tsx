@@ -1,10 +1,10 @@
-import {GameMapCard} from '@/lib/firebase/types/game-map-card.types'
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
 import {Heart, Play, Users} from 'lucide-react'
+import {RoomCard} from "@/lib/firebase/types";
 
 interface MapCardProps {
-    map: GameMapCard
+    map: RoomCard
     onClick?: () => void
 }
 
@@ -59,7 +59,7 @@ export function MapCard({map, onClick}: MapCardProps) {
                 {map.thumbnail && (
                     <img
                         src={map.thumbnail}
-                        alt={map.name}
+                        alt={map.title}
                         className="absolute inset-0 w-full h-full object-cover"
                     />
                 )}
@@ -78,7 +78,7 @@ export function MapCard({map, onClick}: MapCardProps) {
             {/* 카드 내용 */}
             <div className="p-4">
                 <h3 className="text-lg font-bold mb-2 line-clamp-1 break-keep">
-                    {map.name}
+                    {map.title}
                 </h3>
 
                 <p className="text-sm text-gray-400 mb-3 line-clamp-2 break-keep">
