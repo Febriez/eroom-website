@@ -13,7 +13,7 @@ import {AlertCircle, Key, Lock, Mail, User} from 'lucide-react'
 
 export default function SignupPage() {
     const router = useRouter()
-    const {signUpWithEmail, signInWithGoogle, redirectLoading} = useAuth()
+    const {signUpWithEmail, signInWithGoogle, redirectLoading, user, loading: authLoading} = useAuth()
 
     const [formData, setFormData] = useState({
         email: '',
@@ -46,6 +46,14 @@ export default function SignupPage() {
             }
         }
     }, [redirectLoading])
+
+    // 로그인 성공 시 자동 이동
+    useEffect(() => {
+        if (user && !authLoading) {
+            router.push('/')
+            router.refresh()
+        }
+    }, [user, authLoading, router])
 
     // 폼 검증
     const validateForm = async (): Promise<boolean> => {

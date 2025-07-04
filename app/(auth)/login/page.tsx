@@ -11,7 +11,7 @@ import {CheckCircle, Key, Lock, Mail, XCircle} from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
-    const {signInWithEmail, signInWithGoogle, redirectLoading} = useAuth()
+    const {signInWithEmail, signInWithGoogle, redirectLoading, user, loading: authLoading} = useAuth()
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -34,6 +34,14 @@ export default function LoginPage() {
             }
         }
     }, [redirectLoading])
+
+    // 로그인 성공 시 자동 이동
+    useEffect(() => {
+        if (user && !authLoading) {
+            router.push('/')
+            router.refresh()
+        }
+    }, [user, authLoading, router])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

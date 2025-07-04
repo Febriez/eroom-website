@@ -75,6 +75,12 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     // 구글 로그인 성공 후 처리
                     const {user: firebaseUser} = result
                     await handleGoogleUserCreation(firebaseUser)
+
+                    // 로그인 성공 후 메인 페이지로 이동
+                    router.push('/')
+                    setTimeout(() => {
+                        router.refresh()
+                    }, 100)
                 }
             } catch (error) {
                 console.error('Redirect result error:', error)
@@ -84,7 +90,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         }
 
         handleRedirectResult()
-    }, [])
+    }, [router])
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
