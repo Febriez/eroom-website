@@ -38,7 +38,7 @@ export class RoomService extends BaseService {
             const rooms: Room[] = [];
             querySnapshot.forEach((doc) => {
                 rooms.push({
-                    id: doc.id,
+                    RoomId: doc.id,
                     ...doc.data()
                 } as Room);
             });
@@ -335,7 +335,7 @@ export class RoomService extends BaseService {
 
             if (docSnap.exists()) {
                 return {
-                    id: docSnap.id,
+                    RoomId: docSnap.id,
                     ...docSnap.data()
                 } as Room;
             } else {
