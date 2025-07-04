@@ -17,6 +17,7 @@ export default function CompleteGuidePage() {
     const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
+    const [hasSeeded, setHasSeeded] = useState(false)
 
     useEffect(() => {
         loadGuides()
@@ -27,16 +28,13 @@ export default function CompleteGuidePage() {
             setLoading(true)
             setError(null)
 
-            // 가이드 목록 불러오기
             const allGuides = await GuideService.getAllGuides()
 
-            // 가이드가 없으면 시딩 시도 (한 번만)
-            if (allGuides.length === 0) {
-                console.log('No guides found, attempting to seed...')
+            if (allGuides.length === 0 && !hasSeeded) {
                 const seedSuccess = await GuideService.seedGuides()
+                setHasSeeded(true)
 
                 if (seedSuccess) {
-                    // 시딩 성공 후 다시 불러오기
                     const seededGuides = await GuideService.getAllGuides()
                     setGuides(seededGuides)
                 } else {
@@ -46,14 +44,13 @@ export default function CompleteGuidePage() {
                 setGuides(allGuides)
             }
         } catch (error) {
-            console.error('Error loading guides:', error)
+            console.error('Error in loadGuides:', error)
             setError('가이드를 불러오는 중 오류가 발생했습니다.')
             setGuides([])
         } finally {
             setLoading(false)
         }
     }
-
 
     const filteredGuides = guides.filter(guide => {
         const matchesSearch = !searchTerm ||
@@ -66,9 +63,11 @@ export default function CompleteGuidePage() {
         return matchesSearch && matchesDifficulty
     })
 
-    const featuredGuides = filteredGuides.filter(g => g.metadata.featured)
+    const featuredGuides = filteredGuides.filter(g => g.metadata?.featured === true)
     const beginnerGuides = filteredGuides.filter(g => g.category === 'beginner')
     const advancedGuides = filteredGuides.filter(g => g.category === 'advanced')
+    const mapCreationGuides = filteredGuides.filter(g => g.category === 'map-creation')
+    const tipsGuides = filteredGuides.filter(g => g.category === 'tips')
 
     const handleGuideClick = (guideId: string) => {
         router.push(`/community/guides/${guideId}`)
@@ -130,9 +129,17 @@ export default function CompleteGuidePage() {
                     <div className="text-center py-20">
                         <Search className="w-20 h-20 text-gray-600 mx-auto mb-4"/>
                         <h3 className="text-xl font-bold mb-2">가이드가 없습니다</h3>
-                        <p className="text-gray-400">
+                        <p className="text-gray-400 mb-4">
                             {searchTerm ? '다른 검색어를 시도해보세요' : '아직 등록된 가이드가 없습니다'}
                         </p>
+                        {!searchTerm && guides.length === 0 && (
+                            <Button onClick={() => {
+                                setHasSeeded(false)
+                                loadGuides()
+                            }} variant="outline">
+                                샘플 데이터 생성
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-12">
@@ -156,11 +163,51 @@ export default function CompleteGuidePage() {
                             </section>
                         )}
 
+                        {/* 맵 제작 가이드 */}
+                        {mapCreationGuides.length > 0 && (
+                            <section>
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-green-400"/>
+                                    맵 제작 가이드
+                                </h2>
+                                <div className="space-y-4">
+                                    {mapCreationGuides.map((guide) => (
+                                        <GuideCard
+                                            key={guide.id}
+                                            guide={guide}
+                                            variant="list"
+                                            onClick={handleGuideClick}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* 팁 & 트릭 */}
+                        {tipsGuides.length > 0 && (
+                            <section>
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-yellow-400"/>
+                                    팁 & 트릭
+                                </h2>
+                                <div className="space-y-4">
+                                    {tipsGuides.map((guide) => (
+                                        <GuideCard
+                                            key={guide.id}
+                                            guide={guide}
+                                            variant="list"
+                                            onClick={handleGuideClick}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
                         {/* 초보자 가이드 */}
                         {beginnerGuides.length > 0 && (
                             <section>
                                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                    <Star className="w-6 h-6 text-yellow-400"/>
+                                    <Star className="w-6 h-6 text-blue-400"/>
                                     초보자 가이드
                                 </h2>
                                 <div className="space-y-4">
