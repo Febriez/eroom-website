@@ -1,7 +1,7 @@
 import {Card} from '@/components/ui/Card'
 import {Badge} from '@/components/ui/Badge'
-import {Heart, Play, Users} from 'lucide-react'
-import type {RoomCard} from "@/lib/firebase/types";
+import {Heart, MessageSquare, Play, Users} from 'lucide-react'
+import type {RoomCard} from "@/lib/firebase/types/room.types"
 
 interface RoomCardProps {
     room: RoomCard
@@ -96,6 +96,10 @@ export function RoomCard({room, onClick}: RoomCardProps) {
                             <Heart className="w-4 h-4 text-red-400"/>
                             {formatCount(room.stats.likeCount)}
                         </div>
+                        <div className="flex items-center gap-1">
+                            <MessageSquare className="w-4 h-4 text-blue-400"/>
+                            {formatCount(room.stats.commentCount)}
+                        </div>
                     </div>
                 </div>
 
@@ -106,7 +110,7 @@ export function RoomCard({room, onClick}: RoomCardProps) {
                 </div>
 
                 {/* 태그 */}
-                {room.tags.length > 0 && (
+                {room.tags && room.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                         {room.tags.slice(0, 3).map((tag, index) => (
                             <span

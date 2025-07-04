@@ -1,12 +1,9 @@
-// lib/firebase/types/room.types.ts
-
 import {Timestamp} from 'firebase/firestore'
 
 // 실제 Firestore Room 컬렉션 구조
 export interface Room {
-    // 기본 식별자
-    id: string                          // Firestore 문서 ID
-    RoomId: string                      // 게임 내부 UUID
+    // 기본 식별자 (Firestore 문서 ID와 동일)
+    RoomId: string                      // Firestore 문서 ID이자 게임 내부 UUID
 
     // 기본 정보
     RoomTitle: string
@@ -35,7 +32,7 @@ export interface Room {
 
 // UI 표시용 카드 인터페이스
 export interface RoomCard {
-    id: string
+    id: string                          // RoomId를 id로 매핑
     title: string
     description: string
     thumbnail?: string
@@ -66,7 +63,7 @@ export interface RoomFilters {
 // Room을 RoomCard로 변환
 export function roomToCard(room: Room): RoomCard {
     return {
-        id: room.id,
+        id: room.RoomId,                // RoomId를 id로 매핑
         title: room.RoomTitle,
         description: room.RoomDescription,
         thumbnail: room.Thumbnail || undefined,
@@ -88,6 +85,7 @@ export function roomToCard(room: Room): RoomCard {
 
 // Room 생성 시 사용할 입력 타입
 export interface CreateRoomData {
+    RoomId?: string                     // 옵션: 미제공 시 UUID 자동 생성
     RoomTitle: string
     RoomDescription: string
     CreatorId: string

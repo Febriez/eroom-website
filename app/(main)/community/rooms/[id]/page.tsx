@@ -24,7 +24,6 @@ import {
     Flag,
     Heart,
     MessageSquare,
-    Play,
     Share2,
     Sparkles,
     Star,
@@ -73,8 +72,6 @@ export default function RoomDetailPage() {
             // 제작자 정보 가져오기
             const creatorData = await UserService.getUserById(roomData.CreatorId)
             setCreator(creatorData)
-
-            // 플레이 횟수 증가 로직 제거 - 게임 클라이언트에서 처리
         } catch (error) {
             console.error('Error loading room:', error)
             router.push('/community/rooms')
@@ -117,9 +114,9 @@ export default function RoomDetailPage() {
         }
     }
 
-    const handlePlay = () => {
-        // 게임 플레이 페이지로 이동
-        router.push(`/games/eroom?roomId=${roomId}`)
+    const handleDownload = () => {
+        // 다운로드 페이지로 이동
+        router.push('/support/download')
     }
 
     const handleShare = async () => {
@@ -171,11 +168,6 @@ export default function RoomDetailPage() {
                 color: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
                 label: '어려움',
                 icon: '🔥'
-            },
-            'extreme': {
-                color: 'text-red-400 bg-red-400/10 border-red-400/20',
-                label: '극악',
-                icon: '💀'
             }
         }
         // 대소문자 구분 없이 처리하고, 기본값도 설정
@@ -255,7 +247,7 @@ export default function RoomDetailPage() {
                                 <div className="text-center">
                                     <div
                                         className="w-32 h-32 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                                        <Play className="w-16 h-16 text-gray-500"/>
+                                        <Download className="w-16 h-16 text-gray-500"/>
                                     </div>
                                     <p className="text-gray-400 text-lg">썸네일 없음</p>
                                 </div>
@@ -337,11 +329,11 @@ export default function RoomDetailPage() {
                                 className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 space-y-4">
                                 <Button
                                     variant="primary"
-                                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                                    onClick={handlePlay}
+                                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                                    onClick={handleDownload}
                                 >
-                                    <Play className="w-6 h-6 mr-2"/>
-                                    플레이하기
+                                    <Download className="w-6 h-6 mr-2"/>
+                                    게임 다운로드
                                 </Button>
 
                                 <div className="grid grid-cols-2 gap-3">

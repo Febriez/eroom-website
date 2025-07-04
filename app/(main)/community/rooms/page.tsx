@@ -10,21 +10,14 @@ import {Skeleton} from '@/components/ui/Skeleton'
 import {RoomService} from '@/lib/firebase/services/room.service'
 import {Clock, Heart, Search, TrendingUp, Users} from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
-import {Room} from "@/lib/firebase/types/room.types";
+import type {RoomCard as RoomCardType} from "@/lib/firebase/types/room.types";
 import {RoomCard} from "@/components/ui/RoomCard";
-import type {RoomCard as RoomCardType} from "@/lib/firebase/types";
-
-// Use the imported RoomCard type instead of defining our own
-// If you need a custom interface, make sure it includes all required properties
-interface RoomCardData extends RoomCardType {
-    // Add any additional properties if needed
-}
 
 export default function CommunityRoomsPage() {
     const router = useRouter()
     const {user} = useAuth()
-    const [rooms, setRooms] = useState<RoomCardData[]>([])
-    const [filteredRooms, setFilteredRooms] = useState<RoomCardData[]>([])
+    const [rooms, setRooms] = useState<RoomCardType[]>([])
+    const [filteredRooms, setFilteredRooms] = useState<RoomCardType[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [filter, setFilter] = useState<'popular' | 'liked' | 'recent'>('popular')
@@ -40,32 +33,6 @@ export default function CommunityRoomsPage() {
             'hard': '어려움'
         }
         return difficultyMap[difficulty.toLowerCase()] || difficulty
-    }
-
-    // DB Room 데이터를 RoomCardData로 변환하는 함수
-    const convertRoomToCardData = async (room: Room): Promise<RoomCardData> => {
-        // 제작자 정보 가져오기 (실제 구현에서는 UserService 사용)
-        const creatorUsername = room.CreatorId; // 임시로 CreatorId 사용
-
-        return {
-            id: room.RoomId, // DB의 RoomId 필드 사용
-            title: room.RoomTitle,
-            description: room.RoomDescription,
-            thumbnail: room.Thumbnail || '',
-            difficulty: room.Difficulty,
-            theme: room.Theme,
-            creator: {
-                id: room.CreatorId,      // 추가: creator.id 필드
-                username: creatorUsername
-            },
-            stats: {
-                playCount: room.PlayCount,
-                likeCount: room.LikeCount,
-                commentCount: room.CommentAuthorIds?.length || 0  // 추가: commentCount 필드
-            },
-            tags: room.Keywords || [],
-            createdAt: room.CreatedDate || new Date()
-        };
     }
 
     // 필터 변경 시 limit 초기화
@@ -96,24 +63,18 @@ export default function CommunityRoomsPage() {
     const loadRooms = async () => {
         setLoading(true)
         try {
-            let loadedRooms: Room[] = [] // 실제 DB Room 타입 사용
+            let cardData: RoomCardType[] = []
 
-            // Use the appropriate service method based on filter
-            switch (filter) {
-                case 'popular':
-                    loadedRooms = await RoomService.getPopularRooms(currentLimit)
-                    break
-                case 'liked':
-                    loadedRooms = await RoomService.getLikedRooms(currentLimit)
-                    break
-                case 'recent':
-                    loadedRooms = await RoomService.getRecentRooms(currentLimit)
-                    break
+            // 필터 옵션 구성
+            const filters = {
+                difficulty: selectedDifficulty as 'easy' | 'normal' | 'hard' | undefined,
+                theme: selectedTheme || undefined,
+                sortBy: filter,
+                limit: currentLimit
             }
 
-            // DB 데이터를 카드 데이터로 변환
-            const cardDataPromises = loadedRooms.map(room => convertRoomToCardData(room))
-            const cardData = await Promise.all(cardDataPromises)
+            // 필터링된 룸 가져오기
+            cardData = await RoomService.getFilteredRooms(filters)
 
             // 한국어 난이도 적용
             const roomsWithKoreanDifficulty = cardData.map(room => ({
@@ -134,7 +95,7 @@ export default function CommunityRoomsPage() {
         setCurrentLimit(prev => prev + 24)
     }
 
-    const handleRoomClick = (room: RoomCardData) => {
+    const handleRoomClick = (room: RoomCardType) => {
         // 정확한 경로로 네비게이션
         console.log('Navigating to room:', room.id)
 
@@ -159,10 +120,29 @@ export default function CommunityRoomsPage() {
             setLoading(true)
             setCurrentLimit(24)
             try {
-                // 검색 기능 구현 필요
+                // 검색 기능 구현
                 const searchResults = await RoomService.searchRooms(searchTerm)
-                const cardDataPromises = searchResults.map(room => convertRoomToCardData(room))
-                const cardData = await Promise.all(cardDataPromises)
+
+                // Room[]을 RoomCard[]로 변환
+                const cardData = searchResults.map(room => ({
+                    id: room.RoomId,
+                    title: room.RoomTitle,
+                    description: room.RoomDescription,
+                    thumbnail: room.Thumbnail || undefined,
+                    difficulty: room.Difficulty.toLowerCase(),
+                    theme: room.Theme,
+                    tags: room.Keywords || [],
+                    creator: {
+                        id: room.CreatorId,
+                        username: room.CreatorId // 실제로는 User 컬렉션에서 조회 필요
+                    },
+                    stats: {
+                        playCount: room.PlayCount || 0,
+                        likeCount: room.LikeCount || 0,
+                        commentCount: room.CommentAuthorIds?.length || 0
+                    },
+                    createdAt: room.CreatedDate
+                }))
 
                 const resultsWithKoreanDifficulty = cardData.map(room => ({
                     ...room,
