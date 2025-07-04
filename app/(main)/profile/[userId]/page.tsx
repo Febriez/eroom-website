@@ -364,6 +364,7 @@ function ProfilePageContent() {
                     onShowFollowers={() => setShowFollowersModal(true)}
                     onShowFollowing={() => setShowFollowingModal(true)}
                     onShowFriends={() => setShowFriendsModal(true)}
+                    onShowInventory={() => router.push('/inventory')} // 인벤토리 페이지로 이동
                 />
 
                 {/* 통계 카드 */}

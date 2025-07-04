@@ -1,4 +1,16 @@
-import {arrayUnion, collection, doc, runTransaction, serverTimestamp, Timestamp, where} from 'firebase/firestore'
+// lib/firebase/services/item.service.ts
+
+import {
+    arrayUnion,
+    collection,
+    doc,
+    getDoc,
+    runTransaction,
+    serverTimestamp,
+    Timestamp,
+    updateDoc,
+    where
+} from 'firebase/firestore'
 import {BaseService} from './base.service'
 import {COLLECTIONS} from '../collections'
 import {db} from '../config'
@@ -27,8 +39,28 @@ export class ItemService extends BaseService {
      * 사용자 인벤토리 가져오기
      */
     static async getUserInventory(userId: string): Promise<{ [itemId: string]: any }> {
-        const user = await this.getDocument<User>(COLLECTIONS.USERS, userId)
-        return user?.inventory?.items || {}
+        const userRef = doc(db, COLLECTIONS.USERS, userId)
+        const userDoc = await getDoc(userRef)
+
+        if (!userDoc.exists()) {
+            return {}
+        }
+
+        const userData = userDoc.data() as User
+
+        // inventory가 없는 경우 초기화
+        if (!userData.inventory) {
+            await updateDoc(userRef, {
+                inventory: {
+                    items: {},
+                    activeBoosts: [],
+                    activeThemes: []
+                }
+            })
+            return {}
+        }
+
+        return userData.inventory.items || {}
     }
 
     /**
@@ -98,6 +130,15 @@ export class ItemService extends BaseService {
             // 5. 크레딧 차감 및 인벤토리 업데이트
             const inventoryUpdates: any = {}
 
+            // inventory 필드가 없는 경우 초기화
+            if (!userData.inventory) {
+                userData.inventory = {
+                    items: {},
+                    activeBoosts: [],
+                    activeThemes: []
+                }
+            }
+
             for (const {item, quantity} of items) {
                 const itemKey = `inventory.items.${item.id}`
 
@@ -134,6 +175,14 @@ export class ItemService extends BaseService {
             transaction.update(userRef, {
                 credits: currentCredits - totalAmount,
                 updatedAt: serverTimestamp(),
+                // inventory가 없는 경우 초기화
+                ...(userData.inventory ? {} : {
+                    inventory: {
+                        items: {},
+                        activeBoosts: [],
+                        activeThemes: []
+                    }
+                }),
                 ...inventoryUpdates
             })
 
