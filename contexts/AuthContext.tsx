@@ -3,11 +3,10 @@
 import React, {createContext, useContext, useEffect, useState} from 'react'
 import {
     createUserWithEmailAndPassword,
-    getRedirectResult,
     onAuthStateChanged,
     sendPasswordResetEmail,
     signInWithEmailAndPassword,
-    signInWithRedirect,
+    signInWithPopup,
     signOut,
     updateProfile,
     User as FirebaseUser
@@ -24,7 +23,6 @@ interface AuthContextType {
     firebaseUser: FirebaseUser | null
     user: User | null
     loading: boolean
-    redirectLoading: boolean
     signInWithEmail: (email: string, password: string) => Promise<void>
     signUpWithEmail: (email: string, password: string, displayName: string, username: string) => Promise<void>
     signInWithGoogle: () => Promise<void>
@@ -61,36 +59,9 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
-    const [redirectLoading, setRedirectLoading] = useState(true)
     const [userUnsubscribe, setUserUnsubscribe] = useState<Unsubscribe | null>(null)
     const [hasRequestedPermission, setHasRequestedPermission] = useState(false)
     const router = useRouter()
-
-    // 리디렉션 결과 처리
-    useEffect(() => {
-        const handleRedirectResult = async () => {
-            try {
-                const result = await getRedirectResult(auth)
-                if (result) {
-                    // 구글 로그인 성공 후 처리
-                    const {user: firebaseUser} = result
-                    await handleGoogleUserCreation(firebaseUser)
-
-                    // 로그인 성공 후 메인 페이지로 이동
-                    router.push('/')
-                    setTimeout(() => {
-                        router.refresh()
-                    }, 100)
-                }
-            } catch (error) {
-                console.error('Redirect result error:', error)
-            } finally {
-                setRedirectLoading(false)
-            }
-        }
-
-        handleRedirectResult()
-    }, [router])
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -240,7 +211,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                         achievements: true,
                         updates: true,
                         marketing: false,
-                        browserNotifications: true
+                        browserNotifications: true  // 신규 사용자는 기본값 true
                     }
                 },
                 role: 'user',
@@ -252,15 +223,23 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
 
             await setDoc(doc(db, COLLECTIONS.USERS, userId), newUser)
 
+            // 상태 업데이트는 실시간 리스너가 처리
+
         } catch (error) {
             console.error('Signup error:', error)
             throw error
         }
     }
 
-    // 구글 사용자 생성 처리를 별도 함수로 분리
-    const handleGoogleUserCreation = async (firebaseUser: FirebaseUser) => {
+    const signInWithGoogle = async () => {
         try {
+            googleProvider.setCustomParameters({
+                prompt: 'select_account'
+            })
+
+            const result = await signInWithPopup(auth, googleProvider)
+            const {user: firebaseUser} = result
+
             // 기존 사용자인지 확인
             let userData = await UserService.getUserById(firebaseUser.uid)
 
@@ -277,13 +256,16 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     counter++
                 }
 
-                // displayName 설정
+                // displayName 설정 - 이메일 앞부분 사용
                 let displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Player'
 
-                // displayName 유효성 검증
+                // displayName 유효성 검증 (validateDisplayName 사용)
                 const displayNameValidation = validateDisplayName(displayName)
                 if (!displayNameValidation.isValid) {
+                    // 이메일 앞부분 사용 시도
                     displayName = firebaseUser.email?.split('@')[0] || 'Player'
+
+                    // 그래도 유효하지 않으면 기본값 사용
                     const secondValidation = validateDisplayName(displayName)
                     if (!secondValidation.isValid) {
                         displayName = 'Player'
@@ -339,7 +321,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                             achievements: true,
                             updates: true,
                             marketing: false,
-                            browserNotifications: true
+                            browserNotifications: true  // 신규 사용자는 기본값 true
                         }
                     },
                     role: 'user',
@@ -356,25 +338,19 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                     lastLoginAt: serverTimestamp() as any
                 })
             }
-        } catch (error) {
-            console.error('Error handling Google user:', error)
-            throw error
-        }
-    }
 
-    const signInWithGoogle = async () => {
-        try {
-            googleProvider.setCustomParameters({
-                prompt: 'select_account'
-            })
-
-            // 팝업 대신 리디렉션 사용
-            await signInWithRedirect(auth, googleProvider)
-            // 리디렉션되므로 여기서는 추가 처리 불필요
-            // 처리는 getRedirectResult에서 수행됨
+            // 상태 업데이트는 실시간 리스너가 처리
+            await new Promise(resolve => setTimeout(resolve, 100))
 
         } catch (error: any) {
             console.error('Google login error:', error)
+
+            if (error.code === 'auth/popup-closed-by-user') {
+                throw new Error('로그인이 취소되었습니다.')
+            } else if (error.code === 'auth/popup-blocked') {
+                throw new Error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
+            }
+
             throw error
         }
     }
@@ -428,7 +404,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
                 updatedAt: serverTimestamp() as any
             })
 
-            // 낙관적 업데이트
+            // 낙관적 업데이트 (실시간 리스너가 곧 업데이트할 것)
             setUser({...user, ...data})
         } catch (error) {
             console.error('Error updating user profile:', error)
@@ -440,7 +416,6 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         firebaseUser,
         user,
         loading,
-        redirectLoading,
         signInWithEmail,
         signUpWithEmail,
         signInWithGoogle,

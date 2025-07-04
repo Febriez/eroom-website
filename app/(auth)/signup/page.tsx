@@ -1,19 +1,22 @@
+// app/(auth)/signup/page.tsx
 'use client'
 
-import React, {useEffect, useState} from 'react'
+import React, {useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {useAuth} from '@/contexts/AuthContext'
 import {validateDisplayName, validateEmail, validatePassword, validateUsername} from '@/lib/utils/validators'
 import {UserService} from '@/lib/firebase/services'
+import {useGoogleAuth} from '@/lib/hooks/useGoogleAuth'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
 import {GoogleAuthButton} from '@/components/auth/GoogleAuthButton'
+import {GoogleAuthStatus} from '@/components/auth/GoogleAuthStatus'
 import {AlertCircle, Key, Lock, Mail, User} from 'lucide-react'
 
 export default function SignupPage() {
     const router = useRouter()
-    const {signUpWithEmail, signInWithGoogle, redirectLoading, user, loading: authLoading} = useAuth()
+    const {signUpWithEmail, signInWithGoogle} = useAuth()
 
     const [formData, setFormData] = useState({
         email: '',
@@ -31,29 +34,11 @@ export default function SignupPage() {
 
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(false)
-    const [googleLoading, setGoogleLoading] = useState(false)
-    const [successMessage, setSuccessMessage] = useState('')
 
-    // 리디렉션 처리 중 메시지 표시
-    useEffect(() => {
-        if (redirectLoading) {
-            setGoogleLoading(true)
-            setSuccessMessage('구글 계정 확인 중...')
-        } else {
-            setGoogleLoading(false)
-            if (!successMessage.includes('구글')) {
-                setSuccessMessage('')
-            }
-        }
-    }, [redirectLoading])
-
-    // 로그인 성공 시 자동 이동
-    useEffect(() => {
-        if (user && !authLoading) {
-            router.push('/')
-            router.refresh()
-        }
-    }, [user, authLoading, router])
+    // 구글 인증 커스텀 훅 사용
+    const {googleLoading, googleCountdown, startGoogleAuth, resetGoogleAuth} = useGoogleAuth(() => {
+        setErrors({general: '로그인 시간이 초과되었습니다. 다시 시도해주세요.'})
+    })
 
     // 폼 검증
     const validateForm = async (): Promise<boolean> => {
@@ -142,17 +127,17 @@ export default function SignupPage() {
             return
         }
 
-        setGoogleLoading(true)
+        startGoogleAuth()
         setErrors({})
 
         try {
             await signInWithGoogle()
-            // 리디렉션되므로 추가 처리 불필요
-            setSuccessMessage('구글 계정으로 이동 중...')
+            router.push('/')
         } catch (error: any) {
             console.error('Google signup error:', error)
             setErrors({general: error.message || '구글 회원가입 중 오류가 발생했습니다.'})
-            setGoogleLoading(false)
+        } finally {
+            resetGoogleAuth()
         }
     }
 
@@ -249,13 +234,8 @@ export default function SignupPage() {
                         </div>
                     )}
 
-                    {/* 구글 로그인 상태 메시지 */}
-                    {(redirectLoading || googleLoading) && successMessage && (
-                        <div
-                            className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 text-green-400 text-sm">
-                            {successMessage}
-                        </div>
-                    )}
+                    {/* 구글 로그인 카운트다운 */}
+                    <GoogleAuthStatus loading={googleLoading} countdown={googleCountdown}/>
 
                     {/* 이메일 */}
                     <div>
@@ -267,7 +247,7 @@ export default function SignupPage() {
                             placeholder="your@email.com"
                             icon={<Mail className="w-5 h-5"/>}
                             error={errors.email}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -281,7 +261,7 @@ export default function SignupPage() {
                             placeholder="8자 이상, 대소문자 및 숫자 포함"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.password}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -295,7 +275,7 @@ export default function SignupPage() {
                             placeholder="비밀번호 재입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.confirmPassword}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -309,7 +289,7 @@ export default function SignupPage() {
                             icon={<User className="w-5 h-5"/>}
                             error={errors.displayName}
                             maxLength={32}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                         <p className="text-xs text-gray-400 mt-1">
                             3-16자, 한글/영문/숫자 사용 가능, 언제든지 변경 가능
@@ -336,7 +316,7 @@ export default function SignupPage() {
                             placeholder="username (영문, 숫자, _ 만 가능)"
                             icon={<span className="text-gray-400">@</span>}
                             error={errors.username}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                         <p className="text-xs text-gray-400 mt-1">
                             프로필 URL: /profile/{formData.username || 'username'}
@@ -352,7 +332,7 @@ export default function SignupPage() {
                                     checked={agreements.all}
                                     onChange={(e) => handleAllAgreements(e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    disabled={loading || googleLoading || redirectLoading}
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm font-medium">전체 동의</span>
                             </label>
@@ -365,7 +345,7 @@ export default function SignupPage() {
                                     checked={agreements.terms}
                                     onChange={(e) => handleSingleAgreement('terms', e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    disabled={loading || googleLoading || redirectLoading}
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
@@ -387,7 +367,7 @@ export default function SignupPage() {
                                     checked={agreements.privacy}
                                     onChange={(e) => handleSingleAgreement('privacy', e.target.checked)}
                                     className="w-4 h-4 text-green-600 bg-gray-800 border-gray-600 rounded focus:ring-green-500"
-                                    disabled={loading || googleLoading || redirectLoading}
+                                    disabled={loading || googleLoading}
                                 />
                                 <span className="ml-3 text-sm">
                                     <span className="text-red-400">*</span>{' '}
@@ -414,7 +394,7 @@ export default function SignupPage() {
                         type="submit"
                         variant="primary"
                         fullWidth
-                        disabled={loading || googleLoading || redirectLoading}
+                        disabled={loading || googleLoading}
                     >
                         {loading ? '가입 중...' : '회원가입'}
                     </Button>
@@ -432,8 +412,9 @@ export default function SignupPage() {
                     {/* 구글 회원가입 */}
                     <GoogleAuthButton
                         onClick={handleGoogleSignup}
-                        disabled={loading || googleLoading || redirectLoading}
-                        loading={googleLoading || redirectLoading}
+                        disabled={loading || googleLoading}
+                        loading={googleLoading}
+                        countdown={googleCountdown}
                         variant="signup"
                     />
 

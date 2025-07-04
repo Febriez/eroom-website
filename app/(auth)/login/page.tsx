@@ -1,17 +1,19 @@
 'use client'
 
-import React, {useEffect, useState} from 'react'
+import React, {useState} from 'react'
 import {useRouter} from 'next/navigation'
 import Link from 'next/link'
 import {useAuth} from '@/contexts/AuthContext'
+import {useGoogleAuth} from '@/lib/hooks/useGoogleAuth'
 import {Input} from '@/components/ui/Input'
 import {Button} from '@/components/ui/Button'
 import {GoogleAuthButton} from '@/components/auth/GoogleAuthButton'
+import {GoogleAuthStatus} from '@/components/auth/GoogleAuthStatus'
 import {CheckCircle, Key, Lock, Mail, XCircle} from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
-    const {signInWithEmail, signInWithGoogle, redirectLoading, user, loading: authLoading} = useAuth()
+    const {signInWithEmail, signInWithGoogle} = useAuth()
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -20,28 +22,11 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [loginStatus, setLoginStatus] = useState<'idle' | 'success' | 'error'>('idle')
     const [successMessage, setSuccessMessage] = useState('')
-    const [googleLoading, setGoogleLoading] = useState(false)
 
-    // 리디렉션 처리 중 메시지 표시
-    useEffect(() => {
-        if (redirectLoading) {
-            setGoogleLoading(true)
-            setSuccessMessage('구글 로그인 처리 중...')
-        } else {
-            setGoogleLoading(false)
-            if (!successMessage.includes('구글 로그인 처리')) {
-                setSuccessMessage('')
-            }
-        }
-    }, [redirectLoading])
-
-    // 로그인 성공 시 자동 이동
-    useEffect(() => {
-        if (user && !authLoading) {
-            router.push('/')
-            router.refresh()
-        }
-    }, [user, authLoading, router])
+    // 구글 인증 커스텀 훅 사용
+    const {googleLoading, googleCountdown, startGoogleAuth, resetGoogleAuth} = useGoogleAuth(() => {
+        setErrors({general: '로그인 시간이 초과되었습니다. 다시 시도해주세요.'})
+    })
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -61,23 +46,24 @@ export default function LoginPage() {
         setErrors({})
 
         try {
+            // AuthContext의 signInWithEmail 사용
             await signInWithEmail(formData.email, formData.password)
 
             // 로그인 성공 표시
             setLoginStatus('success')
             setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
 
-            // 즉시 이동
+            // 즉시 이동 (AuthContext에서 상태 업데이트가 완료됨)
             setTimeout(() => {
                 router.push('/')
-                router.refresh()
+                router.refresh() // 페이지 새로고침 강제
             }, 500)
 
         } catch (error: any) {
             console.error('Login error:', error)
             setLoginStatus('error')
 
-            // 에러 메시지 처리
+            // 에러 메시지를 더 명확하게 표시
             if (error.code === 'auth/user-not-found') {
                 setErrors({
                     email: '등록되지 않은 이메일입니다',
@@ -108,19 +94,56 @@ export default function LoginPage() {
     }
 
     const handleGoogleLogin = async () => {
-        setGoogleLoading(true)
+        startGoogleAuth()
         setLoginStatus('idle')
         setErrors({})
 
+        // 팝업 감지를 위한 타이머
+        let popupCheckInterval: NodeJS.Timeout | null = null
+
         try {
-            await signInWithGoogle()
-            // 리디렉션되므로 추가 처리 불필요
-            setSuccessMessage('구글 로그인 페이지로 이동 중...')
+            // 팝업 창 참조를 얻기 위한 Promise
+            const signInPromise = signInWithGoogle()
+
+            // 팝업 창이 닫혔는지 주기적으로 확인하는 대신
+            // 카운트다운만 처리 (실제 팝업 참조를 얻을 수 없으므로)
+            popupCheckInterval = setInterval(() => {
+                // 카운트다운 처리는 useEffect에서 수행
+            }, 500)
+
+            // AuthContext의 signInWithGoogle 사용
+            await signInPromise
+
+            // 성공 시 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
+
+            setLoginStatus('success')
+            setSuccessMessage('로그인 성공! 메인 페이지로 이동합니다...')
+
+            // 즉시 이동
+            setTimeout(() => {
+                router.push('/')
+                router.refresh() // 페이지 새로고침 강제
+            }, 500)
+
         } catch (error: any) {
             console.error('Google login error:', error)
+
+            // 인터벌 정리
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
+
             setLoginStatus('error')
-            setErrors({general: '구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.'})
-            setGoogleLoading(false)
+
+            if (error.message === '로그인이 취소되었습니다.') {
+                setErrors({general: '로그인이 취소되었습니다.'})
+            } else if (error.message && error.message.includes('팝업')) {
+                setErrors({general: error.message})
+            } else {
+                setErrors({general: '구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.'})
+            }
+        } finally {
+            resetGoogleAuth()
+            if (popupCheckInterval) clearInterval(popupCheckInterval)
         }
     }
 
@@ -140,7 +163,7 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* 상태 메시지 */}
-                    {(loginStatus === 'success' || redirectLoading || googleLoading) && successMessage && (
+                    {loginStatus === 'success' && (
                         <div
                             className="bg-green-900/20 border border-green-600/50 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
                             <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0"/>
@@ -156,6 +179,9 @@ export default function LoginPage() {
                         </div>
                     )}
 
+                    {/* 구글 로그인 카운트다운 메시지 */}
+                    <GoogleAuthStatus loading={googleLoading} countdown={googleCountdown}/>
+
                     <div>
                         <label className="block text-sm font-medium mb-2">이메일</label>
                         <Input
@@ -169,7 +195,7 @@ export default function LoginPage() {
                             placeholder="your@email.com"
                             icon={<Mail className="w-5 h-5"/>}
                             error={errors.email}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -186,7 +212,7 @@ export default function LoginPage() {
                             placeholder="비밀번호 입력"
                             icon={<Lock className="w-5 h-5"/>}
                             error={errors.password}
-                            disabled={loading || googleLoading || redirectLoading}
+                            disabled={loading || googleLoading}
                         />
                     </div>
 
@@ -204,7 +230,7 @@ export default function LoginPage() {
                         type="submit"
                         variant="primary"
                         fullWidth
-                        disabled={loading || googleLoading || redirectLoading || loginStatus === 'success'}
+                        disabled={loading || googleLoading || loginStatus === 'success'}
                     >
                         {loading ? '로그인 중...' : loginStatus === 'success' ? '로그인 완료!' : '로그인'}
                     </Button>
@@ -220,8 +246,9 @@ export default function LoginPage() {
 
                     <GoogleAuthButton
                         onClick={handleGoogleLogin}
-                        disabled={loading || googleLoading || redirectLoading || loginStatus === 'success'}
-                        loading={googleLoading || redirectLoading}
+                        disabled={loading || googleLoading || loginStatus === 'success'}
+                        loading={googleLoading}
+                        countdown={googleCountdown}
                         variant="login"
                     />
 
