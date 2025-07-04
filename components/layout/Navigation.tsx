@@ -16,6 +16,7 @@ import {
     LogOut,
     Menu,
     MessageSquare,
+    Package,
     Shield,
     ShoppingCart,
     Sparkles,
@@ -566,6 +567,14 @@ export default function Navigation() {
                                                 >
                                                     <User className="w-5 h-5 text-green-400"/>
                                                     <span>프로필</span>
+                                                </Link>
+                                                <Link
+                                                    href="/inventory"
+                                                    className="flex items-center gap-4 p-4 rounded-lg hover:bg-gray-800 transition-all duration-200"
+                                                    onClick={() => setShowProfileMenu(false)}
+                                                >
+                                                    <Package className="w-5 h-5 text-green-400"/>
+                                                    <span>인벤토리</span>
                                                 </Link>
                                                 <button
                                                     onClick={handleLogout}
