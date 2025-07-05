@@ -25,7 +25,11 @@ export function PageHeader({title, description, badge, icon, actions}: PageHeade
                         </div>
                     )}
 
-                    <h1 className="text-5xl sm:text-7xl font-black mb-6 leading-normal bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+                    <h1 className="text-5xl sm:text-7xl font-black mb-6 leading-tight bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent overflow-visible"
+                        style={{
+                            lineHeight: '1.2',
+                            paddingBottom: '0.1em'
+                        }}>
                         {title}
                     </h1>
 
