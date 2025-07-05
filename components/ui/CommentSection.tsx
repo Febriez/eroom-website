@@ -13,6 +13,166 @@ interface CommentSectionProps {
     roomId: string
 }
 
+interface CommentItemProps {
+    comment: CommentWithAuthor
+    isReply?: boolean
+    currentUserId?: string
+    isLiked: boolean
+    isEditing: boolean
+    editContent: string
+    onEdit: (commentId: string, content: string) => void
+    onEditStart: (commentId: string, content: string) => void
+    onEditCancel: () => void
+    onEditSubmit: (commentId: string) => void
+    onDelete: (commentId: string) => void
+    onLike: (commentId: string) => void
+    onReply: (commentId: string, authorName: string) => void
+    onToggleReplies: (commentId: string) => void
+    isCollapsed: boolean
+    submitting: boolean
+}
+
+// CommentItem을 별도의 컴포넌트로 분리
+const CommentItem = React.memo(({
+                                    comment,
+                                    isReply = false,
+                                    currentUserId,
+                                    isLiked,
+                                    isEditing,
+                                    editContent,
+                                    onEdit,
+                                    onEditStart,
+                                    onEditCancel,
+                                    onEditSubmit,
+                                    onDelete,
+                                    onLike,
+                                    onReply,
+                                    onToggleReplies,
+                                    isCollapsed,
+                                    submitting
+                                }: CommentItemProps) => {
+    const isAuthor = currentUserId === comment.authorId
+    const hasReplies = comment.replies && comment.replies.length > 0
+
+    return (
+        <div className={`${isReply ? 'ml-12' : ''}`}>
+            <div className="flex gap-3">
+                <Avatar
+                    src={comment.author.photoURL}
+                    alt={comment.author.displayName}
+                    size="sm"
+                    className="ring-2 ring-gray-700"
+                />
+                <div className="flex-1">
+                    <div className="bg-gray-700/50 backdrop-blur-sm rounded-xl p-4 border border-gray-600/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-white">{comment.author.displayName}</span>
+                                <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                    Lv.{comment.author.level}
+                                </Badge>
+                                <span className="text-sm text-gray-400">
+                                    {formatDistanceToNow(comment.createdAt.toDate(), {
+                                        addSuffix: true,
+                                        locale: ko
+                                    })}
+                                </span>
+                                {comment.isEdited && (
+                                    <span className="text-xs text-gray-500">(수정됨)</span>
+                                )}
+                            </div>
+                            {isAuthor && !comment.isDeleted && (
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => onEditStart(comment.id, comment.content)}
+                                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <Edit className="w-4 h-4"/>
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(comment.id)}
+                                        className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4"/>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {isEditing ? (
+                            <div className="space-y-3">
+                                <textarea
+                                    value={editContent}
+                                    onChange={(e) => onEdit(comment.id, e.target.value)}
+                                    placeholder="댓글을 수정하세요..."
+                                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 resize-none"
+                                    rows={3}
+                                    autoFocus
+                                />
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => onEditSubmit(comment.id)}
+                                        disabled={submitting}
+                                    >
+                                        수정
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={onEditCancel}
+                                    >
+                                        취소
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className={`text-gray-300 ${comment.isDeleted ? 'italic text-gray-500' : ''}`}>
+                                {comment.content}
+                            </p>
+                        )}
+                    </div>
+
+                    {!comment.isDeleted && (
+                        <div className="flex items-center gap-4 mt-3 ml-4">
+                            <button
+                                onClick={() => onLike(comment.id)}
+                                className={`flex items-center gap-1.5 text-sm transition-colors ${
+                                    isLiked ? 'text-red-400' : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`}/>
+                                <span>{comment.likeCount > 0 ? comment.likeCount : '좋아요'}</span>
+                            </button>
+                            {!isReply && (
+                                <button
+                                    onClick={() => onReply(comment.id, comment.author.displayName)}
+                                    className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+                                >
+                                    <MessageSquare className="w-4 h-4"/>
+                                    답글
+                                </button>
+                            )}
+                            {hasReplies && !isReply && (
+                                <button
+                                    onClick={() => onToggleReplies(comment.id)}
+                                    className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    {isCollapsed ? <ChevronDown className="w-4 h-4"/> :
+                                        <ChevronUp className="w-4 h-4"/>}
+                                    답글 {comment.replies!.length}개
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+})
+
+CommentItem.displayName = 'CommentItem'
+
 export function CommentSection({roomId}: CommentSectionProps) {
     const {user} = useAuth()
     const [comments, setComments] = useState<CommentWithAuthor[]>([])
@@ -100,7 +260,21 @@ export function CommentSection({roomId}: CommentSectionProps) {
         }
     }
 
-    const handleEditComment = async (commentId: string) => {
+    const handleEditStart = (commentId: string, content: string) => {
+        setEditingId(commentId)
+        setEditContent(content)
+    }
+
+    const handleEditCancel = () => {
+        setEditingId(null)
+        setEditContent('')
+    }
+
+    const handleEditChange = (commentId: string, content: string) => {
+        setEditContent(content)
+    }
+
+    const handleEditSubmit = async (commentId: string) => {
         if (!editContent.trim()) return
 
         setSubmitting(true)
@@ -152,6 +326,11 @@ export function CommentSection({roomId}: CommentSectionProps) {
         }
     }
 
+    const handleReply = (commentId: string, authorName: string) => {
+        setReplyTo(commentId)
+        setReplyContent(`@${authorName} `)
+    }
+
     const toggleReplies = (commentId: string) => {
         setCollapsedComments(prev => {
             const newSet = new Set(prev)
@@ -164,184 +343,76 @@ export function CommentSection({roomId}: CommentSectionProps) {
         })
     }
 
-    const CommentItem = ({comment, isReply = false}: { comment: CommentWithAuthor, isReply?: boolean }) => {
-        const isAuthor = user?.uid === comment.authorId
-        const isLiked = likedComments.has(comment.id)
-        const hasReplies = comment.replies && comment.replies.length > 0
-        const isCollapsed = collapsedComments.has(comment.id)
+    // 재귀적으로 댓글과 대댓글을 렌더링하는 함수
+    const renderComment = (comment: CommentWithAuthor, isReply = false) => (
+        <React.Fragment key={comment.id}>
+            <CommentItem
+                comment={comment}
+                isReply={isReply}
+                currentUserId={user?.uid}
+                isLiked={likedComments.has(comment.id)}
+                isEditing={editingId === comment.id}
+                editContent={editContent}
+                onEdit={handleEditChange}
+                onEditStart={handleEditStart}
+                onEditCancel={handleEditCancel}
+                onEditSubmit={handleEditSubmit}
+                onDelete={handleDeleteComment}
+                onLike={handleLikeComment}
+                onReply={handleReply}
+                onToggleReplies={toggleReplies}
+                isCollapsed={collapsedComments.has(comment.id)}
+                submitting={submitting}
+            />
 
-        return (
-            <div className={`${isReply ? 'ml-12' : ''}`}>
-                <div className="flex gap-3">
+            {/* 답글 입력 폼 */}
+            {replyTo === comment.id && (
+                <div className="mt-4 ml-12 flex gap-3">
                     <Avatar
-                        src={comment.author.photoURL}
-                        alt={comment.author.displayName}
+                        src={user?.avatarUrl || ''}
+                        alt={user?.displayName || ''}
                         size="sm"
-                        className="ring-2 ring-gray-700"
                     />
-                    <div className="flex-1">
-                        <div className="bg-gray-700/50 backdrop-blur-sm rounded-xl p-4 border border-gray-600/50">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-white">{comment.author.displayName}</span>
-                                    <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                                        Lv.{comment.author.level}
-                                    </Badge>
-                                    <span className="text-sm text-gray-400">
-                                        {formatDistanceToNow(comment.createdAt.toDate(), {
-                                            addSuffix: true,
-                                            locale: ko
-                                        })}
-                                    </span>
-                                    {comment.isEdited && (
-                                        <span className="text-xs text-gray-500">(수정됨)</span>
-                                    )}
-                                </div>
-                                {isAuthor && !comment.isDeleted && (
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => {
-                                                setEditingId(comment.id)
-                                                setEditContent(comment.content)
-                                            }}
-                                            className="p-1 text-gray-400 hover:text-white transition-colors"
-                                        >
-                                            <Edit className="w-4 h-4"/>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteComment(comment.id)}
-                                            className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 className="w-4 h-4"/>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {editingId === comment.id ? (
-                                <div className="space-y-3">
-                                    <textarea
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                        placeholder="댓글을 수정하세요..."
-                                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 resize-none"
-                                        rows={3}
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => handleEditComment(comment.id)}
-                                            disabled={submitting}
-                                        >
-                                            수정
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                                setEditingId(null)
-                                                setEditContent('')
-                                            }}
-                                        >
-                                            취소
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className={`text-gray-300 ${comment.isDeleted ? 'italic text-gray-500' : ''}`}>
-                                    {comment.content}
-                                </p>
-                            )}
+                    <div className="flex-1 space-y-2">
+                        <textarea
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="답글을 입력하세요..."
+                            className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 resize-none"
+                            rows={2}
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleSubmitReply}
+                                disabled={submitting}
+                            >
+                                답글 작성
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setReplyTo(null)
+                                    setReplyContent('')
+                                }}
+                            >
+                                취소
+                            </Button>
                         </div>
-
-                        {!comment.isDeleted && (
-                            <div className="flex items-center gap-4 mt-3 ml-4">
-                                <button
-                                    onClick={() => handleLikeComment(comment.id)}
-                                    className={`flex items-center gap-1.5 text-sm transition-colors ${
-                                        isLiked ? 'text-red-400' : 'text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`}/>
-                                    <span>{comment.likeCount > 0 ? comment.likeCount : '좋아요'}</span>
-                                </button>
-                                {!isReply && (
-                                    <button
-                                        onClick={() => {
-                                            setReplyTo(comment.id)
-                                            setReplyContent(`@${comment.author.displayName} `)
-                                        }}
-                                        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-                                    >
-                                        <MessageSquare className="w-4 h-4"/>
-                                        답글
-                                    </button>
-                                )}
-                                {hasReplies && !isReply && (
-                                    <button
-                                        onClick={() => toggleReplies(comment.id)}
-                                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                                    >
-                                        {isCollapsed ? <ChevronDown className="w-4 h-4"/> :
-                                            <ChevronUp className="w-4 h-4"/>}
-                                        답글 {comment.replies!.length}개
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {/* 답글 입력 폼 */}
-                        {replyTo === comment.id && (
-                            <div className="mt-4 ml-4 flex gap-3">
-                                <Avatar
-                                    src={user?.avatarUrl || ''}
-                                    alt={user?.displayName || ''}
-                                    size="sm"
-                                />
-                                <div className="flex-1 space-y-2">
-                                    <textarea
-                                        value={replyContent}
-                                        onChange={(e) => setReplyContent(e.target.value)}
-                                        placeholder="답글을 입력하세요..."
-                                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 resize-none"
-                                        rows={2}
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            onClick={handleSubmitReply}
-                                            disabled={submitting}
-                                        >
-                                            답글 작성
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                                setReplyTo(null)
-                                                setReplyContent('')
-                                            }}
-                                        >
-                                            취소
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 대댓글 */}
-                        {hasReplies && !isCollapsed && (
-                            <div className="mt-4 space-y-4">
-                                {comment.replies!.map((reply) => (
-                                    <CommentItem key={reply.id} comment={reply} isReply/>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
-            </div>
-        )
-    }
+            )}
+
+            {/* 대댓글 */}
+            {comment.replies && comment.replies.length > 0 && !collapsedComments.has(comment.id) && (
+                <div className="mt-4 space-y-4">
+                    {comment.replies.map((reply) => renderComment(reply, true))}
+                </div>
+            )}
+        </React.Fragment>
+    )
 
     return (
         <div className="space-y-6">
@@ -418,9 +489,7 @@ export function CommentSection({roomId}: CommentSectionProps) {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {comments.map((comment) => (
-                        <CommentItem key={comment.id} comment={comment}/>
-                    ))}
+                    {comments.map((comment) => renderComment(comment))}
                 </div>
             )}
         </div>

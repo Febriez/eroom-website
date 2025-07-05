@@ -81,9 +81,18 @@ export default function RoomDetailPage() {
     }
 
     const checkIfLiked = async () => {
-        // 실제로는 사용자의 좋아요 목록을 확인해야 함
-        // 여기서는 임시로 false 설정
-        setIsLiked(false)
+        if (!currentUser || !room) {
+            setIsLiked(false)
+            return
+        }
+
+        try {
+            const liked = await RoomService.isRoomLikedByUser(roomId, currentUser.uid)
+            setIsLiked(liked)
+        } catch (error) {
+            console.error('Error checking like status:', error)
+            setIsLiked(false)
+        }
     }
 
     const handleLike = async () => {
@@ -92,23 +101,23 @@ export default function RoomDetailPage() {
             return
         }
 
+        if (likingInProgress || !room) return
+
         setLikingInProgress(true)
         try {
-            if (isLiked) {
-                await RoomService.decrementLikeCount(roomId)
-                setIsLiked(false)
-                if (room) {
-                    setRoom({...room, LikeCount: room.LikeCount - 1})
-                }
+            const newLikedState = await RoomService.toggleLike(roomId, currentUser.uid)
+            setIsLiked(newLikedState)
+
+            // 로컬 상태 업데이트
+            if (newLikedState) {
+                setRoom({...room, LikeCount: room.LikeCount + 1})
             } else {
-                await RoomService.incrementLikeCount(roomId)
-                setIsLiked(true)
-                if (room) {
-                    setRoom({...room, LikeCount: room.LikeCount + 1})
-                }
+                setRoom({...room, LikeCount: Math.max(0, room.LikeCount - 1)})
             }
         } catch (error) {
             console.error('Error toggling like:', error)
+            // 에러 발생 시 상태 재확인
+            checkIfLiked()
         } finally {
             setLikingInProgress(false)
         }
@@ -139,12 +148,12 @@ export default function RoomDetailPage() {
     }
 
     const handleReport = () => {
-        // 신고 기능
+        // 신고 페이지로 이동
         if (!currentUser) {
             router.push('/login')
             return
         }
-        // 신고 모달 열기 또는 신고 페이지로 이동
+        router.push('/support/inquiry')
     }
 
     const handleEdit = () => {

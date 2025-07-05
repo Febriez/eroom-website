@@ -16,12 +16,13 @@ export interface Room {
     Keywords: string[]                  // 태그/키워드
 
     // 미디어
-    Thumbnail: string               // URL (빈 문자열 가능)
+    Thumbnail: string                   // URL (빈 문자열 가능)
 
     // 통계 (랭킹/프로필용)
     PlayCount: number
     LikeCount: number
-    CommentAuthorIds: string[]         // 댓글 작성자 ID들
+    CommentAuthorIds: string[]          // 댓글 작성자 ID들
+    likedBy: string[]                   // 좋아요한 사용자 ID 목록
 
     // 메타데이터
     Version: number
@@ -112,4 +113,5 @@ export interface UpdateRoomStats {
     PlayCount?: number
     LikeCount?: number
     CommentAuthorIds?: string[]
+    likedBy?: string[]
 }

@@ -1,8 +1,11 @@
 import {
+    arrayRemove,
+    arrayUnion,
     collection,
     doc,
     getDoc,
     getDocs,
+    increment,
     limit,
     orderBy,
     query,
@@ -143,11 +146,61 @@ export class RoomService extends BaseService {
             updates.CommentAuthorIds = stats.CommentAuthorIds
         }
 
+        if (stats.likedBy !== undefined) {
+            updates.likedBy = stats.likedBy
+        }
+
         await updateDoc(doc(db, COLLECTIONS.ROOMS, roomId), updates)
     }
 
     /**
-     * 좋아요 카운트 증가
+     * 좋아요 토글 (새로운 메서드)
+     */
+    static async toggleLike(roomId: string, userId: string): Promise<boolean> {
+        const roomRef = doc(db, COLLECTIONS.ROOMS, roomId)
+        const roomDoc = await getDoc(roomRef)
+
+        if (!roomDoc.exists()) {
+            throw new Error('Room not found')
+        }
+
+        const room = roomDoc.data() as Room
+        const likedBy = room.likedBy || []
+        const isLiked = likedBy.includes(userId)
+
+        if (isLiked) {
+            // 좋아요 취소
+            await updateDoc(roomRef, {
+                likedBy: arrayRemove(userId),
+                LikeCount: increment(-1),
+                LastUpdated: serverTimestamp()
+            })
+            return false
+        } else {
+            // 좋아요 추가
+            await updateDoc(roomRef, {
+                likedBy: arrayUnion(userId),
+                LikeCount: increment(1),
+                LastUpdated: serverTimestamp()
+            })
+            return true
+        }
+    }
+
+    /**
+     * 사용자가 룸을 좋아요했는지 확인
+     */
+    static async isRoomLikedByUser(roomId: string, userId: string): Promise<boolean> {
+        const room = await this.getRoom(roomId)
+        if (!room) return false
+
+        const likedBy = room.likedBy || []
+        return likedBy.includes(userId)
+    }
+
+    /**
+     * 좋아요 카운트 증가 (기존 메서드 - 호환성을 위해 유지)
+     * @deprecated toggleLike 메서드 사용 권장
      */
     static async incrementLikeCount(roomId: string): Promise<void> {
         const room = await this.getRoom(roomId)
@@ -159,7 +212,8 @@ export class RoomService extends BaseService {
     }
 
     /**
-     * 좋아요 카운트 감소
+     * 좋아요 카운트 감소 (기존 메서드 - 호환성을 위해 유지)
+     * @deprecated toggleLike 메서드 사용 권장
      */
     static async decrementLikeCount(roomId: string): Promise<void> {
         const room = await this.getRoom(roomId)
@@ -239,6 +293,21 @@ export class RoomService extends BaseService {
             [
                 where('Keywords', 'array-contains-any', keywords),
                 orderBy('PlayCount', 'desc')
+            ],
+            {limit}
+        )
+        return rooms.map(roomToCard)
+    }
+
+    /**
+     * 사용자가 좋아요한 룸 목록 가져오기
+     */
+    static async getUserLikedRooms(userId: string, limit: number = 20): Promise<RoomCard[]> {
+        const rooms = await this.queryDocuments<Room>(
+            COLLECTIONS.ROOMS,
+            [
+                where('likedBy', 'array-contains', userId),
+                orderBy('LastUpdated', 'desc')
             ],
             {limit}
         )
